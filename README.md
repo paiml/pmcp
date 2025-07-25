@@ -1,4 +1,4 @@
-# Rust MCP SDK
+# PMCP - Pragmatic Model Context Protocol
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust 1.80+](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
@@ -21,7 +21,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-mcp-sdk = "0.1.0"
+pmcp = "0.1.0"
 ```
 
 ## Quick Start
@@ -29,7 +29,7 @@ mcp-sdk = "0.1.0"
 ### Client Example
 
 ```rust
-use mcp_sdk::{Client, StdioTransport, ClientCapabilities};
+use pmcp::{Client, StdioTransport, ClientCapabilities};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Server Example
 
 ```rust
-use mcp_sdk::{Server, ServerCapabilities, ToolHandler};
+use pmcp::{Server, ServerCapabilities, ToolHandler};
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -67,9 +67,9 @@ struct WeatherTool;
 
 #[async_trait]
 impl ToolHandler for WeatherTool {
-    async fn handle(&self, args: Value) -> mcp_sdk::Result<Value> {
+    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
         let location = args["location"].as_str()
-            .ok_or_else(|| mcp_sdk::Error::validation("location required"))?;
+            .ok_or_else(|| pmcp::Error::validation("location required"))?;
         
         // Implement weather fetching logic
         Ok(serde_json::json!({
@@ -123,8 +123,8 @@ let transport = WebSocketTransport::connect("ws://localhost:8080").await?;
 
 ```bash
 # Clone the repository
-git clone https://github.com/paiml/rust-mcp-sdk
-cd rust-mcp-sdk
+git clone https://github.com/paiml/rust-pmcp
+cd rust-pmcp
 
 # Install development tools
 make setup
@@ -171,7 +171,7 @@ make mutants
 ## Architecture
 
 ```
-mcp-sdk/
+pmcp/
 ├── src/
 │   ├── client/          # Client implementation
 │   ├── server/          # Server implementation

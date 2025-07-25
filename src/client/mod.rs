@@ -13,9 +13,9 @@ pub mod transport;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use mcp_sdk::{Client, StdioTransport, ClientCapabilities};
+/// use pmcp::{Client, StdioTransport, ClientCapabilities};
 ///
-/// # async fn example() -> mcp_sdk::Result<()> {
+/// # async fn example() -> pmcp::Result<()> {
 /// let transport = StdioTransport::new();
 /// let mut client = Client::new(transport);
 ///

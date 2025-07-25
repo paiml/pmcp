@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::utils::validate_protocol_version;
+/// use pmcp::utils::validate_protocol_version;
 ///
 /// assert!(validate_protocol_version("2025-06-18").is_ok());
 /// assert!(validate_protocol_version("invalid").is_err());
@@ -31,7 +31,7 @@ pub fn validate_protocol_version(version: &str) -> Result<()> {
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::utils::validate_method_name;
+/// use pmcp::utils::validate_method_name;
 ///
 /// assert!(validate_method_name("tools/list").is_ok());
 /// assert!(validate_method_name("initialize").is_ok());

@@ -1,6 +1,6 @@
 //! Example MCP client implementation
 
-use mcp_sdk::{Client, ClientCapabilities, StdioTransport};
+use pmcp::{Client, ClientCapabilities, StdioTransport};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

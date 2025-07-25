@@ -53,7 +53,7 @@ impl Default for MessagePriority {
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::shared::{Transport, TransportMessage};
+/// use pmcp::shared::{Transport, TransportMessage};
 /// use async_trait::async_trait;
 /// use bytes::Bytes;
 ///
@@ -62,12 +62,12 @@ impl Default for MessagePriority {
 ///
 /// #[async_trait]
 /// impl Transport for MyTransport {
-///     async fn send(&mut self, message: TransportMessage) -> mcp_sdk::Result<()> {
+///     async fn send(&mut self, message: TransportMessage) -> pmcp::Result<()> {
 ///         // Send implementation
 ///         Ok(())
 ///     }
 ///
-///     async fn receive(&mut self) -> mcp_sdk::Result<TransportMessage> {
+///     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
 ///         // Receive implementation
 ///         Ok(TransportMessage {
 ///             payload: Bytes::from("{}"),
@@ -75,7 +75,7 @@ impl Default for MessagePriority {
 ///         })
 ///     }
 ///
-///     async fn close(&mut self) -> mcp_sdk::Result<()> {
+///     async fn close(&mut self) -> pmcp::Result<()> {
 ///         Ok(())
 ///     }
 /// }

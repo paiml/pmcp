@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::types::ClientCapabilities;
+/// use pmcp::types::ClientCapabilities;
 ///
 /// let capabilities = ClientCapabilities {
 ///     experimental: Some([("custom-feature".to_string(), serde_json::json!(true))]

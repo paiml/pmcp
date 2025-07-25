@@ -1,14 +1,14 @@
 //! Example MCP server implementation
 
 use async_trait::async_trait;
-use mcp_sdk::{Server, ServerCapabilities, ToolHandler};
+use pmcp::{Server, ServerCapabilities, ToolHandler};
 use serde_json::Value;
 
 struct EchoTool;
 
 #[async_trait]
 impl ToolHandler for EchoTool {
-    async fn handle(&self, args: Value) -> mcp_sdk::Result<Value> {
+    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
         Ok(serde_json::json!({
             "echo": args.get("message").unwrap_or(&Value::String(String::new()))
         }))

@@ -14,7 +14,7 @@
 //! ### Client Example
 //!
 //! ```rust
-//! use mcp_sdk::{Client, StdioTransport, ClientCapabilities};
+//! use pmcp::{Client, StdioTransport, ClientCapabilities};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create a client with stdio transport
@@ -33,7 +33,7 @@
 //! ### Server Example
 //!
 //! ```rust
-//! use mcp_sdk::{Server, ServerCapabilities, ToolHandler};
+//! use pmcp::{Server, ServerCapabilities, ToolHandler};
 //! use async_trait::async_trait;
 //! use serde_json::Value;
 //!
@@ -41,7 +41,7 @@
 //!
 //! #[async_trait]
 //! impl ToolHandler for MyTool {
-//!     async fn handle(&self, args: Value) -> Result<Value, mcp_sdk::Error> {
+//!     async fn handle(&self, args: Value) -> Result<Value, pmcp::Error> {
 //!         Ok(serde_json::json!({"result": "success"}))
 //!     }
 //! }

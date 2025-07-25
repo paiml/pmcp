@@ -16,7 +16,7 @@ pub const JSONRPC_VERSION: &str = "2.0";
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::types::RequestId;
+/// use pmcp::types::RequestId;
 /// use serde_json::json;
 ///
 /// let string_id = RequestId::String("req-123".to_string());
@@ -74,7 +74,7 @@ impl From<u64> for RequestId {
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::types::{JSONRPCRequest, RequestId};
+/// use pmcp::types::{JSONRPCRequest, RequestId};
 /// use serde_json::json;
 ///
 /// let request = JSONRPCRequest {

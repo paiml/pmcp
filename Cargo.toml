@@ -1,11 +1,11 @@
 [package]
-name = "mcp-sdk"
+name = "pmcp"
 version = "0.1.0"
 edition = "2021"
 authors = ["PAIML Team"]
-description = "Rust implementation of the Model Context Protocol SDK with pmat quality standards"
+description = "Pragmatic Model Context Protocol - Rust implementation with pmat quality standards"
 license = "MIT"
-repository = "https://github.com/paiml/rust-mcp-sdk"
+repository = "https://github.com/paiml/pmcp"
 keywords = ["mcp", "model-context-protocol", "sdk", "ai", "llm"]
 categories = ["api-bindings", "asynchronous", "network-programming"]
 rust-version = "1.80.0"

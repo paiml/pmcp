@@ -19,7 +19,7 @@ fn get_template_regex() -> &'static Regex {
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::shared::uri_template::expand;
+/// use pmcp::shared::uri_template::expand;
 /// use std::collections::HashMap;
 ///
 /// let mut vars = HashMap::new();
@@ -43,7 +43,7 @@ pub fn expand(template: &str, variables: &HashMap<&str, &str>) -> String {
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::shared::uri_template::extract_variables;
+/// use pmcp::shared::uri_template::extract_variables;
 ///
 /// let vars = extract_variables("https://api.example.com/{version}/users/{id}");
 /// assert_eq!(vars, vec!["version", "id"]);
@@ -60,7 +60,7 @@ pub fn extract_variables(template: &str) -> Vec<String> {
 /// # Examples
 ///
 /// ```rust
-/// use mcp_sdk::shared::uri_template::is_template;
+/// use pmcp::shared::uri_template::is_template;
 ///
 /// assert!(is_template("https://api.example.com/{version}/users"));
 /// assert!(!is_template("https://api.example.com/v1/users"));

@@ -39,7 +39,7 @@ pub trait ResourceHandler: Send + Sync {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use mcp_sdk::{Server, ServerCapabilities, ToolHandler};
+/// use pmcp::{Server, ServerCapabilities, ToolHandler};
 /// use async_trait::async_trait;
 /// use serde_json::Value;
 ///
@@ -47,12 +47,12 @@ pub trait ResourceHandler: Send + Sync {
 ///
 /// #[async_trait]
 /// impl ToolHandler for MyTool {
-///     async fn handle(&self, args: Value) -> mcp_sdk::Result<Value> {
+///     async fn handle(&self, args: Value) -> pmcp::Result<Value> {
 ///         Ok(serde_json::json!({"result": "success"}))
 ///     }
 /// }
 ///
-/// # async fn example() -> mcp_sdk::Result<()> {
+/// # async fn example() -> pmcp::Result<()> {
 /// let server = Server::builder()
 ///     .name("my-server")
 ///     .version("1.0.0")

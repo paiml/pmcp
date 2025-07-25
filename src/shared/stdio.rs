@@ -19,9 +19,9 @@ const CONTENT_LENGTH_HEADER: &str = "Content-Length: ";
 /// # Examples
 ///
 /// ```rust,no_run
-/// use mcp_sdk::shared::StdioTransport;
+/// use pmcp::shared::StdioTransport;
 ///
-/// # async fn example() -> mcp_sdk::Result<()> {
+/// # async fn example() -> pmcp::Result<()> {
 /// let transport = StdioTransport::new();
 /// // Use with Client or Server
 /// # Ok(())
