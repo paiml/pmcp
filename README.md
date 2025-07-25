@@ -5,6 +5,8 @@
 
 A high-quality Rust implementation of the [Model Context Protocol](https://modelcontextprotocol.io) (MCP) SDK, maintaining full compatibility with the TypeScript SDK while leveraging Rust's performance and safety guarantees.
 
+Code Name: *Angel Rust*
+
 ## Features
 
 - 🚀 **Full Protocol Support**: Complete implementation of MCP specification
