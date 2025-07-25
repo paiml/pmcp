@@ -1,0 +1,100 @@
+[package]
+name = "mcp-sdk"
+version = "0.1.0"
+edition = "2021"
+authors = ["PAIML Team"]
+description = "Rust implementation of the Model Context Protocol SDK with pmat quality standards"
+license = "MIT"
+repository = "https://github.com/paiml/rust-mcp-sdk"
+keywords = ["mcp", "model-context-protocol", "sdk", "ai", "llm"]
+categories = ["api-bindings", "asynchronous", "network-programming"]
+rust-version = "1.80.0"
+
+[dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["raw_value", "preserve_order"] }
+tokio = { version = "1.35", features = ["full"] }
+async-trait = "0.1"
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Transport dependencies
+tokio-tungstenite = { version = "0.24", optional = true }
+hyper = { version = "1.0", features = ["full"], optional = true }
+hyper-util = { version = "0.1", features = ["full"], optional = true }
+http-body-util = "0.1"
+bytes = "1.5"
+futures = "0.3"
+pin-project = "1.1"
+
+# Utility dependencies
+url = "2.5"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+lazy_static = "1.4"
+indexmap = { version = "2.1", features = ["serde"] }
+parking_lot = "0.12"
+dashmap = "6.0"
+
+# Validation
+jsonschema = { version = "0.18", optional = true }
+garde = { version = "0.18", optional = true }
+
+[dev-dependencies]
+# Testing
+proptest = "1.4"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+rstest = "0.18"
+mockall = "0.12"
+pretty_assertions = "1.4"
+test-case = "3.3"
+criterion = { version = "0.5", features = ["html_reports"] }
+insta = { version = "1.34", features = ["json", "redactions"] }
+
+# For examples
+clap = { version = "4.4", features = ["derive"] }
+env_logger = "0.11"
+
+[features]
+default = ["full"]
+full = ["websocket", "http", "validation"]
+websocket = ["dep:tokio-tungstenite"]
+http = ["dep:hyper", "dep:hyper-util"]
+validation = ["dep:jsonschema", "dep:garde"]
+
+# Performance optimizations
+unstable = []
+simd = []
+
+# Benchmarks will be added later
+# [[bench]]
+# name = "protocol"
+# harness = false
+
+# [[bench]]
+# name = "transport"
+# harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true
+
+[profile.bench]
+lto = true
+codegen-units = 1
+opt-level = 3
+debug = true
+
+[workspace]
+members = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
