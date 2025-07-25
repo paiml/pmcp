@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust 1.80+](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 
-A high-quality Rust implementation of the [Model Context Protocol](https://modelcontextprotocol.io) (MCP) SDK, maintaining full compatibility with the TypeScript SDK while leveraging Rust's performance and safety guarantees.
+A high-quality Rust (*Angel Rust*) implementation of the [Model Context Protocol](https://modelcontextprotocol.io) (MCP) SDK, maintaining full compatibility with the TypeScript SDK while leveraging Rust's performance and safety guarantees.
 
 ## Features
 
