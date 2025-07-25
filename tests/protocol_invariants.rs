@@ -206,9 +206,12 @@ proptest! {
         // Known error codes should roundtrip exactly
         if matches!(code, -32700 | -32600 | -32601 | -32602 | -32603 | -32001 | -32002 | -32003 | -32004) {
             prop_assert_eq!(code, back);
-        } else {
-            // Other codes map to InternalError (-32603)
+        } else if (-32099..=-32000).contains(&code) {
+            // Server error codes map to InternalError (-32603)
             prop_assert_eq!(back, -32603);
+        } else {
+            // Other codes roundtrip as custom codes
+            prop_assert_eq!(code, back);
         }
     }
 

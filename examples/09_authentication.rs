@@ -1,19 +1,22 @@
 //! Example: Authentication in MCP
 //!
+//! NOTE: This example requires the Server API to be fully implemented.
+//! Authentication handlers are not yet available in the current SDK.
+//!
 //! This example demonstrates:
 //! - OAuth 2.0 authentication flow
 //! - Bearer token authentication
 //! - Custom authentication handlers
 //! - Token refresh and expiration
 
-use pmcp::{
-    Client, Server, ClientCapabilities, ServerCapabilities,
-    StdioTransport, AuthHandler, AuthenticationScheme,
-    types::{AuthenticationOptions, AuthenticationResult}
-};
 use async_trait::async_trait;
+use chrono::{DateTime, Duration, Utc};
+use pmcp::{
+    types::{AuthenticationOptions, AuthenticationResult},
+    AuthHandler, AuthenticationScheme, Client, ClientCapabilities, Server, ServerCapabilities,
+    StdioTransport,
+};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
 
 // Mock OAuth provider
 struct MockOAuthProvider {
@@ -32,16 +35,18 @@ impl MockOAuthProvider {
             tokens: HashMap::new(),
         }
     }
-    
+
     fn generate_token(&mut self, user_id: &str) -> String {
         let token = format!("mock-token-{}", uuid::Uuid::new_v4());
         let expiry = Utc::now() + Duration::hours(1);
-        self.tokens.insert(token.clone(), (user_id.to_string(), expiry));
+        self.tokens
+            .insert(token.clone(), (user_id.to_string(), expiry));
         token
     }
-    
+
     fn validate_token(&self, token: &str) -> Option<String> {
-        self.tokens.get(token)
+        self.tokens
+            .get(token)
             .filter(|(_, expiry)| expiry > &Utc::now())
             .map(|(user_id, _)| user_id.clone())
     }
@@ -54,29 +59,32 @@ struct OAuthHandler {
 
 #[async_trait]
 impl AuthHandler for OAuthHandler {
-    async fn authenticate(&self, scheme: &AuthenticationScheme) -> pmcp::Result<AuthenticationResult> {
+    async fn authenticate(
+        &self,
+        scheme: &AuthenticationScheme,
+    ) -> pmcp::Result<AuthenticationResult> {
         match scheme {
-            AuthenticationScheme::OAuth2 { 
-                auth_url, 
-                token_url, 
-                client_id, 
+            AuthenticationScheme::OAuth2 {
+                auth_url,
+                token_url,
+                client_id,
                 scopes,
-                .. 
+                ..
             } => {
                 println!("🔐 OAuth2 Authentication Request:");
                 println!("   Auth URL: {}", auth_url);
                 println!("   Token URL: {}", token_url);
                 println!("   Client ID: {}", client_id);
                 println!("   Scopes: {}", scopes.join(", "));
-                
+
                 // In a real implementation, you would:
                 // 1. Open browser to auth_url with parameters
                 // 2. Handle callback with authorization code
                 // 3. Exchange code for token at token_url
-                
+
                 // For demo, we'll simulate successful auth
                 let token = self.provider.generate_token("demo-user");
-                
+
                 Ok(AuthenticationResult {
                     access_token: token,
                     token_type: "Bearer".to_string(),
@@ -84,8 +92,10 @@ impl AuthHandler for OAuthHandler {
                     refresh_token: Some(format!("refresh-{}", uuid::Uuid::new_v4())),
                     scope: Some(scopes.join(" ")),
                 })
-            }
-            _ => Err(pmcp::Error::authentication("Unsupported authentication scheme")),
+            },
+            _ => Err(pmcp::Error::authentication(
+                "Unsupported authentication scheme",
+            )),
         }
     }
 }
@@ -101,7 +111,7 @@ impl BearerTokenHandler {
         // Pre-configured tokens for demo
         tokens.insert("demo-api-key-123".to_string(), "api-user-1".to_string());
         tokens.insert("demo-api-key-456".to_string(), "api-user-2".to_string());
-        
+
         Self {
             valid_tokens: tokens,
         }
@@ -110,12 +120,15 @@ impl BearerTokenHandler {
 
 #[async_trait]
 impl AuthHandler for BearerTokenHandler {
-    async fn authenticate(&self, scheme: &AuthenticationScheme) -> pmcp::Result<AuthenticationResult> {
+    async fn authenticate(
+        &self,
+        scheme: &AuthenticationScheme,
+    ) -> pmcp::Result<AuthenticationResult> {
         match scheme {
             AuthenticationScheme::Bearer { token } => {
                 println!("🔑 Bearer Token Authentication:");
                 println!("   Token: {}...", &token[..token.len().min(20)]);
-                
+
                 if self.valid_tokens.contains_key(token) {
                     Ok(AuthenticationResult {
                         access_token: token.clone(),
@@ -127,8 +140,10 @@ impl AuthHandler for BearerTokenHandler {
                 } else {
                     Err(pmcp::Error::authentication("Invalid bearer token"))
                 }
-            }
-            _ => Err(pmcp::Error::authentication("Expected bearer token authentication")),
+            },
+            _ => Err(pmcp::Error::authentication(
+                "Expected bearer token authentication",
+            )),
         }
     }
 }
@@ -136,7 +151,7 @@ impl AuthHandler for BearerTokenHandler {
 // Server with authentication support
 async fn run_auth_server() -> Result<(), Box<dyn std::error::Error>> {
     println!("🖥️  Starting authenticated server...\n");
-    
+
     let server = Server::builder()
         .name("auth-server")
         .version("1.0.0")
@@ -156,14 +171,14 @@ async fn run_auth_server() -> Result<(), Box<dyn std::error::Error>> {
             provider: MockOAuthProvider::new(),
         }))
         .build()?;
-    
+
     println!("Server supports authentication schemes:");
     println!("  - OAuth 2.0");
     println!("  - Bearer Token");
     println!("\nListening on stdio...");
-    
+
     server.run_stdio().await?;
-    
+
     Ok(())
 }
 
@@ -174,59 +189,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter("pmcp=info")
         .init();
-    
+
     println!("=== MCP Authentication Example ===\n");
-    
+
     // Create client
     let transport = StdioTransport::new();
     let mut client = Client::new(transport);
-    
+
     // Initialize and check server authentication requirements
     let capabilities = ClientCapabilities::default();
-    
+
     println!("Connecting to server...");
     let server_info = client.initialize(capabilities).await?;
-    
+
     if let Some(auth_options) = &server_info.authentication {
         println!("\n🔒 Server requires authentication!");
         println!("Available authentication methods:");
-        
+
         for (i, option) in auth_options.iter().enumerate() {
             match option {
-                AuthenticationOptions::OAuth2 { client_id, scopes, .. } => {
+                AuthenticationOptions::OAuth2 {
+                    client_id, scopes, ..
+                } => {
                     println!("  {}. OAuth 2.0", i + 1);
                     println!("     Client ID: {}", client_id);
                     println!("     Scopes: {}", scopes.join(", "));
-                }
+                },
                 AuthenticationOptions::Bearer => {
                     println!("  {}. Bearer Token", i + 1);
-                }
+                },
             }
         }
-        
+
         // Example 1: OAuth authentication
         println!("\n\n🔐 Attempting OAuth authentication...");
-        match client.authenticate_oauth(
-            "https://auth.example.com/oauth/authorize",
-            "https://auth.example.com/oauth/token",
-            "demo-client-id",
-            vec!["read", "write"],
-        ).await {
+        match client
+            .authenticate_oauth(
+                "https://auth.example.com/oauth/authorize",
+                "https://auth.example.com/oauth/token",
+                "demo-client-id",
+                vec!["read", "write"],
+            )
+            .await
+        {
             Ok(result) => {
                 println!("✅ OAuth authentication successful!");
-                println!("   Access token: {}...", &result.access_token[..20.min(result.access_token.len())]);
+                println!(
+                    "   Access token: {}...",
+                    &result.access_token[..20.min(result.access_token.len())]
+                );
                 if let Some(expires) = result.expires_in {
                     println!("   Expires in: {} seconds", expires);
                 }
                 if let Some(refresh) = &result.refresh_token {
                     println!("   Refresh token: {}...", &refresh[..20.min(refresh.len())]);
                 }
-            }
+            },
             Err(e) => {
                 println!("❌ OAuth authentication failed: {}", e);
-            }
+            },
         }
-        
+
         // Example 2: Bearer token authentication
         println!("\n\n🔑 Attempting bearer token authentication...");
         match client.authenticate_bearer("demo-api-key-123").await {
@@ -236,34 +259,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(scope) = &result.scope {
                     println!("   Scope: {}", scope);
                 }
-            }
+            },
             Err(e) => {
                 println!("❌ Bearer authentication failed: {}", e);
-            }
+            },
         }
-        
+
         // Example 3: Invalid token
         println!("\n\n⚠️  Testing invalid authentication...");
         match client.authenticate_bearer("invalid-token").await {
             Ok(_) => {
                 println!("Unexpected success!");
-            }
+            },
             Err(e) => {
                 println!("✅ Invalid token correctly rejected: {}", e);
-            }
+            },
         }
-        
+
         // Example 4: Token refresh (if OAuth was successful)
         println!("\n\n🔄 Testing token refresh...");
         if let Some(refresh_token) = client.get_refresh_token() {
             match client.refresh_token(&refresh_token).await {
                 Ok(new_result) => {
                     println!("✅ Token refreshed successfully!");
-                    println!("   New access token: {}...", &new_result.access_token[..20.min(new_result.access_token.len())]);
-                }
+                    println!(
+                        "   New access token: {}...",
+                        &new_result.access_token[..20.min(new_result.access_token.len())]
+                    );
+                },
                 Err(e) => {
                     println!("❌ Token refresh failed: {}", e);
-                }
+                },
             }
         } else {
             println!("   No refresh token available");
@@ -271,6 +297,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         println!("✅ Connected! Server does not require authentication.");
     }
-    
+
     Ok(())
 }

@@ -44,19 +44,22 @@ impl ToolHandler for CalculatorTool {
                     return Err(pmcp::Error::validation("Division by zero"));
                 }
                 params.a / params.b
-            }
+            },
             op => {
                 return Err(pmcp::Error::validation(format!(
                     "Unknown operation: {}",
                     op
                 )))
-            }
+            },
         };
 
         // Return result
         Ok(serde_json::to_value(CalculatorResult {
             result,
-            expression: format!("{} {} {} = {}", params.a, params.operation, params.b, result),
+            expression: format!(
+                "{} {} {} = {}",
+                params.a, params.operation, params.b, result
+            ),
         })?)
     }
 }

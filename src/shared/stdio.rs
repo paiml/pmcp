@@ -66,8 +66,30 @@ impl Transport for StdioTransport {
 
         let mut stdout = self.stdout.lock().await;
 
+        // Serialize message to JSON
+        let json_bytes = match &message {
+            TransportMessage::Request { id, request } => {
+                let jsonrpc_request = crate::shared::create_request(id.clone(), request.clone());
+                serde_json::to_vec(&jsonrpc_request).map_err(|e| {
+                    TransportError::InvalidMessage(format!("Failed to serialize request: {}", e))
+                })?
+            },
+            TransportMessage::Response(response) => serde_json::to_vec(response).map_err(|e| {
+                TransportError::InvalidMessage(format!("Failed to serialize response: {}", e))
+            })?,
+            TransportMessage::Notification(notification) => {
+                let jsonrpc_notification = crate::shared::create_notification(notification.clone());
+                serde_json::to_vec(&jsonrpc_notification).map_err(|e| {
+                    TransportError::InvalidMessage(format!(
+                        "Failed to serialize notification: {}",
+                        e
+                    ))
+                })?
+            },
+        };
+
         // Write content-length header
-        let header = format!("{}{}\r\n\r\n", CONTENT_LENGTH_HEADER, message.payload.len());
+        let header = format!("{}{}\r\n\r\n", CONTENT_LENGTH_HEADER, json_bytes.len());
         stdout
             .write_all(header.as_bytes())
             .await
@@ -75,14 +97,12 @@ impl Transport for StdioTransport {
 
         // Write message payload
         stdout
-            .write_all(&message.payload)
+            .write_all(&json_bytes)
             .await
             .map_err(TransportError::from)?;
 
-        // Flush if requested
-        if message.metadata.as_ref().is_some_and(|m| m.flush) {
-            stdout.flush().await.map_err(TransportError::from)?;
-        }
+        // Always flush stdio
+        stdout.flush().await.map_err(TransportError::from)?;
 
         drop(stdout);
         Ok(())
@@ -136,7 +156,48 @@ impl Transport for StdioTransport {
             .map_err(TransportError::from)?;
 
         drop(stdin);
-        Ok(TransportMessage::new(buffer))
+
+        // Parse JSON to determine message type
+        let json_value: serde_json::Value = serde_json::from_slice(&buffer)
+            .map_err(|e| TransportError::InvalidMessage(format!("Invalid JSON: {}", e)))?;
+
+        // Determine message type based on JSON structure
+        if json_value.get("method").is_some() {
+            if json_value.get("id").is_some() {
+                // It's a request
+                #[allow(clippy::redundant_clone)]
+                let request: crate::types::JSONRPCRequest<serde_json::Value> =
+                    serde_json::from_value(json_value.clone()).map_err(|e| {
+                        TransportError::InvalidMessage(format!("Invalid request: {}", e))
+                    })?;
+
+                // Parse the method to determine if it's client or server request
+                let parsed_request = crate::shared::parse_request(request).map_err(|e| {
+                    TransportError::InvalidMessage(format!("Invalid request: {}", e))
+                })?;
+
+                Ok(TransportMessage::Request {
+                    id: parsed_request.0,
+                    request: parsed_request.1,
+                })
+            } else {
+                // It's a notification
+                let parsed_notification =
+                    crate::shared::parse_notification(json_value).map_err(|e| {
+                        TransportError::InvalidMessage(format!("Invalid notification: {}", e))
+                    })?;
+
+                Ok(TransportMessage::Notification(parsed_notification))
+            }
+        } else if json_value.get("result").is_some() || json_value.get("error").is_some() {
+            // It's a response
+            let response: crate::types::JSONRPCResponse = serde_json::from_value(json_value)
+                .map_err(|e| TransportError::InvalidMessage(format!("Invalid response: {}", e)))?;
+
+            Ok(TransportMessage::Response(response))
+        } else {
+            Err(TransportError::InvalidMessage("Unknown message type".to_string()).into())
+        }
     }
 
     async fn close(&mut self) -> Result<()> {

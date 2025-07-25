@@ -8,17 +8,30 @@ pub mod capabilities;
 pub mod jsonrpc;
 pub mod protocol;
 
+// Re-export transport message type
+pub use crate::shared::transport::TransportMessage;
+
+// Re-export protocol version constants
+pub use crate::{DEFAULT_PROTOCOL_VERSION, LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS};
+
 // Re-export commonly used types
 pub use auth::{AuthInfo, AuthScheme};
 pub use capabilities::{
-    ClientCapabilities, LoggingCapabilities, PromptCapabilities, ResourceCapabilities,
-    SamplingCapabilities, ServerCapabilities, ToolCapabilities,
+    ClientCapabilities, CompletionCapabilities, LoggingCapabilities, PromptCapabilities,
+    ResourceCapabilities, RootsCapabilities, SamplingCapabilities, ServerCapabilities,
+    ToolCapabilities,
 };
 pub use jsonrpc::{JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, RequestId};
 pub use protocol::{
-    CallToolParams, CallToolResult, ClientNotification, ClientRequest, Content, GetPromptParams,
-    GetPromptResult, Implementation, InitializeParams, InitializeResult, ListPromptsParams,
-    ListPromptsResult, ListResourcesParams, ListResourcesResult, ListToolsParams, ListToolsResult,
-    ModelPreferences, Progress, ProgressToken, PromptInfo, ProtocolVersion, ReadResourceParams,
-    ReadResourceResult, ResourceInfo, Role, ServerNotification, ServerRequest, ToolInfo,
+    CallToolParams, CallToolRequest, CallToolResult, CancelledNotification, CancelledParams,
+    ClientNotification, ClientRequest, CompleteRequest, CompleteResult, CompletionArgument,
+    CompletionReference, CompletionResult, Content, GetPromptParams, GetPromptRequest,
+    GetPromptResult, Implementation, InitializeParams, InitializeRequest, InitializeResult,
+    ListPromptsParams, ListPromptsRequest, ListPromptsResult, ListResourceTemplatesRequest,
+    ListResourceTemplatesResult, ListResourcesParams, ListResourcesRequest, ListResourcesResult,
+    ListToolsParams, ListToolsRequest, ListToolsResult, LoggingLevel, MessageContent,
+    ModelPreferences, Notification, Progress, ProgressNotification, ProgressToken, PromptArgument,
+    PromptInfo, PromptMessage, ProtocolVersion, ReadResourceParams, ReadResourceRequest,
+    ReadResourceResult, Request, ResourceInfo, ResourceTemplate, Role, ServerNotification,
+    ServerRequest, SubscribeRequest, ToolInfo, UnsubscribeRequest,
 };

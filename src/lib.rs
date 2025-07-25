@@ -83,7 +83,7 @@ pub mod utils;
 
 // Re-export commonly used types
 pub use client::{Client, ClientBuilder};
-pub use error::{Error, Result};
+pub use error::{Error, ErrorCode, Result};
 pub use server::{PromptHandler, ResourceHandler, Server, ServerBuilder, ToolHandler};
 pub use shared::{StdioTransport, Transport};
 pub use types::{
@@ -110,3 +110,19 @@ pub const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
 
 /// Default request timeout in milliseconds
 pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 60_000;
+
+/// Server-side logging function (placeholder for examples).
+///
+/// In a real server context, this would send a `LogMessage` notification.
+/// For examples, this is a no-op.
+#[allow(clippy::unused_async)]
+pub async fn log(
+    _level: types::protocol::LogLevel,
+    _message: &str,
+    _data: Option<serde_json::Value>,
+) {
+    // In a real implementation, this would:
+    // 1. Get the current server context
+    // 2. Send a LogMessage notification through the transport
+    // For now, this is a placeholder for the examples
+}

@@ -35,16 +35,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // List available tools
     println!("📋 Listing available tools:");
     let tools_result = client.list_tools(None).await?;
-    
+
     for tool in &tools_result.tools {
         println!("\n🔧 Tool: {}", tool.name);
         if let Some(desc) = &tool.description {
             println!("   Description: {}", desc);
         }
-        
+
         // Print input schema if available
-        if let Some(schema) = &tool.input_schema {
-            println!("   Input schema: {}", serde_json::to_string_pretty(schema)?);
+        if !tool.input_schema.is_null() {
+            println!(
+                "   Input schema: {}",
+                serde_json::to_string_pretty(&tool.input_schema)?
+            );
         }
     }
 
@@ -53,18 +56,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let calc_args = json!({
         "operation": "multiply",
         "a": 42,
-        "b": 3.14
+        "b": 3.14159
     });
-    
-    println!("   Arguments: {}", serde_json::to_string_pretty(&calc_args)?);
-    
-    match client.call_tool("calculator", calc_args).await {
+
+    println!(
+        "   Arguments: {}",
+        serde_json::to_string_pretty(&calc_args)?
+    );
+
+    match client.call_tool("calculator".to_string(), calc_args).await {
         Ok(result) => {
-            println!("   ✅ Result: {}", serde_json::to_string_pretty(&result.content)?);
-        }
+            println!(
+                "   ✅ Result: {}",
+                serde_json::to_string_pretty(&result.content)?
+            );
+        },
         Err(e) => {
             println!("   ❌ Error: {}", e);
-        }
+        },
     }
 
     // Example: Call a string manipulation tool
@@ -73,16 +82,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "text": "Hello, MCP!",
         "operation": "reverse"
     });
-    
-    println!("   Arguments: {}", serde_json::to_string_pretty(&string_args)?);
-    
-    match client.call_tool("string_manipulator", string_args).await {
+
+    println!(
+        "   Arguments: {}",
+        serde_json::to_string_pretty(&string_args)?
+    );
+
+    match client
+        .call_tool("string_manipulator".to_string(), string_args)
+        .await
+    {
         Ok(result) => {
-            println!("   ✅ Result: {}", serde_json::to_string_pretty(&result.content)?);
-        }
+            println!(
+                "   ✅ Result: {}",
+                serde_json::to_string_pretty(&result.content)?
+            );
+        },
         Err(e) => {
             println!("   ❌ Error: {}", e);
-        }
+        },
     }
 
     // Example: Handle tool errors
@@ -92,20 +110,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "a": 10,
         "b": 0  // Division by zero
     });
-    
+
     println!("   Arguments: {}", serde_json::to_string_pretty(&bad_args)?);
-    
-    match client.call_tool("calculator", bad_args).await {
+
+    match client.call_tool("calculator".to_string(), bad_args).await {
         Ok(result) => {
-            println!("   Result: {}", result.content);
-        }
+            println!(
+                "   Result: {}",
+                serde_json::to_string_pretty(&result.content)?
+            );
+        },
         Err(e) => {
             println!("   ✅ Error caught: {}", e);
             // Check error type
             if let Some(code) = e.error_code() {
                 println!("   Error code: {:?}", code);
             }
-        }
+        },
     }
 
     Ok(())

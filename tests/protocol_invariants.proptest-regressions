@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 6d50c5bbcbcaeb7a4ca6523023ad94ad4b9acf4e00de71bfa74d7e065fba7288 # shrinks to code = -32005
+cc 46a1d936de32337b03fed7b5c8c975d255a9b8dc2966273202c19050cea5859f # shrinks to code = -32100

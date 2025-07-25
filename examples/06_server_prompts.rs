@@ -8,8 +8,8 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    Server, ServerCapabilities, PromptHandler,
-    types::{Prompt, PromptArgument, GetPromptResult, Role, PromptMessage}
+    types::{GetPromptResult, PromptArgument, PromptInfo, PromptMessage, Role},
+    PromptHandler, Server, ServerCapabilities,
 };
 use std::collections::HashMap;
 
@@ -19,8 +19,12 @@ struct CodeReviewPrompt;
 #[async_trait]
 impl PromptHandler for CodeReviewPrompt {
     async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
-        let language = args.get("language").map(|s| s.as_str()).unwrap_or("unknown");
-        let code = args.get("code")
+        let language = args
+            .get("language")
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
+        let code = args
+            .get("code")
             .ok_or_else(|| pmcp::Error::validation("code argument is required"))?;
         let focus = args.get("focus").map(|s| s.as_str()).unwrap_or("general");
 
@@ -42,13 +46,19 @@ impl PromptHandler for CodeReviewPrompt {
         messages.push(PromptMessage {
             role: Role::User,
             content: pmcp::types::MessageContent::Text {
-                text: format!("Please review this {} code:\n\n```{}\n{}\n```", language, language, code),
+                text: format!(
+                    "Please review this {} code:\n\n```{}\n{}\n```",
+                    language, language, code
+                ),
             },
         });
 
         Ok(GetPromptResult {
             messages,
-            description: Some(format!("Code review for {} code focusing on {}", language, focus)),
+            description: Some(format!(
+                "Code review for {} code focusing on {}",
+                language, focus
+            )),
         })
     }
 }
@@ -60,10 +70,14 @@ struct DataAnalysisPrompt;
 impl PromptHandler for DataAnalysisPrompt {
     async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
         let data_type = args.get("data_type").map(|s| s.as_str()).unwrap_or("CSV");
-        let data = args.get("data")
+        let data = args
+            .get("data")
             .ok_or_else(|| pmcp::Error::validation("data argument is required"))?;
         let question = args.get("question").map(|s| s.as_str());
-        let output_format = args.get("output_format").map(|s| s.as_str()).unwrap_or("summary");
+        let output_format = args
+            .get("output_format")
+            .map(|s| s.as_str())
+            .unwrap_or("summary");
 
         let mut messages = vec![];
 
@@ -81,7 +95,7 @@ impl PromptHandler for DataAnalysisPrompt {
 
         // User message with the data
         let mut user_text = format!("Here is the {} data to analyze:\n\n{}", data_type, data);
-        
+
         if let Some(q) = question {
             user_text.push_str(&format!("\n\nSpecific question: {}", q));
         }
@@ -104,11 +118,18 @@ struct WritingAssistantPrompt;
 #[async_trait]
 impl PromptHandler for WritingAssistantPrompt {
     async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
-        let style = args.get("style").map(|s| s.as_str()).unwrap_or("professional");
-        let topic = args.get("topic")
+        let style = args
+            .get("style")
+            .map(|s| s.as_str())
+            .unwrap_or("professional");
+        let topic = args
+            .get("topic")
             .ok_or_else(|| pmcp::Error::validation("topic argument is required"))?;
         let length = args.get("length").map(|s| s.as_str()).unwrap_or("medium");
-        let audience = args.get("audience").map(|s| s.as_str()).unwrap_or("general");
+        let audience = args
+            .get("audience")
+            .map(|s| s.as_str())
+            .unwrap_or("general");
 
         let mut messages = vec![];
 
@@ -134,15 +155,18 @@ impl PromptHandler for WritingAssistantPrompt {
 
         Ok(GetPromptResult {
             messages,
-            description: Some(format!("Writing assistance for '{}' in {} style", topic, style)),
+            description: Some(format!(
+                "Writing assistance for '{}' in {} style",
+                topic, style
+            )),
         })
     }
 }
 
 // List available prompts
-fn get_available_prompts() -> Vec<Prompt> {
+fn get_available_prompts() -> Vec<PromptInfo> {
     vec![
-        Prompt {
+        PromptInfo {
             name: "code-review".to_string(),
             description: Some("Review code with expert feedback".to_string()),
             arguments: Some(vec![
@@ -153,17 +177,21 @@ fn get_available_prompts() -> Vec<Prompt> {
                 },
                 PromptArgument {
                     name: "language".to_string(),
-                    description: Some("Programming language (e.g., rust, python, javascript)".to_string()),
+                    description: Some(
+                        "Programming language (e.g., rust, python, javascript)".to_string(),
+                    ),
                     required: false,
                 },
                 PromptArgument {
                     name: "focus".to_string(),
-                    description: Some("Review focus: general, performance, security, style".to_string()),
+                    description: Some(
+                        "Review focus: general, performance, security, style".to_string(),
+                    ),
                     required: false,
                 },
             ]),
         },
-        Prompt {
+        PromptInfo {
             name: "data-analysis".to_string(),
             description: Some("Analyze data and provide insights".to_string()),
             arguments: Some(vec![
@@ -184,12 +212,14 @@ fn get_available_prompts() -> Vec<Prompt> {
                 },
                 PromptArgument {
                     name: "output_format".to_string(),
-                    description: Some("Output format: summary, detailed, visualization".to_string()),
+                    description: Some(
+                        "Output format: summary, detailed, visualization".to_string(),
+                    ),
                     required: false,
                 },
             ]),
         },
-        Prompt {
+        PromptInfo {
             name: "writing-assistant".to_string(),
             description: Some("Generate written content on any topic".to_string()),
             arguments: Some(vec![
@@ -200,7 +230,9 @@ fn get_available_prompts() -> Vec<Prompt> {
                 },
                 PromptArgument {
                     name: "style".to_string(),
-                    description: Some("Writing style: professional, casual, academic, creative".to_string()),
+                    description: Some(
+                        "Writing style: professional, casual, academic, creative".to_string(),
+                    ),
                     required: false,
                 },
                 PromptArgument {
@@ -210,7 +242,9 @@ fn get_available_prompts() -> Vec<Prompt> {
                 },
                 PromptArgument {
                     name: "audience".to_string(),
-                    description: Some("Target audience: general, technical, children, experts".to_string()),
+                    description: Some(
+                        "Target audience: general, technical, children, experts".to_string(),
+                    ),
                     required: false,
                 },
             ]),
@@ -240,13 +274,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Server ready! Available prompts:");
     for prompt in get_available_prompts() {
-        println!("\n📝 {}: {}", prompt.name, prompt.description.as_ref().unwrap_or(&"".to_string()));
+        println!(
+            "\n📝 {}: {}",
+            prompt.name,
+            prompt.description.as_ref().unwrap_or(&"".to_string())
+        );
         if let Some(args) = &prompt.arguments {
             println!("   Arguments:");
             for arg in args {
                 let required = if arg.required { " (required)" } else { "" };
-                println!("     - {}{}: {}", 
-                    arg.name, 
+                println!(
+                    "     - {}{}: {}",
+                    arg.name,
                     required,
                     arg.description.as_ref().unwrap_or(&"".to_string())
                 );

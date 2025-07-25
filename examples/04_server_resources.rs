@@ -8,8 +8,8 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    Server, ServerCapabilities, ResourceHandler,
-    types::{Resource, ResourceContent, ReadResourceResult, ListResourcesResult}
+    types::{Content, ListResourcesResult, ReadResourceResult, ResourceInfo},
+    ResourceHandler, Server, ServerCapabilities,
 };
 use std::collections::HashMap;
 
@@ -21,7 +21,7 @@ struct FileSystemResources {
 impl FileSystemResources {
     fn new() -> Self {
         let mut files = HashMap::new();
-        
+
         // Simulate some files
         files.insert(
             "file://config/app.json".to_string(),
@@ -32,14 +32,15 @@ impl FileSystemResources {
     "auth": true,
     "logging": true
   }
-}"#.to_string(),
+}"#
+            .to_string(),
         );
-        
+
         files.insert(
             "file://data/users.csv".to_string(),
             "id,name,email\n1,Alice,alice@example.com\n2,Bob,bob@example.com".to_string(),
         );
-        
+
         files.insert(
             "file://logs/app.log".to_string(),
             "[2025-01-15 10:00:00] INFO: Application started\n[2025-01-15 10:00:05] DEBUG: Connected to database\n".to_string(),
@@ -54,23 +55,24 @@ impl ResourceHandler for FileSystemResources {
     async fn read(&self, uri: &str) -> pmcp::Result<ReadResourceResult> {
         match self.files.get(uri) {
             Some(content) => Ok(ReadResourceResult {
-                contents: vec![ResourceContent::Text {
-                    uri: uri.to_string(),
-                    mime_type: Some(guess_mime_type(uri)),
+                contents: vec![Content::Text {
                     text: content.clone(),
                 }],
             }),
-            None => Err(pmcp::Error::ResourceNotFound(uri.to_string())),
+            None => Err(pmcp::Error::protocol(
+                pmcp::ErrorCode::METHOD_NOT_FOUND,
+                format!("Resource not found: {}", uri),
+            )),
         }
     }
 
     async fn list(&self, _cursor: Option<String>) -> pmcp::Result<ListResourcesResult> {
-        let resources: Vec<Resource> = self
+        let resources: Vec<ResourceInfo> = self
             .files
             .keys()
-            .map(|uri| Resource {
+            .map(|uri| ResourceInfo {
                 uri: uri.clone(),
-                name: uri.split('/').last().unwrap_or("").to_string(),
+                name: uri.rsplit('/').next().unwrap_or("").to_string(),
                 description: Some(format!("Mock file at {}", uri)),
                 mime_type: Some(guess_mime_type(uri)),
             })
@@ -103,44 +105,43 @@ impl ResourceHandler for TemplateResources {
     async fn read(&self, uri: &str) -> pmcp::Result<ReadResourceResult> {
         // Example: Handle parameterized URIs like "template://greeting/{name}"
         if uri.starts_with("template://greeting/") {
-            let name = uri.strip_prefix("template://greeting/")
-                .unwrap_or("World");
-            
+            let name = uri.strip_prefix("template://greeting/").unwrap_or("World");
+
             Ok(ReadResourceResult {
-                contents: vec![ResourceContent::Text {
-                    uri: uri.to_string(),
-                    mime_type: Some("text/plain".to_string()),
+                contents: vec![Content::Text {
                     text: format!("Hello, {}! Welcome to MCP resources.", name),
                 }],
             })
         } else if uri.starts_with("template://time/") {
-            let timezone = uri.strip_prefix("template://time/")
-                .unwrap_or("UTC");
-            
+            let timezone = uri.strip_prefix("template://time/").unwrap_or("UTC");
+
             Ok(ReadResourceResult {
-                contents: vec![ResourceContent::Text {
-                    uri: uri.to_string(),
-                    mime_type: Some("text/plain".to_string()),
-                    text: format!("Current time in {}: {}", 
-                        timezone, 
-                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")),
+                contents: vec![Content::Text {
+                    text: format!(
+                        "Current time in {}: {}",
+                        timezone,
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+                    ),
                 }],
             })
         } else {
-            Err(pmcp::Error::ResourceNotFound(uri.to_string()))
+            Err(pmcp::Error::protocol(
+                pmcp::ErrorCode::METHOD_NOT_FOUND,
+                format!("Resource not found: {}", uri),
+            ))
         }
     }
 
     async fn list(&self, _cursor: Option<String>) -> pmcp::Result<ListResourcesResult> {
         Ok(ListResourcesResult {
             resources: vec![
-                Resource {
+                ResourceInfo {
                     uri: "template://greeting/{name}".to_string(),
                     name: "Greeting Template".to_string(),
                     description: Some("Personalized greeting message".to_string()),
                     mime_type: Some("text/plain".to_string()),
                 },
-                Resource {
+                ResourceInfo {
                     uri: "template://time/{timezone}".to_string(),
                     name: "Time Template".to_string(),
                     description: Some("Current time in specified timezone".to_string()),
@@ -166,7 +167,10 @@ impl ResourceHandler for CombinedResources {
         } else if uri.starts_with("template://") {
             self.templates.read(uri).await
         } else {
-            Err(pmcp::Error::ResourceNotFound(uri.to_string()))
+            Err(pmcp::Error::protocol(
+                pmcp::ErrorCode::METHOD_NOT_FOUND,
+                format!("Resource not found: {}", uri),
+            ))
         }
     }
 
@@ -178,11 +182,11 @@ impl ResourceHandler for CombinedResources {
                 let mut result = self.filesystem.list(None).await?;
                 result.next_cursor = Some("templates".to_string());
                 Ok(result)
-            }
+            },
             Some("templates") => {
                 // Then list template resources
                 self.templates.list(None).await
-            }
+            },
             _ => Ok(ListResourcesResult {
                 resources: vec![],
                 next_cursor: None,
@@ -218,8 +222,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  - file://data/users.csv");
     println!("  - file://logs/app.log");
     println!("\n🔗 Template Resources:");
-    println!("  - template://greeting/{name}");
-    println!("  - template://time/{timezone}");
+    println!("  - template://greeting/{{name}}");
+    println!("  - template://time/{{timezone}}");
     println!("\nListening on stdio...");
 
     // Run server

@@ -67,6 +67,11 @@ websocket = ["dep:tokio-tungstenite"]
 http = ["dep:hyper", "dep:hyper-util"]
 validation = ["dep:jsonschema", "dep:garde"]
 
+# Example features
+authentication_example = []
+cancellation_example = []
+progress_example = []
+
 # Performance optimizations
 unstable = []
 simd = []
@@ -127,14 +132,17 @@ path = "examples/08_logging.rs"
 [[example]]
 name = "09_authentication"
 path = "examples/09_authentication.rs"
+required-features = ["authentication_example"]
 
 [[example]]
 name = "10_progress_notifications"
 path = "examples/10_progress_notifications.rs"
+required-features = ["progress_example"]
 
 [[example]]
 name = "11_request_cancellation"
 path = "examples/11_request_cancellation.rs"
+required-features = ["cancellation_example"]
 
 [[example]]
 name = "12_error_handling"

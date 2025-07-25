@@ -5,16 +5,22 @@
 
 use crate::error::Result;
 use async_trait::async_trait;
-use bytes::Bytes;
 use std::fmt::Debug;
 
 /// A message that can be sent/received over a transport.
 #[derive(Debug, Clone)]
-pub struct TransportMessage {
-    /// The message payload (typically JSON)
-    pub payload: Bytes,
-    /// Optional message metadata
-    pub metadata: Option<MessageMetadata>,
+pub enum TransportMessage {
+    /// Request message with ID
+    Request {
+        /// Request ID
+        id: crate::types::RequestId,
+        /// Request payload
+        request: crate::types::Request,
+    },
+    /// Response message
+    Response(crate::types::JSONRPCResponse),
+    /// Notification message
+    Notification(crate::types::Notification),
 }
 
 /// Metadata associated with a transport message.
@@ -55,7 +61,6 @@ impl Default for MessagePriority {
 /// ```rust
 /// use pmcp::shared::{Transport, TransportMessage};
 /// use async_trait::async_trait;
-/// use bytes::Bytes;
 ///
 /// #[derive(Debug)]
 /// struct MyTransport;
@@ -68,11 +73,14 @@ impl Default for MessagePriority {
 ///     }
 ///
 ///     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
-///         // Receive implementation
-///         Ok(TransportMessage {
-///             payload: Bytes::from("{}"),
-///             metadata: None,
-///         })
+///         // Receive implementation  
+///         Ok(TransportMessage::Notification(
+///             pmcp::types::Notification::Progress(pmcp::types::ProgressNotification {
+///                 progress_token: pmcp::types::ProgressToken::String("example".to_string()),
+///                 progress: 50.0,
+///                 message: Some("Processing...".to_string()),
+///             })
+///         ))
 ///     }
 ///
 ///     async fn close(&mut self) -> pmcp::Result<()> {
@@ -124,64 +132,9 @@ pub struct SendOptions {
     pub timeout: Option<std::time::Duration>,
 }
 
-impl TransportMessage {
-    /// Create a new transport message from bytes.
-    pub fn new(payload: impl Into<Bytes>) -> Self {
-        Self {
-            payload: payload.into(),
-            metadata: None,
-        }
-    }
-
-    /// Create a message with metadata.
-    pub fn with_metadata(payload: impl Into<Bytes>, metadata: MessageMetadata) -> Self {
-        Self {
-            payload: payload.into(),
-            metadata: Some(metadata),
-        }
-    }
-
-    /// Set the content type.
-    pub fn with_content_type(mut self, content_type: impl Into<String>) -> Self {
-        self.metadata
-            .get_or_insert_with(Default::default)
-            .content_type = Some(content_type.into());
-        self
-    }
-
-    /// Set the priority.
-    pub fn with_priority(mut self, priority: MessagePriority) -> Self {
-        self.metadata.get_or_insert_with(Default::default).priority = Some(priority);
-        self
-    }
-
-    /// Mark this message for immediate flushing.
-    pub fn flush(mut self) -> Self {
-        self.metadata.get_or_insert_with(Default::default).flush = true;
-        self
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn message_builder() {
-        let msg = TransportMessage::new(&b"test"[..]);
-        assert_eq!(msg.payload.as_ref(), b"test");
-        assert!(msg.metadata.is_none());
-
-        let msg = TransportMessage::new(&b"test"[..])
-            .with_content_type("application/json")
-            .with_priority(MessagePriority::High)
-            .flush();
-
-        let metadata = msg.metadata.unwrap();
-        assert_eq!(metadata.content_type.as_deref(), Some("application/json"));
-        assert_eq!(metadata.priority, Some(MessagePriority::High));
-        assert!(metadata.flush);
-    }
 
     #[test]
     fn priority_ordering() {

@@ -3,9 +3,9 @@
 //! This module contains all the protocol-specific request, response, and
 //! notification types defined by the MCP specification.
 
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::types::capabilities::{ClientCapabilities, ServerCapabilities};
 
@@ -19,6 +19,19 @@ impl Default for ProtocolVersion {
     }
 }
 
+impl ProtocolVersion {
+    /// Get the version as a string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for ProtocolVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Implementation information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,17 +42,20 @@ pub struct Implementation {
     pub version: String,
 }
 
-/// Initialize request parameters.
+/// Initialize request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InitializeParams {
+pub struct InitializeRequest {
     /// Protocol version the client wants to use
-    pub protocol_version: ProtocolVersion,
+    pub protocol_version: String,
     /// Client capabilities
     pub capabilities: ClientCapabilities,
     /// Client implementation info
     pub client_info: Implementation,
 }
+
+/// Initialize request parameters (legacy name).
+pub type InitializeParams = InitializeRequest;
 
 /// Initialize response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,19 +67,25 @@ pub struct InitializeResult {
     pub capabilities: ServerCapabilities,
     /// Server implementation info
     pub server_info: Implementation,
+    /// Optional instructions
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
 }
 
 /// Pagination cursor.
 pub type Cursor = Option<String>;
 
-/// List tools request parameters.
+/// List tools request.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ListToolsParams {
+pub struct ListToolsRequest {
     /// Pagination cursor
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Cursor,
 }
+
+/// List tools params (legacy name).
+pub type ListToolsParams = ListToolsRequest;
 
 /// Tool information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,16 +111,19 @@ pub struct ListToolsResult {
     pub next_cursor: Cursor,
 }
 
-/// Tool call parameters.
+/// Tool call request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CallToolParams {
+pub struct CallToolRequest {
     /// Tool name to invoke
     pub name: String,
     /// Tool arguments (must match input schema)
     #[serde(default)]
     pub arguments: Value,
 }
+
+/// Tool call parameters (legacy name).
+pub type CallToolParams = CallToolRequest;
 
 /// Tool call result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,6 +136,9 @@ pub struct CallToolResult {
     #[serde(default)]
     pub is_error: bool,
 }
+
+/// Message content type alias.
+pub type MessageContent = Content;
 
 /// Content item in responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,14 +172,17 @@ pub enum Content {
     },
 }
 
-/// List prompts parameters.
+/// List prompts request.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ListPromptsParams {
+pub struct ListPromptsRequest {
     /// Pagination cursor
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Cursor,
 }
+
+/// List prompts params (legacy name).
+pub type ListPromptsParams = ListPromptsRequest;
 
 /// Prompt information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,16 +223,19 @@ pub struct ListPromptsResult {
     pub next_cursor: Cursor,
 }
 
-/// Get prompt parameters.
+/// Get prompt request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetPromptParams {
+pub struct GetPromptRequest {
     /// Prompt name
     pub name: String,
     /// Prompt arguments
     #[serde(default)]
-    pub arguments: IndexMap<String, String>,
+    pub arguments: HashMap<String, String>,
 }
+
+/// Get prompt params (legacy name).
+pub type GetPromptParams = GetPromptRequest;
 
 /// Get prompt result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -221,27 +255,42 @@ pub struct PromptMessage {
     /// Message role
     pub role: Role,
     /// Message content
-    pub content: Content,
+    pub content: MessageContent,
 }
 
 /// Message role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub enum Role {
     /// User message
     User,
     /// Assistant message
     Assistant,
+    /// System message
+    System,
 }
 
-/// List resources parameters.
+impl std::fmt::Display for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::User => write!(f, "user"),
+            Self::Assistant => write!(f, "assistant"),
+            Self::System => write!(f, "system"),
+        }
+    }
+}
+
+/// List resources request.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ListResourcesParams {
+pub struct ListResourcesRequest {
     /// Pagination cursor
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Cursor,
 }
+
+/// List resources params (legacy name).
+pub type ListResourcesParams = ListResourcesRequest;
 
 /// Resource information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,12 +319,143 @@ pub struct ListResourcesResult {
     pub next_cursor: Cursor,
 }
 
-/// Read resource parameters.
+/// Read resource request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ReadResourceParams {
+pub struct ReadResourceRequest {
     /// Resource URI
     pub uri: String,
+}
+
+/// Read resource params (legacy name).
+pub type ReadResourceParams = ReadResourceRequest;
+
+/// List resource templates request.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListResourceTemplatesRequest {
+    /// Pagination cursor
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Cursor,
+}
+
+/// Resource template.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceTemplate {
+    /// Template URI pattern
+    pub uri_template: String,
+    /// Template name
+    pub name: String,
+    /// Template description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// MIME type for resources created from this template
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+}
+
+/// List resource templates result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListResourceTemplatesResult {
+    /// Available resource templates
+    pub resource_templates: Vec<ResourceTemplate>,
+    /// Pagination cursor
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Cursor,
+}
+
+/// Subscribe to resource request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscribeRequest {
+    /// Resource URI to subscribe to
+    pub uri: String,
+}
+
+/// Unsubscribe from resource request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsubscribeRequest {
+    /// Resource URI to unsubscribe from
+    pub uri: String,
+}
+
+/// Completion request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompleteRequest {
+    /// The reference to complete from
+    pub r#ref: CompletionReference,
+    /// The argument to complete
+    pub argument: CompletionArgument,
+}
+
+/// Completion reference.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum CompletionReference {
+    /// Complete from a resource
+    #[serde(rename = "ref/resource")]
+    Resource {
+        /// Resource URI
+        uri: String,
+    },
+    /// Complete from a prompt
+    #[serde(rename = "ref/prompt")]
+    Prompt {
+        /// Prompt name
+        name: String,
+    },
+}
+
+/// Completion argument.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionArgument {
+    /// Argument name
+    pub name: String,
+    /// Argument value
+    pub value: String,
+}
+
+/// Completion result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompleteResult {
+    /// Completion options
+    pub completion: CompletionResult,
+}
+
+/// Completion result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionResult {
+    /// Suggested values
+    pub values: Vec<String>,
+    /// Total number of completions available
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<usize>,
+    /// Whether there are more completions available
+    #[serde(default)]
+    pub has_more: bool,
+}
+
+/// Logging level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LoggingLevel {
+    /// Debug messages
+    Debug,
+    /// Informational messages
+    Info,
+    /// Warnings
+    Warning,
+    /// Errors
+    Error,
+    /// Critical errors
+    Critical,
 }
 
 /// Read resource result.
@@ -316,7 +496,7 @@ pub struct ModelHint {
 /// Progress notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Progress {
+pub struct ProgressNotification {
     /// Progress token from the original request
     pub progress_token: ProgressToken,
     /// Progress percentage (0-100)
@@ -325,6 +505,9 @@ pub struct Progress {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
+
+/// Progress (legacy alias).
+pub type Progress = ProgressNotification;
 
 /// Progress token type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -358,9 +541,27 @@ pub enum ClientRequest {
     /// List available resources
     #[serde(rename = "resources/list")]
     ListResources(ListResourcesParams),
+    /// List resource templates
+    #[serde(rename = "resources/templates/list")]
+    ListResourceTemplates(ListResourceTemplatesRequest),
     /// Read a resource
     #[serde(rename = "resources/read")]
     ReadResource(ReadResourceParams),
+    /// Subscribe to resource updates
+    #[serde(rename = "resources/subscribe")]
+    Subscribe(SubscribeRequest),
+    /// Unsubscribe from resource updates
+    #[serde(rename = "resources/unsubscribe")]
+    Unsubscribe(UnsubscribeRequest),
+    /// Request completion
+    #[serde(rename = "completion/complete")]
+    Complete(CompleteRequest),
+    /// Set logging level
+    #[serde(rename = "logging/setLevel")]
+    SetLoggingLevel {
+        /// Logging level to set
+        level: LoggingLevel,
+    },
     /// Ping request
     #[serde(rename = "ping")]
     Ping,
@@ -439,6 +640,9 @@ pub enum ClientNotification {
     /// Notification that client has been initialized
     #[serde(rename = "notifications/initialized")]
     Initialized,
+    /// Notification that roots have changed
+    #[serde(rename = "notifications/roots/list_changed")]
+    RootsListChanged,
     /// Notification that a request was cancelled
     #[serde(rename = "notifications/cancelled")]
     Cancelled(CancelledParams),
@@ -447,16 +651,19 @@ pub enum ClientNotification {
     Progress(Progress),
 }
 
-/// Cancelled notification parameters.
+/// Cancelled notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CancelledParams {
+pub struct CancelledNotification {
     /// The request ID that was cancelled
     pub request_id: crate::types::RequestId,
     /// Optional reason for cancellation
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
+
+/// Cancelled params (legacy alias).
+pub type CancelledParams = CancelledNotification;
 
 /// Server notification types.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -504,6 +711,30 @@ pub struct LogMessageParams {
     /// Additional data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
+}
+
+/// Combined request types (client or server).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Request {
+    /// Client request
+    Client(ClientRequest),
+    /// Server request
+    Server(ServerRequest),
+}
+
+/// Combined notification types (client or server).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Notification {
+    /// Client notification
+    Client(ClientNotification),
+    /// Server notification  
+    Server(ServerNotification),
+    /// Progress notification
+    Progress(ProgressNotification),
+    /// Cancelled notification
+    Cancelled(CancelledNotification),
 }
 
 /// Log level.

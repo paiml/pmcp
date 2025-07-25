@@ -24,13 +24,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Define client capabilities
     let capabilities = ClientCapabilities {
         // Client supports tools
-        tools: Some(Default::default()),
+        tools: Some(pmcp::types::capabilities::ToolCapabilities::default()),
         // Client supports prompts
-        prompts: Some(Default::default()),
+        prompts: Some(pmcp::types::capabilities::PromptCapabilities::default()),
         // Client supports resources
-        resources: Some(Default::default()),
+        resources: Some(pmcp::types::capabilities::ResourceCapabilities::default()),
         // Client supports logging
-        logging: Some(Default::default()),
+        logging: Some(pmcp::types::capabilities::LoggingCapabilities::default()),
+        // Client supports sampling
+        sampling: Some(pmcp::types::capabilities::SamplingCapabilities::default()),
+        // Client supports roots
+        roots: Some(pmcp::types::capabilities::RootsCapabilities::default()),
+        // No experimental features
+        experimental: None,
     };
 
     println!("Initializing connection with capabilities:");
@@ -40,25 +46,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match client.initialize(capabilities).await {
         Ok(result) => {
             println!("✅ Successfully connected to server!");
-            println!("Server: {} v{}", result.server_info.name, result.server_info.version);
+            println!(
+                "Server: {} v{}",
+                result.server_info.name, result.server_info.version
+            );
             println!("\nServer capabilities:");
             println!("{:#?}", result.capabilities);
 
             // Check what the server supports
-            if result.capabilities.supports_tools() {
+            if result.capabilities.provides_tools() {
                 println!("\n✓ Server supports tools");
             }
-            if result.capabilities.supports_prompts() {
+            if result.capabilities.provides_prompts() {
                 println!("✓ Server supports prompts");
             }
-            if result.capabilities.supports_resources() {
+            if result.capabilities.provides_resources() {
                 println!("✓ Server supports resources");
             }
-        }
+        },
         Err(e) => {
             eprintln!("❌ Failed to initialize: {}", e);
             return Err(e.into());
-        }
+        },
     }
 
     Ok(())

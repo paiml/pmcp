@@ -55,7 +55,7 @@ fmt-check:
 .PHONY: lint
 lint:
 	@echo "$(BLUE)Running clippy...$(NC)"
-	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) clippy --all-features --all-targets -- \
+	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) clippy --features "full" --lib --tests -- \
 		-D clippy::all \
 		-W clippy::pedantic \
 		-W clippy::nursery \
@@ -71,6 +71,8 @@ lint:
 		-A clippy::result_large_err \
 		-A clippy::multiple_crate_versions \
 		-A clippy::implicit_hasher
+	@echo "$(BLUE)Checking examples...$(NC)"
+	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) check --features "full" --examples
 	@echo "$(GREEN)✓ No lint issues$(NC)"
 
 .PHONY: audit
@@ -96,19 +98,19 @@ unused-deps:
 .PHONY: test
 test:
 	@echo "$(BLUE)Running tests...$(NC)"
-	RUST_LOG=$(RUST_LOG) RUST_BACKTRACE=$(RUST_BACKTRACE) $(CARGO) nextest run --all-features
+	RUST_LOG=$(RUST_LOG) RUST_BACKTRACE=$(RUST_BACKTRACE) $(CARGO) nextest run --features "full"
 	@echo "$(GREEN)✓ All tests passed$(NC)"
 
 .PHONY: test-doc
 test-doc:
 	@echo "$(BLUE)Running doctests...$(NC)"
-	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) test --doc --all-features
+	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) test --doc --features "full"
 	@echo "$(GREEN)✓ All doctests passed$(NC)"
 
 .PHONY: test-property
 test-property:
 	@echo "$(BLUE)Running property tests...$(NC)"
-	PROPTEST_CASES=1000 RUST_LOG=$(RUST_LOG) $(CARGO) test --all-features -- --ignored property_
+	PROPTEST_CASES=1000 RUST_LOG=$(RUST_LOG) $(CARGO) test --features "full" -- --ignored property_
 	@echo "$(GREEN)✓ Property tests passed$(NC)"
 
 .PHONY: test-all

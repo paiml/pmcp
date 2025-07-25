@@ -43,6 +43,10 @@ pub struct ClientCapabilities {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sampling: Option<SamplingCapabilities>,
 
+    /// Roots capabilities
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub roots: Option<RootsCapabilities>,
+
     /// Experimental capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub experimental: Option<HashMap<String, serde_json::Value>>,
@@ -67,6 +71,10 @@ pub struct ServerCapabilities {
     /// Logging capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logging: Option<LoggingCapabilities>,
+
+    /// Completion capabilities
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completions: Option<CompletionCapabilities>,
 
     /// Experimental capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,6 +130,24 @@ pub struct SamplingCapabilities {
     pub models: Option<Vec<String>>,
 }
 
+/// Roots capabilities.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RootsCapabilities {
+    /// Whether list changed notifications are supported
+    #[serde(default)]
+    pub list_changed: bool,
+}
+
+/// Completion capabilities.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionCapabilities {
+    /// Placeholder for completion capability options
+    #[serde(skip)]
+    _reserved: (),
+}
+
 impl ClientCapabilities {
     /// Create a minimal set of client capabilities.
     pub fn minimal() -> Self {
@@ -150,6 +176,7 @@ impl ClientCapabilities {
                 ]),
             }),
             sampling: Some(SamplingCapabilities::default()),
+            roots: Some(RootsCapabilities { list_changed: true }),
             experimental: None,
         }
     }
