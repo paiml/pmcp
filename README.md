@@ -24,6 +24,50 @@ Add to your `Cargo.toml`:
 pmcp = "0.1.0"
 ```
 
+## Examples
+
+The SDK includes comprehensive examples for all major features:
+
+```bash
+# Client initialization and connection
+cargo run --example 01_client_initialize
+
+# Basic server with tools
+cargo run --example 02_server_basic
+
+# Client tool usage
+cargo run --example 03_client_tools
+
+# Server with resources
+cargo run --example 04_server_resources
+
+# Client resource access
+cargo run --example 05_client_resources
+
+# Server with prompts
+cargo run --example 06_server_prompts
+
+# Client prompts usage
+cargo run --example 07_client_prompts
+
+# Logging
+cargo run --example 08_logging
+
+# Authentication (OAuth, Bearer tokens)
+cargo run --example 09_authentication
+
+# Progress notifications
+cargo run --example 10_progress_notifications
+
+# Request cancellation
+cargo run --example 11_request_cancellation
+
+# Error handling patterns
+cargo run --example 12_error_handling
+```
+
+See the [examples directory](examples/) for detailed documentation.
+
 ## Quick Start
 
 ### Client Example

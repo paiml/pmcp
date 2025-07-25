@@ -92,6 +92,54 @@ codegen-units = 1
 opt-level = 3
 debug = true
 
+[[example]]
+name = "01_client_initialize"
+path = "examples/01_client_initialize.rs"
+
+[[example]]
+name = "02_server_basic"
+path = "examples/02_server_basic.rs"
+
+[[example]]
+name = "03_client_tools"
+path = "examples/03_client_tools.rs"
+
+[[example]]
+name = "04_server_resources"
+path = "examples/04_server_resources.rs"
+
+[[example]]
+name = "05_client_resources"
+path = "examples/05_client_resources.rs"
+
+[[example]]
+name = "06_server_prompts"
+path = "examples/06_server_prompts.rs"
+
+[[example]]
+name = "07_client_prompts"
+path = "examples/07_client_prompts.rs"
+
+[[example]]
+name = "08_logging"
+path = "examples/08_logging.rs"
+
+[[example]]
+name = "09_authentication"
+path = "examples/09_authentication.rs"
+
+[[example]]
+name = "10_progress_notifications"
+path = "examples/10_progress_notifications.rs"
+
+[[example]]
+name = "11_request_cancellation"
+path = "examples/11_request_cancellation.rs"
+
+[[example]]
+name = "12_error_handling"
+path = "examples/12_error_handling.rs"
+
 [workspace]
 members = []
 
