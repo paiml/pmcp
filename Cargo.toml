@@ -52,7 +52,7 @@ garde = { version = "0.18", optional = true }
 proptest = "1.4"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-rstest = "0.18"
+rstest = "0.25"
 mockall = "0.12"
 pretty_assertions = "1.4"
 test-case = "3.3"
