@@ -44,7 +44,7 @@ parking_lot = "0.12"
 dashmap = "6.0"
 
 # Validation
-jsonschema = { version = "0.18", optional = true }
+jsonschema = { version = "0.30", optional = true }
 garde = { version = "0.18", optional = true }
 
 [dev-dependencies]
