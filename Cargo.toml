@@ -45,7 +45,7 @@ dashmap = "6.1"
 
 # Validation
 jsonschema = { version = "0.30", optional = true }
-garde = { version = "0.20", optional = true }
+garde = { version = "0.22", optional = true }
 
 [dev-dependencies]
 # Testing
