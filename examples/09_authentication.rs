@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize connection
     let _capabilities = ClientCapabilities::default();
     println!("Initializing MCP client...");
-    
+
     // In a real scenario, you would connect to a server first
     // client.initialize(capabilities).await?;
 
@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // In a real implementation, you would authenticate with the server
     // client.authenticate(&auth_info)?;
-    
+
     println!("Authentication configuration completed!");
     println!("Note: This example shows the authentication structure.");
     println!("In real usage, you would connect to a server that requires authentication.");

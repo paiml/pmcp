@@ -4,8 +4,8 @@
 //! to the MCP protocol performance.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use std::hint::black_box;
 use serde_json::json;
+use std::hint::black_box;
 
 /// Benchmark basic JSON serialization operations
 fn bench_json_serialization(c: &mut Criterion) {

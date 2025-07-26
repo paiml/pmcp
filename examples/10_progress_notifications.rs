@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a progress tracker
     let progress_tracker = Arc::new(Mutex::new(HashMap::<ProgressToken, f64>::new()));
-    
+
     // Simulate some progress notifications
     let notifications = vec![
         ProgressNotification {
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     println!("Simulating progress notifications:");
-    
+
     for notification in notifications {
         // Create a progress bar visualization (assuming progress is 0-100)
         let percentage = notification.progress;
@@ -63,13 +63,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .lock()
             .unwrap()
             .insert(notification.progress_token.clone(), notification.progress);
-        
+
         // Simulate some delay
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     }
 
     println!("✅ Progress tracking completed!");
-    
+
     // Show final state
     let tracker = progress_tracker.lock().unwrap();
     println!("Final progress state: {:?}", *tracker);

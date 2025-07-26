@@ -4,8 +4,8 @@
 //! content-length parsing, and transport-level operations.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use std::hint::black_box;
 use pmcp::types::*;
+use std::hint::black_box;
 
 /// Benchmark content-length header parsing
 fn bench_content_length_parsing(c: &mut Criterion) {

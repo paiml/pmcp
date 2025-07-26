@@ -4,9 +4,9 @@
 //! Rust types and JSON for various MCP protocol messages.
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use std::hint::black_box;
 use pmcp::types::*;
 use serde_json::json;
+use std::hint::black_box;
 
 /// Benchmark serialization of different request types
 fn bench_request_serialization(c: &mut Criterion) {

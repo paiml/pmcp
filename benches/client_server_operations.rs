@@ -5,10 +5,10 @@
 
 use async_trait::async_trait;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use std::hint::black_box;
 use pmcp::types::*;
 use pmcp::{Server, ToolHandler};
 use serde_json::{json, Value};
+use std::hint::black_box;
 
 /// Simple tool handler for benchmarking
 struct BenchmarkTool;
