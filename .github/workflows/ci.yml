@@ -128,7 +128,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Install Rust 1.70
-      uses: dtolnay/rust-toolchain@1.70
+      uses: dtolnay/rust-toolchain@1.100
     
     - name: Cache cargo
       uses: actions/cache@v4
