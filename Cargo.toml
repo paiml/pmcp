@@ -53,7 +53,7 @@ proptest = "1.4"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rstest = "0.18"
-mockall = "0.12"
+mockall = "0.13"
 pretty_assertions = "1.4"
 test-case = "3.3"
 criterion = { version = "0.5", features = ["html_reports"] }
