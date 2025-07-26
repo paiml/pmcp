@@ -9,7 +9,7 @@ repository = "https://github.com/paiml/pmcp"
 homepage = "https://github.com/paiml/pmcp"
 documentation = "https://docs.rs/pmcp"
 readme = "README.md"
-keywords = ["mcp", "model-context-protocol", "sdk", "ai", "llm"]
+keywords = ["mcp", "model-context", "sdk", "ai", "llm"]
 categories = ["api-bindings", "asynchronous", "network-programming"]
 rust-version = "1.80.0"
 
