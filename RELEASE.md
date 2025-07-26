@@ -5,11 +5,13 @@ This document describes the release process for pmcp.
 ## Pre-release Checklist
 
 - [ ] Update version in `Cargo.toml`
+- [ ] Update version in `VERSION` file
 - [ ] Update `CHANGELOG.md` with release notes
-- [ ] Run `make check` and ensure all checks pass
+- [ ] Run `make quality-gate` and ensure all checks pass
 - [ ] Run `make coverage-ci` and ensure coverage > 80%
 - [ ] Run `make bench` and check for performance regressions
 - [ ] Update README.md if needed
+- [ ] Ensure CI is passing on main branch
 - [ ] Commit all changes
 
 ## Release Steps
@@ -27,19 +29,16 @@ This document describes the release process for pmcp.
    git push origin v0.1.0
    ```
 
-3. **Publish to crates.io**
-   ```bash
-   cargo publish --dry-run
-   cargo publish
-   ```
+3. **CI/CD will automatically:**
+   - Run full test suite and quality checks
+   - Create a GitHub Release with changelog
+   - Publish to crates.io (requires CARGO_REGISTRY_TOKEN secret)
+   - Upload coverage to Codecov
 
-4. **Create GitHub Release**
-   - Go to https://github.com/paiml/pmcp/releases
-   - Click "Draft a new release"
-   - Select the tag `v0.1.0`
-   - Title: `v0.1.0`
-   - Copy the CHANGELOG.md content for this version
-   - Publish release
+4. **Verify the release**
+   - Check https://github.com/paiml/pmcp/releases for the new release
+   - Check https://crates.io/crates/pmcp for the new version
+   - Check https://docs.rs/pmcp for updated documentation
 
 ## Post-release
 
