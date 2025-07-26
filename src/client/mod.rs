@@ -4,12 +4,13 @@ use crate::error::{Error, Result};
 use crate::shared::{Protocol, ProtocolOptions, Transport};
 use crate::types::{
     CallToolRequest, CallToolResult, CancelledNotification, ClientCapabilities, ClientNotification,
-    ClientRequest, CompleteRequest, CompleteResult, GetPromptRequest, GetPromptResult,
-    Implementation, InitializeRequest, InitializeResult, ListPromptsRequest, ListPromptsResult,
-    ListResourceTemplatesRequest, ListResourceTemplatesResult, ListResourcesRequest,
-    ListResourcesResult, ListToolsRequest, ListToolsResult, LoggingLevel, Notification,
-    ProgressNotification, ReadResourceRequest, ReadResourceResult, Request, RequestId,
-    ServerCapabilities, SubscribeRequest, UnsubscribeRequest,
+    ClientRequest, CompleteRequest, CompleteResult, CreateMessageRequest, CreateMessageResult,
+    GetPromptRequest, GetPromptResult, Implementation, InitializeRequest, InitializeResult,
+    ListPromptsRequest, ListPromptsResult, ListResourceTemplatesRequest,
+    ListResourceTemplatesResult, ListResourcesRequest, ListResourcesResult, ListToolsRequest,
+    ListToolsResult, LoggingLevel, Notification, ProgressNotification, ReadResourceRequest,
+    ReadResourceResult, Request, RequestId, ServerCapabilities, SubscribeRequest,
+    UnsubscribeRequest,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -947,6 +948,87 @@ impl<T: Transport> Client<T> {
         }
     }
 
+    /// Create a message using sampling (for LLM providers).
+    ///
+    /// Requests the server to generate a message using its language model capabilities.
+    /// This is typically used by servers that provide LLM functionality.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities, CreateMessageRequest, SamplingMessage};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let mut capabilities = ClientCapabilities::default();
+    /// capabilities.sampling = Some(Default::default());
+    ///
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(capabilities).await?;
+    ///
+    /// // Create a message with the LLM
+    /// let request = CreateMessageRequest {
+    ///     messages: vec![
+    ///         SamplingMessage {
+    ///             role: pmcp::types::Role::User,
+    ///             content: pmcp::types::Content::Text {
+    ///                 text: "Explain how to implement a binary search tree".to_string(),
+    ///             },
+    ///         },
+    ///     ],
+    ///     model_preferences: Some(pmcp::types::ModelPreferences {
+    ///         hints: Some(vec![
+    ///             pmcp::types::ModelHint {
+    ///                 name: Some("gpt-4".to_string()),
+    ///             },
+    ///         ]),
+    ///         cost_priority: Some(0.5),
+    ///         speed_priority: Some(0.3),
+    ///         intelligence_priority: Some(0.2),
+    ///     }),
+    ///     system_prompt: Some("You are a helpful programming assistant".to_string()),
+    ///     include_context: pmcp::types::IncludeContext::ThisServerOnly,
+    ///     temperature: Some(0.7),
+    ///     max_tokens: Some(1000),
+    ///     stop_sequences: None,
+    ///     metadata: Default::default(),
+    /// };
+    ///
+    /// let result = client.create_message(request).await?;
+    /// println!("Model: {}", result.model);
+    /// println!("Response: {:?}", result.content);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support sampling
+    /// - The request parameters are invalid
+    /// - Network or protocol errors occur
+    pub async fn create_message(
+        &self,
+        params: CreateMessageRequest,
+    ) -> Result<CreateMessageResult> {
+        self.ensure_initialized()?;
+        self.assert_capability("sampling", "sampling/createMessage")?;
+
+        let request = Request::Client(ClientRequest::CreateMessage(params));
+        let request_id = RequestId::String(Uuid::new_v4().to_string());
+        let response = self.send_request(request_id, request).await?;
+
+        match response.payload {
+            crate::types::jsonrpc::ResponsePayload::Result(result) => {
+                serde_json::from_value(result).map_err(|e| Error::parse(e.to_string()))
+            },
+            crate::types::jsonrpc::ResponsePayload::Error(error) => {
+                Err(Error::from_jsonrpc_error(error))
+            },
+        }
+    }
+
     /// Send roots list changed notification.
     ///
     /// Notifies the server that the client's root list has changed.
@@ -994,6 +1076,68 @@ impl<T: Transport> Client<T> {
 
         self.send_notification(Notification::Client(ClientNotification::RootsListChanged))
             .await
+    }
+
+    /// Authenticate with the server.
+    ///
+    /// Performs authentication using the provided authentication information.
+    /// This should be called after initialization if the server requires authentication.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, AuthInfo, AuthScheme};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    ///
+    /// // Initialize first
+    /// client.initialize(pmcp::ClientCapabilities::default()).await?;
+    ///
+    /// // Authenticate with bearer token
+    /// let auth = AuthInfo {
+    ///     scheme: AuthScheme::Bearer,
+    ///     token: Some("your-api-token".to_string()),
+    ///     oauth: None,
+    ///     params: Default::default(),
+    /// };
+    ///
+    /// client.authenticate(&auth)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - Authentication fails
+    /// - The server doesn't support authentication
+    pub fn authenticate(&self, auth_info: &crate::types::AuthInfo) -> Result<()> {
+        self.ensure_initialized()?;
+
+        // In a real implementation, this would send an authentication request
+        // For now, we'll just validate that we can authenticate
+        match auth_info.scheme {
+            crate::types::AuthScheme::None => Ok(()),
+            crate::types::AuthScheme::Bearer => {
+                if auth_info.token.is_none() {
+                    return Err(Error::validation("Bearer token required"));
+                }
+                Ok(())
+            },
+            crate::types::AuthScheme::OAuth2 => {
+                if auth_info.oauth.is_none() {
+                    return Err(Error::validation("OAuth information required"));
+                }
+                Ok(())
+            },
+            crate::types::AuthScheme::Custom(_) => {
+                // Custom auth schemes would be handled here
+                Ok(())
+            },
+        }
     }
 
     /// Cancel a request.

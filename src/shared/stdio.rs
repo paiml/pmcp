@@ -101,7 +101,7 @@ impl Transport for StdioTransport {
 
 impl StdioTransport {
     /// Serialize transport message to JSON bytes.
-    fn serialize_message(message: &TransportMessage) -> Result<Vec<u8>> {
+    pub fn serialize_message(message: &TransportMessage) -> Result<Vec<u8>> {
         match message {
             TransportMessage::Request { id, request } => {
                 let jsonrpc_request = crate::shared::create_request(id.clone(), request.clone());
@@ -204,7 +204,7 @@ impl StdioTransport {
     }
 
     /// Parse JSON message and determine its type.
-    fn parse_message(buffer: &[u8]) -> Result<TransportMessage> {
+    pub fn parse_message(buffer: &[u8]) -> Result<TransportMessage> {
         let json_value: serde_json::Value = serde_json::from_slice(buffer)
             .map_err(|e| TransportError::InvalidMessage(format!("Invalid JSON: {}", e)))?;
 

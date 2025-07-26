@@ -84,16 +84,30 @@ pub mod utils;
 // Re-export commonly used types
 pub use client::{Client, ClientBuilder};
 pub use error::{Error, ErrorCode, Result};
-pub use server::{PromptHandler, ResourceHandler, Server, ServerBuilder, ToolHandler};
-pub use shared::{StdioTransport, Transport};
-pub use types::{
-    CallToolRequest, CallToolResult, ClientCapabilities, ClientNotification, ClientRequest,
-    CompleteRequest, CompleteResult, CompletionArgument, CompletionReference, Content,
-    GetPromptResult, Implementation, ListResourcesResult, ListToolsResult, MessageContent,
-    ProgressNotification, ProgressToken, PromptMessage, ProtocolVersion, ReadResourceResult,
-    RequestId, ResourceInfo, Role, RootsCapabilities, ServerCapabilities, ServerNotification,
-    ServerRequest, ToolCapabilities,
+pub use server::{
+    PromptHandler, ResourceHandler, SamplingHandler, Server, ServerBuilder, ToolHandler,
 };
+pub use shared::{
+    AuthMiddleware, LoggingMiddleware, Middleware, MiddlewareChain, RetryMiddleware,
+    StdioTransport, Transport,
+};
+
+#[cfg(feature = "websocket")]
+pub use shared::{WebSocketConfig, WebSocketTransport};
+
+#[cfg(feature = "http")]
+pub use shared::{HttpConfig, HttpTransport};
+pub use types::{
+    AuthInfo, AuthScheme, CallToolRequest, CallToolResult, ClientCapabilities, ClientNotification,
+    ClientRequest, CompleteRequest, CompleteResult, CompletionArgument, CompletionReference,
+    Content, CreateMessageParams, CreateMessageRequest, CreateMessageResult, GetPromptResult,
+    Implementation, IncludeContext, ListResourcesResult, ListToolsResult, LoggingLevel,
+    MessageContent, ModelPreferences, ProgressNotification, ProgressToken, PromptMessage,
+    ProtocolVersion, ReadResourceResult, RequestId, ResourceInfo, Role, RootsCapabilities,
+    SamplingCapabilities, SamplingMessage, ServerCapabilities, ServerNotification, ServerRequest,
+    TokenUsage, ToolCapabilities, ToolInfo,
+};
+pub use utils::{BatchingConfig, DebouncingConfig, MessageBatcher, MessageDebouncer};
 
 // Re-export async_trait for convenience
 pub use async_trait::async_trait;

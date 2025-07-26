@@ -167,6 +167,10 @@ fn client_request_to_jsonrpc(req: ClientRequest) -> (String, Option<Value>) {
         ClientRequest::Unsubscribe(params) => create_method_params("resources/unsubscribe", params),
         // Completion requests
         ClientRequest::Complete(params) => create_method_params("completion/complete", params),
+        // Sampling requests
+        ClientRequest::CreateMessage(params) => {
+            create_method_params("sampling/createMessage", params)
+        },
     }
 }
 
@@ -327,7 +331,7 @@ mod tests {
 
         assert_eq!(result.0, id);
         match result.1 {
-            Request::Server(ServerRequest::CreateMessage(_)) => (),
+            Request::Client(ClientRequest::CreateMessage(_)) => (),
             _ => panic!("Expected CreateMessage request"),
         }
     }

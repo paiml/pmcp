@@ -15,10 +15,14 @@ Code Name: *Angel Rust*
 ## Features
 
 - 🚀 **Full Protocol Support**: Complete implementation of MCP specification
-- 🔄 **Multiple Transports**: stdio (implemented), HTTP/SSE and WebSocket (coming soon)
+- 🔄 **Multiple Transports**: stdio, HTTP/SSE, and WebSocket with auto-reconnection
 - 🛡️ **Type Safety**: Compile-time protocol validation
 - ⚡ **Zero-Copy Parsing**: Efficient message handling
 - 🔐 **Built-in Auth**: OAuth 2.0 and bearer token support
+- 🤖 **LLM Sampling**: Native support for model sampling operations
+- 🔌 **Middleware System**: Request/response interceptors for custom logic
+- 🔁 **Retry Logic**: Built-in exponential backoff for resilient connections
+- 📦 **Message Batching**: Efficient notification grouping and debouncing
 - 📊 **Comprehensive Testing**: Property tests with 100% invariant coverage
 - 🏗️ **Quality First**: Zero technical debt, no unwraps in production code
 
@@ -28,7 +32,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "0.1.0"
+pmcp = "0.2.0"
 ```
 
 ## Examples
@@ -71,9 +75,63 @@ cargo run --example 11_request_cancellation
 
 # Error handling patterns
 cargo run --example 12_error_handling
+
+# WebSocket transport
+cargo run --example 13_websocket_transport
+
+# LLM sampling operations
+cargo run --example 14_sampling_llm
+
+# Middleware and interceptors
+cargo run --example 15_middleware
+
+# Message batching and debouncing
+cargo run --example 16_batching
 ```
 
 See the [examples directory](examples/) for detailed documentation.
+
+## What's New in v0.2.0
+
+### 🆕 WebSocket Transport with Auto-Reconnection
+Full WebSocket support with automatic reconnection, exponential backoff, and keepalive ping/pong.
+
+### 🆕 HTTP/SSE Transport
+HTTP transport with Server-Sent Events for real-time notifications and long-polling support.
+
+### 🆕 LLM Sampling Support
+Native support for model sampling operations with the `createMessage` API:
+```rust
+let result = client.create_message(CreateMessageRequest {
+    messages: vec![SamplingMessage {
+        role: Role::User,
+        content: Content::Text { text: "Hello!".to_string() },
+    }],
+    ..Default::default()
+}).await?;
+```
+
+### 🆕 Middleware System
+Powerful middleware chain for request/response processing:
+```rust
+use pmcp::{MiddlewareChain, LoggingMiddleware, AuthMiddleware};
+
+let mut chain = MiddlewareChain::new();
+chain.add(Arc::new(LoggingMiddleware::default()));
+chain.add(Arc::new(AuthMiddleware::new("token".to_string())));
+```
+
+### 🆕 Message Batching & Debouncing
+Optimize notification delivery with batching and debouncing:
+```rust
+use pmcp::{MessageBatcher, BatchingConfig};
+
+let batcher = MessageBatcher::new(BatchingConfig {
+    max_batch_size: 10,
+    max_wait_time: Duration::from_millis(100),
+    ..Default::default()
+});
+```
 
 ## Quick Start
 
@@ -155,12 +213,26 @@ let transport = StdioTransport::new();
 
 ### HTTP/SSE
 ```rust
-let transport = HttpTransport::new("http://localhost:8080");
+use pmcp::{HttpTransport, HttpConfig};
+
+let config = HttpConfig {
+    base_url: "http://localhost:8080".parse()?,
+    sse_endpoint: Some("/events".to_string()),
+    ..Default::default()
+};
+let transport = HttpTransport::new(config);
 ```
 
-### WebSocket
+### WebSocket  
 ```rust
-let transport = WebSocketTransport::connect("ws://localhost:8080").await?;
+use pmcp::{WebSocketTransport, WebSocketConfig};
+
+let config = WebSocketConfig {
+    url: "ws://localhost:8080".parse()?,
+    auto_reconnect: true,
+    ..Default::default()
+};
+let transport = WebSocketTransport::new(config);
 ```
 
 ## Development

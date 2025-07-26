@@ -42,6 +42,16 @@ pub trait ResourceHandler: Send + Sync {
     async fn list(&self, _cursor: Option<String>) -> Result<crate::types::ListResourcesResult>;
 }
 
+/// Handler for message sampling (LLM operations).
+#[async_trait]
+pub trait SamplingHandler: Send + Sync {
+    /// Create a message using the language model.
+    async fn create_message(
+        &self,
+        params: crate::types::CreateMessageParams,
+    ) -> Result<crate::types::CreateMessageResult>;
+}
+
 /// MCP server implementation.
 ///
 /// # Examples
@@ -78,6 +88,7 @@ pub struct Server {
     tools: HashMap<String, Arc<dyn ToolHandler>>,
     prompts: HashMap<String, Arc<dyn PromptHandler>>,
     resources: Option<Arc<dyn ResourceHandler>>,
+    sampling: Option<Arc<dyn SamplingHandler>>,
     client_capabilities: Arc<RwLock<Option<ClientCapabilities>>>,
     initialized: Arc<RwLock<bool>>,
     /// Channel for sending notifications
@@ -92,6 +103,7 @@ impl std::fmt::Debug for Server {
             .field("tools", &self.tools.keys().collect::<Vec<_>>())
             .field("prompts", &self.prompts.keys().collect::<Vec<_>>())
             .field("resources", &self.resources.is_some())
+            .field("sampling", &self.sampling.is_some())
             .field("initialized", &self.initialized)
             .finish()
     }
@@ -520,6 +532,7 @@ impl Server {
             | ClientRequest::Complete(_)
             | ClientRequest::SetLoggingLevel { level: _ }
             | ClientRequest::Ping => Ok(serde_json::json!({})),
+            ClientRequest::CreateMessage(req) => self.handle_create_message(req).await,
         }
     }
 
@@ -633,6 +646,19 @@ impl Server {
             next_cursor: None,
         })?)
     }
+
+    async fn handle_create_message(
+        &self,
+        req: crate::types::CreateMessageRequest,
+    ) -> Result<Value> {
+        let handler = self
+            .sampling
+            .as_ref()
+            .ok_or_else(|| Error::not_found("No sampling handler configured".to_string()))?;
+
+        let result = handler.create_message(req).await?;
+        Ok(serde_json::to_value(result)?)
+    }
 }
 
 /// Builder for creating servers.
@@ -643,6 +669,7 @@ pub struct ServerBuilder {
     tools: HashMap<String, Arc<dyn ToolHandler>>,
     prompts: HashMap<String, Arc<dyn PromptHandler>>,
     resources: Option<Arc<dyn ResourceHandler>>,
+    sampling: Option<Arc<dyn SamplingHandler>>,
 }
 
 impl std::fmt::Debug for ServerBuilder {
@@ -654,6 +681,7 @@ impl std::fmt::Debug for ServerBuilder {
             .field("tools", &self.tools.keys().collect::<Vec<_>>())
             .field("prompts", &self.prompts.keys().collect::<Vec<_>>())
             .field("resources", &self.resources.is_some())
+            .field("sampling", &self.sampling.is_some())
             .finish()
     }
 }
@@ -687,6 +715,7 @@ impl ServerBuilder {
             tools: HashMap::new(),
             prompts: HashMap::new(),
             resources: None,
+            sampling: None,
         }
     }
 
@@ -917,6 +946,56 @@ impl ServerBuilder {
         self
     }
 
+    /// Set the sampling handler.
+    ///
+    /// Registers a sampling handler that provides LLM functionality.
+    /// This allows the server to act as a language model provider.
+    ///
+    /// # Arguments
+    ///
+    /// * `handler` - The sampling handler implementation
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Server, SamplingHandler, CreateMessageParams, CreateMessageResult};
+    /// use async_trait::async_trait;
+    ///
+    /// struct MockLLM;
+    ///
+    /// #[async_trait]
+    /// impl SamplingHandler for MockLLM {
+    ///     async fn create_message(&self, params: CreateMessageParams) -> pmcp::Result<CreateMessageResult> {
+    ///         // Process the messages and generate a response
+    ///         Ok(CreateMessageResult {
+    ///             content: pmcp::MessageContent::Text {
+    ///                 text: "Generated response".to_string(),
+    ///             },
+    ///             model: "mock-llm-v1".to_string(),
+    ///             usage: Some(pmcp::TokenUsage {
+    ///                 input_tokens: 10,
+    ///                 output_tokens: 5,
+    ///                 total_tokens: 15,
+    ///             }),
+    ///             stop_reason: Some("end_of_text".to_string()),
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// let server = Server::builder()
+    ///     .name("llm-server")
+    ///     .version("1.0.0")
+    ///     .sampling(MockLLM{})
+    ///     .build()?;
+    /// # Ok::<(), pmcp::Error>(())
+    /// ```
+    pub fn sampling(mut self, handler: impl SamplingHandler + 'static) -> Self {
+        self.sampling = Some(Arc::new(handler));
+        // Enable sampling capability
+        self.capabilities.sampling = Some(crate::types::SamplingCapabilities::default());
+        self
+    }
+
     /// Build the server.
     ///
     /// Constructs the final Server instance from the configured builder.
@@ -968,6 +1047,7 @@ impl ServerBuilder {
             tools: self.tools,
             prompts: self.prompts,
             resources: self.resources,
+            sampling: self.sampling,
             client_capabilities: Arc::new(RwLock::new(None)),
             initialized: Arc::new(RwLock::new(false)),
             notification_tx: None,

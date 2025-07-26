@@ -76,6 +76,10 @@ pub struct ServerCapabilities {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completions: Option<CompletionCapabilities>,
 
+    /// Sampling capabilities (for LLM providers)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sampling: Option<SamplingCapabilities>,
+
     /// Experimental capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub experimental: Option<HashMap<String, serde_json::Value>>,
