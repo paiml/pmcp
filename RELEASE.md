@@ -33,7 +33,7 @@ This document describes the release process for pmcp.
    - Run full test suite and quality checks
    - Create a GitHub Release with changelog
    - Publish to crates.io (requires CARGO_REGISTRY_TOKEN secret)
-   - Upload coverage to Codecov
+   - Generate coverage report
 
 4. **Verify the release**
    - Check https://github.com/paiml/pmcp/releases for the new release

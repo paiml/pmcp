@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/paiml/pmcp/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/pmcp/actions/workflows/ci.yml)
 [![Quality Gate](https://img.shields.io/badge/quality%20gate-passing-brightgreen)](https://github.com/paiml/pmcp/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-84.83%25-brightgreen.svg)](https://github.com/paiml/pmcp)
 [![Crates.io](https://img.shields.io/crates/v/pmcp.svg)](https://crates.io/crates/pmcp)
 [![Documentation](https://docs.rs/pmcp/badge.svg)](https://docs.rs/pmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust 1.80+](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
-[![codecov](https://codecov.io/gh/paiml/pmcp/branch/main/graph/badge.svg)](https://codecov.io/gh/paiml/pmcp)
 
 A high-quality Rust implementation of the [Model Context Protocol](https://modelcontextprotocol.io) (MCP) SDK, maintaining full compatibility with the TypeScript SDK while leveraging Rust's performance and safety guarantees.
 
