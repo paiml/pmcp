@@ -19,7 +19,7 @@ prop_compose! {
 // Generate potentially malformed headers
 prop_compose! {
     fn arb_header_line()(
-        header_type in prop::sample::select(vec![
+        header_type in prop::sample::select(&[
             "Content-Length",
             "Content-Type",
             "X-Custom-Header",
@@ -27,10 +27,10 @@ prop_compose! {
             "CONTENT-LENGTH", // uppercase variant
             "Content Length", // space instead of dash
             "ContentLength",  // no separator
-        ]),
-        separator in prop::sample::select(vec![":", ": ", " : ", ":  ", ""]),
+        ][..]),
+        separator in prop::sample::select(&[":", ": ", " : ", ":  ", ""][..]),
         value in prop::string::string_regex("[0-9a-zA-Z ._-]{0,100}").unwrap(),
-        line_ending in prop::sample::select(vec!["\r\n", "\n", "\r", ""]),
+        line_ending in prop::sample::select(&["\r\n", "\n", "\r", ""][..]),
     ) -> String {
         format!("{}{}{}{}", header_type, separator, value, line_ending)
     }
@@ -43,7 +43,7 @@ prop_compose! {
         extra_headers in prop::collection::vec(arb_header_line(), 0..5),
         has_content_length in prop::bool::ANY,
         content_length_value in prop::option::of(0..20000usize),
-        double_newline in prop::sample::select(vec!["\r\n\r\n", "\n\n", "\r\r", "\r\n\n"]),
+        double_newline in prop::sample::select(&["\r\n\r\n", "\n\n", "\r\r", "\r\n\n"][..]),
     ) -> Vec<u8> {
         let mut frame = Vec::new();
 
@@ -92,8 +92,8 @@ proptest! {
 
             let header_str = String::from_utf8_lossy(&cursor.get_ref()[..header_end]);
             for line in header_str.lines() {
-                if line.starts_with("Content-Length: ") {
-                    content_length = line[16..].parse::<usize>().ok();
+                if let Some(value) = line.strip_prefix("Content-Length: ") {
+                    content_length = value.parse::<usize>().ok();
                 }
             }
 
@@ -117,8 +117,8 @@ proptest! {
 
         // Try to find Content-Length header
         for line in frame_str.lines() {
-            if line.starts_with("Content-Length: ") {
-                if let Ok(len) = line[16..].trim().parse::<usize>() {
+            if let Some(value) = line.strip_prefix("Content-Length: ") {
+                if let Ok(len) = value.trim().parse::<usize>() {
                     prop_assert!(len <= 1_000_000_000); // Reasonable upper bound
                 }
             }
@@ -180,13 +180,13 @@ proptest! {
     #[test]
     fn property_transport_header_case_insensitive(
         content in arb_message_content(),
-        header_case in prop::sample::select(vec![
+        header_case in prop::sample::select(&[
             "Content-Length",
             "content-length",
             "CONTENT-LENGTH",
             "Content-length",
             "content-Length",
-        ])
+        ][..])
     ) {
         // Content-Length header should be recognized regardless of case
         let frame = format!("{}: {}\r\n\r\n", header_case, content.len());
@@ -233,7 +233,7 @@ proptest! {
         }
 
         // Should handle empty content gracefully
-        prop_assert!(frame.contains("\r\n") || frame.contains("\n"));
+        prop_assert!(frame.contains("\r\n") || frame.contains('\n'));
     }
 
     #[test]
@@ -248,8 +248,7 @@ proptest! {
         // Binary data should be preserved exactly
         let content_start = frame.windows(4)
             .position(|w| w == b"\r\n\r\n")
-            .map(|p| p + 4)
-            .unwrap_or(frame.len());
+            .map_or(frame.len(), |p| p + 4);
 
         if content_start < frame.len() {
             let content = &frame[content_start..];

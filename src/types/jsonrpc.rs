@@ -212,7 +212,7 @@ impl<P> JSONRPCNotification<P> {
 }
 
 /// JSON-RPC error object.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JSONRPCError {
     /// Error code
     pub code: i32,
@@ -387,7 +387,7 @@ mod tests {
         let id = RequestId::from(large_u64);
         match id {
             RequestId::Number(n) => assert_eq!(n, i64::MAX),
-            _ => panic!("Expected Number variant"),
+            RequestId::String(_) => panic!("Expected Number variant"),
         }
     }
 

@@ -201,7 +201,7 @@ impl Server {
     }
     /// Create a new server builder.
     ///
-    /// Returns a ServerBuilder for configuring and constructing a new MCP server.
+    /// Returns a `ServerBuilder` for configuring and constructing a new MCP server.
     /// The builder pattern allows you to set server information, capabilities,
     /// and register handlers before building the final server instance.
     ///
@@ -284,7 +284,7 @@ impl Server {
     ///
     /// Starts the server using a custom transport implementation.
     /// This allows for different communication mechanisms beyond stdio,
-    /// such as TCP sockets, WebSockets, or other protocols.
+    /// such as TCP sockets, `WebSockets`, or other protocols.
     ///
     /// # Arguments
     ///
@@ -661,8 +661,8 @@ impl std::fmt::Debug for ServerBuilder {
 impl ServerBuilder {
     /// Create a new server builder.
     ///
-    /// Creates a new ServerBuilder with default capabilities and no handlers.
-    /// Use the builder methods to configure the server before calling build().
+    /// Creates a new `ServerBuilder` with default capabilities and no handlers.
+    /// Use the builder methods to configure the server before calling `build()`.
     ///
     /// # Examples
     ///

@@ -120,8 +120,8 @@ mod tests {
     #[test]
     fn test_protocol_creation() {
         let options = ProtocolOptions::default();
-        let protocol = Protocol::new(options.clone());
-        assert_eq!(protocol.options().enforce_strict_capabilities, false);
+        let protocol = Protocol::new(options);
+        assert!(!protocol.options().enforce_strict_capabilities);
         assert_eq!(protocol.pending_requests.len(), 0);
     }
 
@@ -136,7 +136,7 @@ mod tests {
 
         // Complete the request
         let response = JSONRPCResponse::success(id.clone(), serde_json::json!("success"));
-        protocol.complete_request(&id, response.clone()).unwrap();
+        protocol.complete_request(&id, response).unwrap();
         assert_eq!(protocol.pending_requests.len(), 0);
 
         // Verify the receiver got the response
@@ -184,12 +184,11 @@ mod tests {
         let mut protocol = Protocol::new(ProtocolOptions::default());
 
         // Register multiple requests
-        let ids: Vec<_> = (0..5).map(|i| RequestId::Number(i)).collect();
-        let mut receivers = Vec::new();
-
-        for id in &ids {
-            receivers.push(protocol.register_request(id.clone()));
-        }
+        let ids: Vec<_> = (0..5).map(RequestId::Number).collect();
+        let _receivers: Vec<_> = ids
+            .iter()
+            .map(|id| protocol.register_request(id.clone()))
+            .collect();
         assert_eq!(protocol.pending_requests.len(), 5);
 
         // Complete them in reverse order

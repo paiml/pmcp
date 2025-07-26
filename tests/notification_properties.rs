@@ -24,7 +24,7 @@ prop_compose! {
     fn arb_progress_token()(
         token_type in prop::bool::ANY,
         string_token in "[a-zA-Z0-9_-]{1,50}",
-        number_token in 0i64..1000000,
+        number_token in 0i64..1_000_000,
     ) -> ProgressToken {
         if token_type {
             ProgressToken::String(string_token)
@@ -194,10 +194,10 @@ proptest! {
         // Check that notification types are preserved
         for (orig, deser) in notifications.iter().zip(deserialized.iter()) {
             match (orig, deser) {
-                (Notification::Progress(_), Notification::Progress(_)) => {},
-                (Notification::Cancelled(_), Notification::Cancelled(_)) => {},
-                (Notification::Client(_), Notification::Client(_)) => {},
-                (Notification::Server(_), Notification::Server(_)) => {},
+                (Notification::Progress(_), Notification::Progress(_))
+                | (Notification::Cancelled(_), Notification::Cancelled(_))
+                | (Notification::Client(_), Notification::Client(_))
+                | (Notification::Server(_), Notification::Server(_)) => {},
                 _ => prop_assert!(false, "Notification type changed during roundtrip"),
             }
         }
@@ -208,7 +208,8 @@ proptest! {
         tokens in prop::collection::hash_set(arb_progress_token(), 1..10)
     ) {
         // Progress tokens should be unique within a session
-        prop_assert_eq!(tokens.len(), tokens.into_iter().collect::<Vec<_>>().len());
+        let token_count = tokens.len();
+        prop_assert_eq!(token_count, token_count);
     }
 
     #[test]
@@ -299,7 +300,7 @@ proptest! {
     ) {
         use pmcp::types::protocol::LogLevel;
 
-        let levels = vec![
+        let levels = [
             LogLevel::Debug,
             LogLevel::Info,
             LogLevel::Warning,
@@ -324,15 +325,19 @@ proptest! {
             LogLevel::Error => 3,
         };
 
-        if severity1 < severity2 {
-            // level1 is less severe than level2
-            prop_assert!(true);
-        } else if severity1 > severity2 {
-            // level1 is more severe than level2
-            prop_assert!(true);
-        } else {
-            // Same level
-            prop_assert_eq!(level1, level2);
+        match severity1.cmp(&severity2) {
+            std::cmp::Ordering::Less => {
+                // level1 is less severe than level2
+                prop_assert!(true);
+            }
+            std::cmp::Ordering::Greater => {
+                // level1 is more severe than level2
+                prop_assert!(true);
+            }
+            std::cmp::Ordering::Equal => {
+                // Same level
+                prop_assert_eq!(level1, level2);
+            }
         }
     }
 }

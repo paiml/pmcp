@@ -14,7 +14,7 @@ prop_compose! {
         has_resources in prop::bool::ANY,
         has_prompts in prop::bool::ANY,
     ) -> InitializeParams {
-        let versions = vec!["2024-11-05", "2024-10-15", "2024-09-01"];
+        let versions = ["2024-11-05", "2024-10-15", "2024-09-01"];
 
         let mut capabilities = ClientCapabilities::default();
         if has_tools {
@@ -84,7 +84,7 @@ prop_compose! {
 }
 
 // State machine for tracking client state
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(dead_code)]
 enum ClientState {
     NotInitialized,
@@ -93,8 +93,9 @@ enum ClientState {
     Shutdown,
 }
 
+#[allow(clippy::match_same_arms)]
 fn validate_client_state_transition(
-    state: &ClientState,
+    state: ClientState,
     action: &ClientAction,
 ) -> Result<ClientState, &'static str> {
     match (state, action) {
@@ -106,7 +107,8 @@ fn validate_client_state_transition(
         (ClientState::Initialized, ClientAction::Shutdown) => Ok(ClientState::ShuttingDown),
         (ClientState::Initialized, _) => Ok(ClientState::Initialized), // Most operations allowed
 
-        (ClientState::ShuttingDown, ClientAction::Ping) => Ok(ClientState::ShuttingDown), // Ping allowed during shutdown
+        // Ping allowed during shutdown - keeps same state
+        (ClientState::ShuttingDown, ClientAction::Ping) => Ok(ClientState::ShuttingDown),
         (ClientState::ShuttingDown, _) => Err("Cannot perform operations while shutting down"),
 
         (ClientState::Shutdown, ClientAction::Ping) => Ok(ClientState::Shutdown), // Ping allowed even after shutdown
@@ -123,7 +125,7 @@ proptest! {
         let mut initialized = false;
 
         for action in sequence {
-            match validate_client_state_transition(&state, &action) {
+            match validate_client_state_transition(state, &action) {
                 Ok(new_state) => {
                     if matches!(action, ClientAction::Initialize(_)) {
                         prop_assert!(!initialized, "Should not initialize twice");
@@ -151,9 +153,9 @@ proptest! {
         ping_positions in prop::collection::vec(0..100usize, 1..5),
     ) {
         // Ping should be allowed at any point in the sequence
-        let mut modified_sequence = sequence.clone();
+        let mut modified_sequence = sequence;
 
-        for &pos in ping_positions.iter() {
+        for &pos in &ping_positions {
             if pos < modified_sequence.len() {
                 modified_sequence.insert(pos, ClientAction::Ping);
             }
@@ -164,13 +166,13 @@ proptest! {
         for action in modified_sequence {
             if matches!(action, ClientAction::Ping) {
                 // Ping should never fail
-                match validate_client_state_transition(&state, &action) {
+                match validate_client_state_transition(state, &action) {
                     Ok(new_state) => state = new_state,
                     Err(e) => prop_assert!(false, "Ping failed with: {}", e),
                 }
             } else {
                 // Other operations might fail, which is ok
-                if let Ok(new_state) = validate_client_state_transition(&state, &action) {
+                if let Ok(new_state) = validate_client_state_transition(state, &action) {
                     state = new_state;
                 }
             }
@@ -225,12 +227,13 @@ proptest! {
         let mut state = ClientState::NotInitialized;
 
         // First init should succeed
-        state = validate_client_state_transition(&state, &ClientAction::Initialize(params1))
+        let new_state = validate_client_state_transition(state, &ClientAction::Initialize(params1))
             .expect("First init should succeed");
-        prop_assert_eq!(state.clone(), ClientState::Initialized);
+        prop_assert_eq!(new_state, ClientState::Initialized);
+        state = new_state;
 
         // Second init should fail
-        let result = validate_client_state_transition(&state, &ClientAction::Initialize(params2));
+        let result = validate_client_state_transition(state, &ClientAction::Initialize(params2));
         prop_assert!(result.is_err(), "Second init should fail");
     }
 
@@ -244,7 +247,7 @@ proptest! {
 
         // Execute pre-shutdown actions
         for action in pre_shutdown_actions {
-            if let Ok(new_state) = validate_client_state_transition(&state, &action) {
+            if let Ok(new_state) = validate_client_state_transition(state, &action) {
                 state = new_state;
             }
         }
@@ -258,7 +261,7 @@ proptest! {
         if has_shutdown {
             // All post-shutdown actions except Ping should fail
             for action in post_shutdown_actions {
-                let result = validate_client_state_transition(&state, &action);
+                let result = validate_client_state_transition(state, &action);
                 match action {
                     ClientAction::Ping => prop_assert!(result.is_ok(), "Ping should always be allowed"),
                     _ => prop_assert!(result.is_err(), "Non-ping actions after shutdown should fail"),
@@ -281,7 +284,7 @@ proptest! {
         // All capability-dependent operations should require initialization
         let state = ClientState::NotInitialized;
 
-        let result = validate_client_state_transition(&state, &capability_action);
+        let result = validate_client_state_transition(state, &capability_action);
         match capability_action {
             ClientAction::Ping => prop_assert!(result.is_ok()),
             _ => prop_assert!(result.is_err(), "Capability operations should require init"),
@@ -306,7 +309,7 @@ proptest! {
             }
 
             for action in sequence {
-                if let Ok(new_state) = validate_client_state_transition(&client_states[client_id], action) {
+                if let Ok(new_state) = validate_client_state_transition(client_states[client_id], action) {
                     client_states[client_id] = new_state;
                 }
             }

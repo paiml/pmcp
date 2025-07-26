@@ -269,6 +269,42 @@ release-major: bump-major release-check
 	echo "$(GREEN)✓ Major release $$VERSION ready$(NC)"; \
 	echo "$(YELLOW)Run 'git push origin main --tags' to trigger release$(NC)"
 
+# Dependency management
+.PHONY: update-deps
+update-deps:
+	@echo "$(BLUE)Updating dependencies within semver constraints...$(NC)"
+	$(CARGO) update
+	@echo "$(GREEN)✓ Dependencies updated$(NC)"
+
+.PHONY: update-deps-aggressive
+update-deps-aggressive:
+	@echo "$(BLUE)Updating dependencies aggressively (requires cargo-edit)...$(NC)"
+	@if ! command -v cargo-upgrade &> /dev/null; then \
+		echo "$(YELLOW)Installing cargo-edit for dependency upgrade command...$(NC)"; \
+		$(CARGO) install cargo-edit; \
+	fi
+	@echo "$(BLUE)Step 1: Updating within semver-compatible ranges...$(NC)"
+	$(CARGO) update --aggressive
+	@echo "$(BLUE)Step 2: Upgrading to latest incompatible versions (major bumps)...$(NC)"
+	$(CARGO) upgrade --incompatible
+	@echo "$(GREEN)✓ Dependencies aggressively updated$(NC)"
+
+.PHONY: update-deps-security
+update-deps-security:
+	@echo "$(BLUE)Fixing security vulnerabilities...$(NC)"
+	$(CARGO) audit fix
+	@echo "$(GREEN)✓ Security updates applied$(NC)"
+
+.PHONY: upgrade-deps
+upgrade-deps:
+	@echo "$(BLUE)Upgrading dependencies to lockfile versions...$(NC)"
+	@if ! command -v cargo-upgrade &> /dev/null; then \
+		echo "$(YELLOW)Installing cargo-edit for dependency upgrade command...$(NC)"; \
+		$(CARGO) install cargo-edit; \
+	fi
+	$(CARGO) upgrade --workspace --to-lockfile
+	@echo "$(GREEN)✓ Dependencies upgraded to lockfile$(NC)"
+
 # Development helpers
 .PHONY: watch
 watch:
@@ -324,6 +360,13 @@ help:
 	@echo "  bump-patch      - Bump patch version only"
 	@echo "  bump-minor      - Bump minor version only"
 	@echo "  bump-major      - Bump major version only"
+	@echo ""
+	@echo "$(YELLOW)Dependencies:$(NC)"
+	@echo "  update-deps     - Update dependencies (semver-compatible)"
+	@echo "  update-deps-aggressive - Update to latest versions (major bumps)"
+	@echo "  update-deps-security - Fix security vulnerabilities"
+	@echo "  upgrade-deps    - Upgrade to lockfile versions"
+	@echo "  audit           - Check security vulnerabilities"
 	@echo ""
 	@echo "$(YELLOW)Other:$(NC)"
 	@echo "  doc             - Build documentation"
