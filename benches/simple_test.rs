@@ -1,7 +1,8 @@
 //! Simple test benchmark to verify benchmark infrastructure works
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use serde_json::json;
+use std::hint::black_box;
 
 fn bench_simple_serialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("simple");

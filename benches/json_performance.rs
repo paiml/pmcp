@@ -3,7 +3,8 @@
 //! These benchmarks test fundamental JSON operations that are core
 //! to the MCP protocol performance.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
 use serde_json::json;
 
 /// Benchmark basic JSON serialization operations

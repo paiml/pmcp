@@ -3,7 +3,8 @@
 //! These benchmarks measure the performance of converting between
 //! Rust types and JSON for various MCP protocol messages.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 use pmcp::types::*;
 use serde_json::json;
 
@@ -77,7 +78,7 @@ fn bench_request_deserialization(c: &mut Criterion) {
     }"#;
 
     group.bench_function("initialize_request", |b| {
-        b.iter(|| serde_json::from_str::<ClientRequest>(&black_box(init_json)).unwrap())
+        b.iter(|| serde_json::from_str::<ClientRequest>(black_box(init_json)).unwrap())
     });
 
     let list_tools_json = r#"{
@@ -86,7 +87,7 @@ fn bench_request_deserialization(c: &mut Criterion) {
     }"#;
 
     group.bench_function("list_tools_request", |b| {
-        b.iter(|| serde_json::from_str::<ClientRequest>(&black_box(list_tools_json)).unwrap())
+        b.iter(|| serde_json::from_str::<ClientRequest>(black_box(list_tools_json)).unwrap())
     });
 
     let call_tool_json = r#"{
@@ -110,7 +111,7 @@ fn bench_request_deserialization(c: &mut Criterion) {
     }"#;
 
     group.bench_function("call_tool_request", |b| {
-        b.iter(|| serde_json::from_str::<ClientRequest>(&black_box(call_tool_json)).unwrap())
+        b.iter(|| serde_json::from_str::<ClientRequest>(black_box(call_tool_json)).unwrap())
     });
 
     group.finish();
@@ -253,7 +254,7 @@ fn bench_jsonrpc_messages(c: &mut Criterion) {
     }"#;
 
     group.bench_function("jsonrpc_request_deserialize", |b| {
-        b.iter(|| serde_json::from_str::<JSONRPCRequest>(&black_box(request_json)).unwrap())
+        b.iter(|| serde_json::from_str::<JSONRPCRequest>(black_box(request_json)).unwrap())
     });
 
     group.finish();

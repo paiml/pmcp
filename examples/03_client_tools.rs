@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let calc_args = json!({
         "operation": "multiply",
         "a": 42,
-        "b": 3.14159
+        "b": std::f64::consts::PI
     });
 
     println!(

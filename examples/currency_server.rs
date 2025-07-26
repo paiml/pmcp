@@ -21,7 +21,6 @@ use pmcp::types::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use tokio;
 
 #[derive(Debug, Clone)]
 struct CurrencyServer {
@@ -309,7 +308,7 @@ impl ToolHandler for GetRatesTool {
 
         server
             .validate_currency(&params.base)
-            .map_err(|e| pmcp::Error::invalid_params(e))?;
+            .map_err(pmcp::Error::invalid_params)?;
 
         let rates = server
             .fetch_current_rates(&params.base, params.symbols.as_deref())
@@ -346,10 +345,10 @@ impl ToolHandler for AnalyzeTrendTool {
 
         server
             .validate_currency(&params.base)
-            .map_err(|e| pmcp::Error::invalid_params(e))?;
+            .map_err(pmcp::Error::invalid_params)?;
         server
             .validate_currency(&params.target)
-            .map_err(|e| pmcp::Error::invalid_params(e))?;
+            .map_err(pmcp::Error::invalid_params)?;
 
         let start_date =
             chrono::Utc::now().date_naive() - chrono::Duration::days(params.days as i64);
@@ -492,7 +491,7 @@ impl ToolHandler for GetHistoricalTool {
 
         server
             .validate_currency(&params.base)
-            .map_err(|e| pmcp::Error::invalid_params(e))?;
+            .map_err(pmcp::Error::invalid_params)?;
 
         let start_date =
             chrono::Utc::now().date_naive() - chrono::Duration::days(params.days as i64);

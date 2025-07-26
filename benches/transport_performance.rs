@@ -3,7 +3,8 @@
 //! These benchmarks measure the performance of message formatting,
 //! content-length parsing, and transport-level operations.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
 use pmcp::types::*;
 
 /// Benchmark content-length header parsing
@@ -63,7 +64,7 @@ fn bench_message_formatting(c: &mut Criterion) {
         is_error: false,
     }).unwrap();
 
-    let test_messages = vec![
+    let test_messages = [
         ("small", small_message),
         ("medium", medium_message.as_str()),
         ("large", large_message.as_str()),
@@ -199,12 +200,6 @@ fn bench_error_handling(c: &mut Criterion) {
     });
 
     // Test error response formatting
-    let error_response: pmcp::types::JSONRPCResponse<serde_json::Value> = JSONRPCResponse {
-        jsonrpc: "2.0".to_string(),
-        id: RequestId::Number(42),
-        payload: pmcp::types::jsonrpc::ResponsePayload::Error(json_error.clone()),
-    };
-
     group.bench_function("create_error_response", |b| {
         b.iter(|| {
             let response: pmcp::types::JSONRPCResponse<serde_json::Value> =

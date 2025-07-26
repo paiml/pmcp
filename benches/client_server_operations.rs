@@ -4,7 +4,8 @@
 //! operations like initialization, tool calling, and request handling.
 
 use async_trait::async_trait;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
 use pmcp::types::*;
 use pmcp::{Server, ToolHandler};
 use serde_json::{json, Value};
@@ -307,6 +308,7 @@ fn bench_capabilities(c: &mut Criterion) {
             list_changed: Some(true),
         }),
         logging: Some(LoggingCapabilities { levels: None }),
+        sampling: None,
         completions: None,
         experimental: None,
     };
