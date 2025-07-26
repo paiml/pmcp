@@ -1,6 +1,6 @@
 [package]
 name = "pmcp"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["PAIML Team"]
 description = "High-quality Rust SDK for Model Context Protocol (MCP) with full TypeScript SDK compatibility"
@@ -42,6 +42,7 @@ lazy_static = "1.5"
 indexmap = { version = "2.10", features = ["serde"] }
 parking_lot = "0.12"
 dashmap = "6.1"
+tokio-util = { version = "0.7", features = ["rt"] }
 
 # Validation
 jsonschema = { version = "0.30", optional = true }

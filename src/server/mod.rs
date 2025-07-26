@@ -16,30 +16,46 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
 pub mod auth;
+pub mod batch;
+pub mod cancellation;
+pub mod roots;
+pub mod subscriptions;
 pub mod transport;
 
 /// Handler for tool execution.
 #[async_trait]
 pub trait ToolHandler: Send + Sync {
     /// Handle a tool call with the given arguments.
-    async fn handle(&self, args: Value) -> Result<Value>;
+    async fn handle(&self, args: Value, extra: cancellation::RequestHandlerExtra) -> Result<Value>;
 }
 
 /// Handler for prompt generation.
 #[async_trait]
 pub trait PromptHandler: Send + Sync {
     /// Generate a prompt with the given arguments.
-    async fn handle(&self, args: HashMap<String, String>) -> Result<crate::types::GetPromptResult>;
+    async fn handle(
+        &self,
+        args: HashMap<String, String>,
+        extra: cancellation::RequestHandlerExtra,
+    ) -> Result<crate::types::GetPromptResult>;
 }
 
 /// Handler for resource access.
 #[async_trait]
 pub trait ResourceHandler: Send + Sync {
     /// Read a resource at the given URI.
-    async fn read(&self, uri: &str) -> Result<crate::types::ReadResourceResult>;
+    async fn read(
+        &self,
+        uri: &str,
+        extra: cancellation::RequestHandlerExtra,
+    ) -> Result<crate::types::ReadResourceResult>;
 
     /// List available resources.
-    async fn list(&self, _cursor: Option<String>) -> Result<crate::types::ListResourcesResult>;
+    async fn list(
+        &self,
+        _cursor: Option<String>,
+        extra: cancellation::RequestHandlerExtra,
+    ) -> Result<crate::types::ListResourcesResult>;
 }
 
 /// Handler for message sampling (LLM operations).
@@ -49,6 +65,7 @@ pub trait SamplingHandler: Send + Sync {
     async fn create_message(
         &self,
         params: crate::types::CreateMessageParams,
+        extra: cancellation::RequestHandlerExtra,
     ) -> Result<crate::types::CreateMessageResult>;
 }
 
@@ -93,6 +110,12 @@ pub struct Server {
     initialized: Arc<RwLock<bool>>,
     /// Channel for sending notifications
     notification_tx: Option<mpsc::Sender<Notification>>,
+    /// Cancellation manager for request cancellation
+    cancellation_manager: cancellation::CancellationManager,
+    /// Roots manager for directory/URI registration
+    roots_manager: Arc<RwLock<roots::RootsManager>>,
+    /// Subscription manager for resource subscriptions
+    subscription_manager: Arc<RwLock<subscriptions::SubscriptionManager>>,
 }
 
 impl std::fmt::Debug for Server {
@@ -468,7 +491,12 @@ impl Server {
 
     async fn handle_request(&self, id: RequestId, request: Request) -> JSONRPCResponse {
         match request {
-            Request::Client(ClientRequest::Initialize(init_req)) => {
+            Request::Client(ref boxed_req)
+                if matches!(**boxed_req, ClientRequest::Initialize(_)) =>
+            {
+                let ClientRequest::Initialize(init_req) = boxed_req.as_ref() else {
+                    unreachable!("Pattern matched for Initialize");
+                };
                 // Store client capabilities
                 *self.client_capabilities.write().await = Some(init_req.capabilities.clone());
                 *self.initialized.write().await = true;
@@ -487,7 +515,7 @@ impl Server {
                     ),
                 }
             },
-            Request::Client(client_req) => self.handle_client_request(id, client_req).await,
+            Request::Client(boxed_req) => self.handle_client_request(id, *boxed_req).await,
             Request::Server(_) => JSONRPCResponse {
                 jsonrpc: "2.0".to_string(),
                 id,
@@ -507,23 +535,27 @@ impl Server {
         id: RequestId,
         request: ClientRequest,
     ) -> JSONRPCResponse {
-        let result = self.process_client_request(request).await;
+        let result = self.process_client_request(id.clone(), request).await;
         Self::create_response(id, result)
     }
 
     /// Process a client request and return the result.
-    async fn process_client_request(&self, request: ClientRequest) -> Result<serde_json::Value> {
+    async fn process_client_request(
+        &self,
+        request_id: RequestId,
+        request: ClientRequest,
+    ) -> Result<serde_json::Value> {
         match request {
             ClientRequest::Initialize(_) => {
                 // Already handled above
                 unreachable!("Initialize should be handled separately")
             },
             ClientRequest::ListTools(req) => self.handle_list_tools(req),
-            ClientRequest::CallTool(req) => self.handle_call_tool(req).await,
+            ClientRequest::CallTool(req) => self.handle_call_tool(request_id, req).await,
             ClientRequest::ListPrompts(req) => self.handle_list_prompts(req),
-            ClientRequest::GetPrompt(req) => self.handle_get_prompt(req).await,
-            ClientRequest::ListResources(req) => self.handle_list_resources(req).await,
-            ClientRequest::ReadResource(req) => self.handle_read_resource(req).await,
+            ClientRequest::GetPrompt(req) => self.handle_get_prompt(request_id, req).await,
+            ClientRequest::ListResources(req) => self.handle_list_resources(request_id, req).await,
+            ClientRequest::ReadResource(req) => self.handle_read_resource(request_id, req).await,
             ClientRequest::ListResourceTemplates(req) => {
                 Self::handle_list_resource_templates(self, req)
             },
@@ -532,7 +564,7 @@ impl Server {
             | ClientRequest::Complete(_)
             | ClientRequest::SetLoggingLevel { level: _ }
             | ClientRequest::Ping => Ok(serde_json::json!({})),
-            ClientRequest::CreateMessage(req) => self.handle_create_message(req).await,
+            ClientRequest::CreateMessage(req) => self.handle_create_message(request_id, req).await,
         }
     }
 
@@ -575,13 +607,22 @@ impl Server {
         })?)
     }
 
-    async fn handle_call_tool(&self, req: CallToolRequest) -> Result<Value> {
+    async fn handle_call_tool(&self, request_id: RequestId, req: CallToolRequest) -> Result<Value> {
         let handler = self
             .tools
             .get(&req.name)
             .ok_or_else(|| Error::not_found(format!("Tool '{}' not found", req.name)))?;
 
-        let result = handler.handle(req.arguments).await?;
+        let cancellation_token = self
+            .cancellation_manager
+            .get_token(&request_id.to_string())
+            .await
+            .unwrap_or_else(tokio_util::sync::CancellationToken::new);
+        let extra = crate::server::cancellation::RequestHandlerExtra::new(
+            request_id.to_string(),
+            cancellation_token,
+        );
+        let result = handler.handle(req.arguments, extra).await?;
         Ok(serde_json::to_value(CallToolResult {
             content: vec![crate::types::Content::Text {
                 text: result.to_string(),
@@ -607,19 +648,45 @@ impl Server {
         })?)
     }
 
-    async fn handle_get_prompt(&self, req: GetPromptRequest) -> Result<Value> {
+    async fn handle_get_prompt(
+        &self,
+        request_id: RequestId,
+        req: GetPromptRequest,
+    ) -> Result<Value> {
         let handler = self
             .prompts
             .get(&req.name)
             .ok_or_else(|| Error::not_found(format!("Prompt '{}' not found", req.name)))?;
 
-        let result = handler.handle(req.arguments).await?;
+        let cancellation_token = self
+            .cancellation_manager
+            .get_token(&request_id.to_string())
+            .await
+            .unwrap_or_else(tokio_util::sync::CancellationToken::new);
+        let extra = crate::server::cancellation::RequestHandlerExtra::new(
+            request_id.to_string(),
+            cancellation_token,
+        );
+        let result = handler.handle(req.arguments, extra).await?;
         Ok(serde_json::to_value(result)?)
     }
 
-    async fn handle_list_resources(&self, req: ListResourcesRequest) -> Result<Value> {
+    async fn handle_list_resources(
+        &self,
+        request_id: RequestId,
+        req: ListResourcesRequest,
+    ) -> Result<Value> {
         if let Some(handler) = &self.resources {
-            let result = handler.list(req.cursor).await?;
+            let cancellation_token = self
+                .cancellation_manager
+                .get_token(&request_id.to_string())
+                .await
+                .unwrap_or_else(tokio_util::sync::CancellationToken::new);
+            let extra = crate::server::cancellation::RequestHandlerExtra::new(
+                request_id.to_string(),
+                cancellation_token,
+            );
+            let result = handler.list(req.cursor, extra).await?;
             Ok(serde_json::to_value(result)?)
         } else {
             Ok(serde_json::to_value(ListResourcesResult {
@@ -629,13 +696,26 @@ impl Server {
         }
     }
 
-    async fn handle_read_resource(&self, req: ReadResourceRequest) -> Result<Value> {
+    async fn handle_read_resource(
+        &self,
+        request_id: RequestId,
+        req: ReadResourceRequest,
+    ) -> Result<Value> {
         let handler = self
             .resources
             .as_ref()
             .ok_or_else(|| Error::not_found("No resource handler configured".to_string()))?;
 
-        let result = handler.read(&req.uri).await?;
+        let cancellation_token = self
+            .cancellation_manager
+            .get_token(&request_id.to_string())
+            .await
+            .unwrap_or_else(tokio_util::sync::CancellationToken::new);
+        let extra = crate::server::cancellation::RequestHandlerExtra::new(
+            request_id.to_string(),
+            cancellation_token,
+        );
+        let result = handler.read(&req.uri, extra).await?;
         Ok(serde_json::to_value(result)?)
     }
 
@@ -649,6 +729,7 @@ impl Server {
 
     async fn handle_create_message(
         &self,
+        request_id: RequestId,
         req: crate::types::CreateMessageRequest,
     ) -> Result<Value> {
         let handler = self
@@ -656,8 +737,265 @@ impl Server {
             .as_ref()
             .ok_or_else(|| Error::not_found("No sampling handler configured".to_string()))?;
 
-        let result = handler.create_message(req).await?;
+        let cancellation_token = self
+            .cancellation_manager
+            .get_token(&request_id.to_string())
+            .await
+            .unwrap_or_else(tokio_util::sync::CancellationToken::new);
+        let extra = crate::server::cancellation::RequestHandlerExtra::new(
+            request_id.to_string(),
+            cancellation_token,
+        );
+        let result = handler.create_message(req, extra).await?;
         Ok(serde_json::to_value(result)?)
+    }
+
+    /// Register a root directory or URI that the server has access to.
+    ///
+    /// This method allows the server to announce to clients that it has
+    /// access to specific file system roots or URIs. This is useful for
+    /// resource handlers that need to expose filesystem access or other
+    /// URI-based resources.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The root URI to register (e.g., `file:///home/user/project`)
+    /// * `name` - Optional human-readable name for the root
+    ///
+    /// # Returns
+    ///
+    /// An unregister function that can be called to remove the root registration.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::Server;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let server = Server::builder()
+    ///     .name("file-server")
+    ///     .version("1.0.0")
+    ///     .build()?;
+    ///
+    /// // Register a project root
+    /// let unregister = server.register_root(
+    ///     "file:///home/user/project",
+    ///     Some("My Project".to_string())
+    /// ).await?;
+    ///
+    /// // Later, unregister the root
+    /// unregister().await;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn register_root(
+        &self,
+        uri: impl Into<String>,
+        name: Option<String>,
+    ) -> Result<impl FnOnce() + Send + 'static> {
+        let mut roots_manager = self.roots_manager.write().await;
+        if let Some(tx) = &self.notification_tx {
+            roots_manager.set_notification_sender({
+                let tx = tx.clone();
+                move |server_notification| {
+                    let _ = tx.try_send(Notification::Server(server_notification));
+                }
+            });
+        }
+        roots_manager.register_root(uri.into(), name).await
+    }
+
+    /// Get the list of registered roots.
+    ///
+    /// Returns a list of all currently registered root URIs and their
+    /// associated names. Roots are directories or URIs that the server
+    /// has announced access to.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `Root` objects containing URI and optional name.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::Server;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let server = Server::builder()
+    ///     .name("file-server")
+    ///     .version("1.0.0")
+    ///     .build()?;
+    ///
+    /// // Register some roots
+    /// server.register_root("file:///home/user/project1", Some("Project 1".to_string())).await?;
+    /// server.register_root("file:///home/user/project2", None).await?;
+    ///
+    /// // Get the list of roots
+    /// let roots = server.get_roots().await;
+    /// println!("Registered {} roots", roots.len());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn get_roots(&self) -> Vec<roots::Root> {
+        let roots_manager = self.roots_manager.read().await;
+        roots_manager.get_roots().await
+    }
+
+    /// Subscribe a client to resource updates.
+    ///
+    /// This method allows the server to track which clients are interested
+    /// in updates to specific resources. When a resource changes, the server
+    /// can notify all subscribed clients.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The resource URI to subscribe to
+    /// * `client_id` - Identifier for the subscribing client
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::Server;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let server = Server::builder()
+    ///     .name("file-server")
+    ///     .version("1.0.0")
+    ///     .build()?;
+    ///
+    /// // Subscribe client to resource updates
+    /// server.subscribe_resource(
+    ///     "file:///project/file.txt".to_string(),
+    ///     "client-123".to_string()
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn subscribe_resource(
+        &self,
+        uri: String,
+        client_id: String,
+    ) -> Result<()> {
+        if uri.is_empty() || client_id.is_empty() {
+            return Err(Error::invalid_params("URI and client_id must not be empty"));
+        }
+        
+        let mut subscription_manager = self.subscription_manager.write().await;
+        if let Some(tx) = &self.notification_tx {
+            subscription_manager.set_notification_sender({
+                let tx = tx.clone();
+                move |notification| {
+                    let _ = tx.try_send(Notification::Server(notification));
+                }
+            });
+        }
+        
+        subscription_manager.subscribe(uri, client_id).await
+    }
+
+    /// Cancel a request that is currently being processed.
+    ///
+    /// This method allows the server to cancel ongoing requests, which is
+    /// useful for implementing request timeouts or client-requested cancellations.
+    ///
+    /// # Arguments
+    ///
+    /// * `request_id` - The ID of the request to cancel
+    /// * `reason` - Optional reason for cancellation
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::Server;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let server = Server::builder()
+    ///     .name("cancel-server")
+    ///     .version("1.0.0")
+    ///     .build()?;
+    ///
+    /// // Cancel a request
+    /// server.cancel_request(
+    ///     "request-123".to_string(),
+    ///     Some("User requested cancellation".to_string())
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn cancel_request(
+        &self,
+        request_id: String,
+        reason: Option<String>,
+    ) -> Result<()> {
+        if request_id.is_empty() {
+            return Err(Error::invalid_params("Request ID must not be empty"));
+        }
+        
+        self.cancellation_manager.cancel_request(request_id, reason).await
+    }
+
+    /// Unsubscribe a client from resource updates.
+    ///
+    /// This method removes a client's subscription to a specific resource,
+    /// so they will no longer receive notifications when that resource changes.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The resource URI to unsubscribe from
+    /// * `client_id` - Identifier for the client to unsubscribe
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::Server;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let server = Server::builder()
+    ///     .name("file-server")
+    ///     .version("1.0.0")
+    ///     .build()?;
+    ///
+    /// // Unsubscribe client from resource updates
+    /// server.unsubscribe_resource(
+    ///     "file:///project/file.txt".to_string(),
+    ///     "client-123".to_string()
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn unsubscribe_resource(
+        &self,
+        uri: String,
+        client_id: String,
+    ) -> Result<()> {
+        if uri.is_empty() || client_id.is_empty() {
+            return Err(Error::invalid_params("URI and client_id must not be empty"));
+        }
+        
+        let subscription_manager = self.subscription_manager.read().await;
+        subscription_manager.unsubscribe(uri, client_id).await
+    }
+
+    /// Notify subscribers that a resource has been updated.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The URI of the resource that was updated
+    ///
+    /// # Returns
+    ///
+    /// The number of subscribers that were notified.
+    pub async fn notify_resource_updated(&self, uri: String) -> Result<usize> {
+        let mut subscription_manager = self.subscription_manager.write().await;
+        if let Some(tx) = &self.notification_tx {
+            subscription_manager.set_notification_sender({
+                let tx = tx.clone();
+                move |notification| {
+                    let _ = tx.try_send(Notification::Server(notification));
+                }
+            });
+        }
+        subscription_manager.notify_resource_updated(uri).await
     }
 }
 
@@ -670,6 +1008,10 @@ pub struct ServerBuilder {
     prompts: HashMap<String, Arc<dyn PromptHandler>>,
     resources: Option<Arc<dyn ResourceHandler>>,
     sampling: Option<Arc<dyn SamplingHandler>>,
+    /// Cancellation manager for request cancellation
+    cancellation_manager: cancellation::CancellationManager,
+    /// Roots manager for directory/URI registration
+    roots_manager: roots::RootsManager,
 }
 
 impl std::fmt::Debug for ServerBuilder {
@@ -716,6 +1058,8 @@ impl ServerBuilder {
             prompts: HashMap::new(),
             resources: None,
             sampling: None,
+            cancellation_manager: cancellation::CancellationManager::new(),
+            roots_manager: roots::RootsManager::new(),
         }
     }
 
@@ -1051,6 +1395,9 @@ impl ServerBuilder {
             client_capabilities: Arc::new(RwLock::new(None)),
             initialized: Arc::new(RwLock::new(false)),
             notification_tx: None,
+            cancellation_manager: self.cancellation_manager,
+            roots_manager: Arc::new(RwLock::new(self.roots_manager)),
+            subscription_manager: Arc::new(RwLock::new(subscriptions::SubscriptionManager::new())),
         })
     }
 }
@@ -1148,7 +1495,11 @@ mod tests {
 
     #[async_trait]
     impl ToolHandler for MockTool {
-        async fn handle(&self, _args: Value) -> Result<Value> {
+        async fn handle(
+            &self,
+            _args: Value,
+            _extra: crate::server::cancellation::RequestHandlerExtra,
+        ) -> Result<Value> {
             Ok(self.result.clone())
         }
     }
@@ -1169,6 +1520,7 @@ mod tests {
         async fn handle(
             &self,
             _args: HashMap<String, String>,
+            _extra: crate::server::cancellation::RequestHandlerExtra,
         ) -> Result<crate::types::GetPromptResult> {
             Ok(self.result.clone())
         }
@@ -1196,14 +1548,22 @@ mod tests {
 
     #[async_trait]
     impl ResourceHandler for MockResource {
-        async fn read(&self, uri: &str) -> Result<crate::types::ReadResourceResult> {
+        async fn read(
+            &self,
+            uri: &str,
+            _extra: crate::server::cancellation::RequestHandlerExtra,
+        ) -> Result<crate::types::ReadResourceResult> {
             self.contents
                 .get(uri)
                 .cloned()
                 .ok_or_else(|| Error::not_found(format!("Resource '{}' not found", uri)))
         }
 
-        async fn list(&self, _cursor: Option<String>) -> Result<crate::types::ListResourcesResult> {
+        async fn list(
+            &self,
+            _cursor: Option<String>,
+            _extra: crate::server::cancellation::RequestHandlerExtra,
+        ) -> Result<crate::types::ListResourcesResult> {
             Ok(crate::types::ListResourcesResult {
                 resources: self.resources.clone(),
                 next_cursor: None,
@@ -1241,7 +1601,7 @@ mod tests {
     async fn test_server_initialization() {
         let init_request = TransportMessage::Request {
             id: RequestId::from(1i64),
-            request: Request::Client(ClientRequest::Initialize(InitializeRequest {
+            request: Request::Client(Box::new(ClientRequest::Initialize(InitializeRequest {
                 protocol_version: "2024-11-05".to_string(),
                 capabilities: ClientCapabilities {
                     tools: Some(ToolCapabilities::default()),
@@ -1251,7 +1611,7 @@ mod tests {
                     name: "test-client".to_string(),
                     version: "1.0.0".to_string(),
                 },
-            })),
+            }))),
         };
 
         let transport = MockTransport::with_requests(vec![init_request]);
@@ -1336,14 +1696,14 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::Initialize(InitializeRequest {
+        let request = Request::Client(Box::new(ClientRequest::Initialize(InitializeRequest {
             protocol_version: "2024-11-05".to_string(),
             capabilities: ClientCapabilities::default(),
             client_info: Implementation {
                 name: "test-client".to_string(),
                 version: "1.0.0".to_string(),
             },
-        }));
+        })));
 
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
@@ -1365,7 +1725,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::ListTools(ListToolsRequest { cursor: None }));
+        let request = Request::Client(Box::new(ClientRequest::ListTools(ListToolsRequest {
+            cursor: None,
+        })));
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
         match response.payload {
@@ -1387,10 +1749,10 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::CallTool(CallToolRequest {
+        let request = Request::Client(Box::new(ClientRequest::CallTool(CallToolRequest {
             name: "test-tool".to_string(),
             arguments: json!({"input": "test"}),
-        }));
+        })));
 
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
@@ -1412,10 +1774,10 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::CallTool(CallToolRequest {
+        let request = Request::Client(Box::new(ClientRequest::CallTool(CallToolRequest {
             name: "nonexistent-tool".to_string(),
             arguments: json!({}),
-        }));
+        })));
 
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
@@ -1441,9 +1803,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::ListPrompts(ListPromptsRequest {
+        let request = Request::Client(Box::new(ClientRequest::ListPrompts(ListPromptsRequest {
             cursor: None,
-        }));
+        })));
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
         match response.payload {
@@ -1470,10 +1832,10 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::GetPrompt(GetPromptRequest {
+        let request = Request::Client(Box::new(ClientRequest::GetPrompt(GetPromptRequest {
             name: "test-prompt".to_string(),
             arguments: HashMap::new(),
-        }));
+        })));
 
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
@@ -1504,9 +1866,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::ListResources(ListResourcesRequest {
-            cursor: None,
-        }));
+        let request = Request::Client(Box::new(ClientRequest::ListResources(
+            ListResourcesRequest { cursor: None },
+        )));
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
         match response.payload {
@@ -1536,9 +1898,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::ReadResource(ReadResourceRequest {
+        let request = Request::Client(Box::new(ClientRequest::ReadResource(ReadResourceRequest {
             uri: "test://uri".to_string(),
-        }));
+        })));
 
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
@@ -1561,9 +1923,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::ReadResource(ReadResourceRequest {
+        let request = Request::Client(Box::new(ClientRequest::ReadResource(ReadResourceRequest {
             uri: "nonexistent://uri".to_string(),
-        }));
+        })));
 
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
@@ -1583,7 +1945,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Client(ClientRequest::Ping);
+        let request = Request::Client(Box::new(ClientRequest::Ping));
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
         match response.payload {
@@ -1602,7 +1964,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Server(crate::types::ServerRequest::CreateMessage(
+        let request = Request::Server(Box::new(crate::types::ServerRequest::CreateMessage(Box::new(
             crate::types::protocol::CreateMessageParams {
                 messages: vec![],
                 model_preferences: None,
@@ -1613,7 +1975,7 @@ mod tests {
                 stop_sequences: None,
                 metadata: None,
             },
-        ));
+        ))));
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
         match response.payload {

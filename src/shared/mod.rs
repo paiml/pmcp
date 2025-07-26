@@ -1,5 +1,6 @@
 //! Shared components used by both client and server.
 
+pub mod batch;
 pub mod middleware;
 pub mod protocol;
 pub mod protocol_helpers;
@@ -14,6 +15,7 @@ pub mod websocket;
 pub mod http;
 
 // Re-export commonly used types
+pub use batch::{BatchRequest, BatchResponse};
 pub use middleware::{
     AuthMiddleware, LoggingMiddleware, Middleware, MiddlewareChain, RetryMiddleware,
 };

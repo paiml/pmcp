@@ -20,7 +20,11 @@ struct LoggingTool;
 
 #[async_trait]
 impl ToolHandler for LoggingTool {
-    async fn handle(&self, _arguments: Value) -> pmcp::Result<Value> {
+    async fn handle(
+        &self,
+        _arguments: Value,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<Value> {
         // Log at different levels
         pmcp::log(LogLevel::Debug, "Starting tool execution", None).await;
         // Simulate some work with progress logging

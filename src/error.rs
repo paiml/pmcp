@@ -282,6 +282,12 @@ impl Error {
         Self::NotFound(format!("Resource not found: {}", uri.into()))
     }
 
+    /// Create a cancelled operation error.
+    pub fn cancelled(message: impl Into<String>) -> Self {
+        // For now, treat cancellation as a validation error with specific message
+        Self::Validation(format!("Operation cancelled: {}", message.into()))
+    }
+
     /// Create from JSON-RPC error.
     pub fn from_jsonrpc_error(error: crate::types::JSONRPCError) -> Self {
         Self::Protocol {

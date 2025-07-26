@@ -8,7 +8,7 @@ struct EchoTool;
 
 #[async_trait]
 impl ToolHandler for EchoTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         Ok(serde_json::json!({
             "echo": args.get("message").unwrap_or(&Value::String(String::new()))
         }))

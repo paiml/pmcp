@@ -23,6 +23,10 @@ Code Name: *Angel Rust*
 - 🔌 **Middleware System**: Request/response interceptors for custom logic
 - 🔁 **Retry Logic**: Built-in exponential backoff for resilient connections
 - 📦 **Message Batching**: Efficient notification grouping and debouncing
+- 📬 **Resource Subscriptions**: Real-time resource change notifications
+- ❌ **Request Cancellation**: Full async cancellation support with CancellationToken
+- 🌐 **WebSocket Server**: Complete server-side WebSocket transport implementation
+- 📁 **Roots Management**: Directory/URI registration and management
 - 📊 **Comprehensive Testing**: Property tests with 100% invariant coverage
 - 🏗️ **Quality First**: Zero technical debt, no unwraps in production code
 
@@ -32,7 +36,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "0.2.0"
+pmcp = "0.3.0"
 ```
 
 ## Examples

@@ -301,7 +301,7 @@ struct GetRatesTool {
 
 #[async_trait]
 impl ToolHandler for GetRatesTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let mut server = self.server.clone();
         let params: GetRatesArgs = serde_json::from_value(args)
             .map_err(|e| pmcp::Error::validation(format!("Invalid arguments: {}", e)))?;
@@ -338,7 +338,7 @@ struct AnalyzeTrendTool {
 
 #[async_trait]
 impl ToolHandler for AnalyzeTrendTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let mut server = self.server.clone();
         let params: AnalyzeTrendArgs = serde_json::from_value(args)
             .map_err(|e| pmcp::Error::validation(format!("Invalid arguments: {}", e)))?;
@@ -460,7 +460,7 @@ struct ListCurrenciesTool {
 
 #[async_trait]
 impl ToolHandler for ListCurrenciesTool {
-    async fn handle(&self, _args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, _args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let server = self.server.clone();
 
         let result = CallToolResult {
@@ -484,7 +484,7 @@ struct GetHistoricalTool {
 
 #[async_trait]
 impl ToolHandler for GetHistoricalTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let mut server = self.server.clone();
         let params: GetHistoricalArgs = serde_json::from_value(args)
             .map_err(|e| pmcp::Error::validation(format!("Invalid arguments: {}", e)))?;

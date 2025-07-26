@@ -15,12 +15,12 @@ pub fn parse_request(request: JSONRPCRequest<Value>) -> Result<(RequestId, Reque
 
     // Try to parse as client request first
     if let Ok(client_req) = parse_client_request(method, &params) {
-        return Ok((id, Request::Client(client_req)));
+        return Ok((id, Request::Client(Box::new(client_req))));
     }
 
     // Try to parse as server request
     if let Ok(server_req) = parse_server_request(method, &params) {
-        return Ok((id, Request::Server(server_req)));
+        return Ok((id, Request::Server(Box::new(server_req))));
     }
 
     Err(Error::method_not_found(method))
@@ -63,12 +63,13 @@ pub fn parse_notification(value: Value) -> Result<Notification> {
 /// Create a JSON-RPC request from typed request.
 pub fn create_request(id: RequestId, request: Request) -> JSONRPCRequest<Value> {
     match request {
-        Request::Client(client_req) => {
+        Request::Client(boxed_req) => {
+            let client_req = *boxed_req;
             let (method, params) = client_request_to_jsonrpc(client_req);
             JSONRPCRequest::new(id, method, params)
         },
         Request::Server(server_req) => {
-            let (method, params) = server_request_to_jsonrpc(server_req);
+            let (method, params) = server_request_to_jsonrpc(*server_req);
             JSONRPCRequest::new(id, method, params)
         },
     }
@@ -188,6 +189,7 @@ fn server_request_to_jsonrpc(req: ServerRequest) -> (String, Option<Value>) {
             "sampling/createMessage".to_string(),
             Some(serde_json::to_value(params).unwrap()),
         ),
+        ServerRequest::ListRoots => ("roots/list".to_string(), None),
     }
 }
 
@@ -220,6 +222,9 @@ fn server_notification_to_jsonrpc(notif: ServerNotification) -> (String, Option<
         },
         ServerNotification::ResourcesChanged => {
             ("notifications/resources/list_changed".to_string(), None)
+        },
+        ServerNotification::RootsListChanged => {
+            ("notifications/roots/list_changed".to_string(), None)
         },
         ServerNotification::ResourceUpdated(params) => (
             "notifications/resources/updated".to_string(),
@@ -262,7 +267,7 @@ mod tests {
 
         assert_eq!(result.0, id);
         match result.1 {
-            Request::Client(ClientRequest::Initialize(_)) => (),
+            Request::Client(ref boxed) if matches!(**boxed, ClientRequest::Initialize(_)) => (),
             _ => panic!("Expected Initialize request"),
         }
     }
@@ -278,7 +283,7 @@ mod tests {
 
         assert_eq!(result.0, id);
         match result.1 {
-            Request::Client(ClientRequest::ListTools(_)) => (),
+            Request::Client(ref boxed) if matches!(**boxed, ClientRequest::ListTools(_)) => (),
             _ => panic!("Expected ListTools request"),
         }
     }
@@ -297,7 +302,7 @@ mod tests {
 
         assert_eq!(result.0, id);
         match result.1 {
-            Request::Client(ClientRequest::CallTool(_)) => (),
+            Request::Client(ref boxed) if matches!(**boxed, ClientRequest::CallTool(_)) => (),
             _ => panic!("Expected CallTool request"),
         }
     }
@@ -312,7 +317,7 @@ mod tests {
 
         assert_eq!(result.0, id);
         match result.1 {
-            Request::Client(ClientRequest::Ping) => (),
+            Request::Client(ref boxed) if matches!(**boxed, ClientRequest::Ping) => (),
             _ => panic!("Expected Ping request"),
         }
     }
@@ -331,7 +336,7 @@ mod tests {
 
         assert_eq!(result.0, id);
         match result.1 {
-            Request::Client(ClientRequest::CreateMessage(_)) => (),
+            Request::Client(ref boxed) if matches!(**boxed, ClientRequest::CreateMessage(_)) => (),
             _ => panic!("Expected CreateMessage request"),
         }
     }
@@ -453,14 +458,14 @@ mod tests {
     #[test]
     fn test_create_client_request_initialize() {
         let id = RequestId::from(1i64);
-        let request = Request::Client(ClientRequest::Initialize(InitializeRequest {
+        let request = Request::Client(Box::new(ClientRequest::Initialize(InitializeRequest {
             protocol_version: "2024-11-05".to_string(),
             capabilities: ClientCapabilities::default(),
             client_info: Implementation {
                 name: "test-client".to_string(),
                 version: "1.0.0".to_string(),
             },
-        }));
+        })));
 
         let jsonrpc_request = create_request(id.clone(), request);
         assert_eq!(jsonrpc_request.id, id);
@@ -471,7 +476,9 @@ mod tests {
     #[test]
     fn test_create_client_request_list_tools() {
         let id = RequestId::from(2i64);
-        let request = Request::Client(ClientRequest::ListTools(ListToolsRequest { cursor: None }));
+        let request = Request::Client(Box::new(ClientRequest::ListTools(ListToolsRequest {
+            cursor: None,
+        })));
 
         let jsonrpc_request = create_request(id.clone(), request);
         assert_eq!(jsonrpc_request.id, id);
@@ -482,10 +489,10 @@ mod tests {
     #[test]
     fn test_create_client_request_call_tool() {
         let id = RequestId::from(3i64);
-        let request = Request::Client(ClientRequest::CallTool(CallToolRequest {
+        let request = Request::Client(Box::new(ClientRequest::CallTool(CallToolRequest {
             name: "test-tool".to_string(),
             arguments: json!({"input": "test"}),
-        }));
+        })));
 
         let jsonrpc_request = create_request(id.clone(), request);
         assert_eq!(jsonrpc_request.id, id);
@@ -496,7 +503,7 @@ mod tests {
     #[test]
     fn test_create_client_request_ping() {
         let id = RequestId::from(4i64);
-        let request = Request::Client(ClientRequest::Ping);
+        let request = Request::Client(Box::new(ClientRequest::Ping));
 
         let jsonrpc_request = create_request(id.clone(), request);
         assert_eq!(jsonrpc_request.id, id);
@@ -507,9 +514,9 @@ mod tests {
     #[test]
     fn test_create_client_request_set_logging_level() {
         let id = RequestId::from(5i64);
-        let request = Request::Client(ClientRequest::SetLoggingLevel {
+        let request = Request::Client(Box::new(ClientRequest::SetLoggingLevel {
             level: LoggingLevel::Debug,
-        });
+        }));
 
         let jsonrpc_request = create_request(id.clone(), request);
         assert_eq!(jsonrpc_request.id, id);
@@ -520,7 +527,7 @@ mod tests {
     #[test]
     fn test_create_server_request_create_message() {
         let id = RequestId::from(6i64);
-        let request = Request::Server(ServerRequest::CreateMessage(
+        let request = Request::Server(Box::new(ServerRequest::CreateMessage(Box::new(
             crate::types::protocol::CreateMessageParams {
                 messages: vec![],
                 model_preferences: None,
@@ -531,7 +538,7 @@ mod tests {
                 stop_sequences: None,
                 metadata: None,
             },
-        ));
+        ))));
 
         let jsonrpc_request = create_request(id.clone(), request);
         assert_eq!(jsonrpc_request.id, id);
@@ -780,15 +787,20 @@ mod tests {
     fn test_roundtrip_request_parsing() {
         // Test that we can create a request and parse it back
         let original_id = RequestId::from(42i64);
-        let original_request = Request::Client(ClientRequest::Ping);
+        let original_request = Request::Client(Box::new(ClientRequest::Ping));
 
         let jsonrpc_request = create_request(original_id.clone(), original_request.clone());
         let (parsed_id, parsed_request) = parse_request(jsonrpc_request).unwrap();
 
         assert_eq!(parsed_id, original_id);
-        match (original_request, parsed_request) {
-            (Request::Client(ClientRequest::Ping), Request::Client(ClientRequest::Ping)) => (),
-            _ => panic!("Roundtrip failed"),
+        match (&original_request, &parsed_request) {
+            (Request::Client(boxed1), Request::Client(boxed2)) => {
+                match (boxed1.as_ref(), boxed2.as_ref()) {
+                    (ClientRequest::Ping, ClientRequest::Ping) => (),
+                    _ => panic!("Roundtrip failed - request type mismatch"),
+                }
+            },
+            _ => panic!("Roundtrip failed - request category mismatch"),
         }
     }
 

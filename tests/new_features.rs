@@ -1,4 +1,4 @@
-//! Integration tests for new features in v0.2.0
+//! Integration tests for new features in v0.3.0
 
 use pmcp::*;
 use std::sync::Arc;
@@ -77,6 +77,7 @@ async fn test_sampling_server_handler() {
         async fn create_message(
             &self,
             _params: CreateMessageParams,
+            _extra: pmcp::RequestHandlerExtra,
         ) -> pmcp::Result<CreateMessageResult> {
             Ok(CreateMessageResult {
                 content: Content::Text {

@@ -85,9 +85,11 @@ pub mod utils;
 pub use client::{Client, ClientBuilder};
 pub use error::{Error, ErrorCode, Result};
 pub use server::{
-    PromptHandler, ResourceHandler, SamplingHandler, Server, ServerBuilder, ToolHandler,
+    cancellation::RequestHandlerExtra, PromptHandler, ResourceHandler, SamplingHandler, Server,
+    ServerBuilder, ToolHandler,
 };
 pub use shared::{
+    batch::{BatchRequest, BatchResponse},
     AuthMiddleware, LoggingMiddleware, Middleware, MiddlewareChain, RetryMiddleware,
     StdioTransport, Transport,
 };

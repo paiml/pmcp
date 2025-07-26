@@ -29,7 +29,7 @@ struct CalculatorTool;
 
 #[async_trait]
 impl ToolHandler for CalculatorTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         // Parse arguments
         let params: CalculatorArgs = serde_json::from_value(args)
             .map_err(|e| pmcp::Error::validation(format!("Invalid arguments: {}", e)))?;
@@ -69,7 +69,7 @@ struct StringTool;
 
 #[async_trait]
 impl ToolHandler for StringTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let text = args["text"]
             .as_str()
             .ok_or_else(|| pmcp::Error::validation("text field required"))?;

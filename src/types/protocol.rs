@@ -576,7 +576,10 @@ pub enum ClientRequest {
 pub enum ServerRequest {
     /// Request to create a message (sampling)
     #[serde(rename = "sampling/createMessage")]
-    CreateMessage(CreateMessageParams),
+    CreateMessage(Box<CreateMessageParams>),
+    /// List roots request
+    #[serde(rename = "roots/list")]
+    ListRoots,
 }
 
 /// Create message parameters (for server requests).
@@ -715,6 +718,9 @@ pub enum ServerNotification {
     /// Resources have changed
     #[serde(rename = "notifications/resources/list_changed")]
     ResourcesChanged,
+    /// Roots have changed
+    #[serde(rename = "notifications/roots/list_changed")]
+    RootsListChanged,
     /// Resource was updated
     #[serde(rename = "notifications/resources/updated")]
     ResourceUpdated(ResourceUpdatedParams),
@@ -752,9 +758,9 @@ pub struct LogMessageParams {
 #[serde(untagged)]
 pub enum Request {
     /// Client request
-    Client(ClientRequest),
+    Client(Box<ClientRequest>),
     /// Server request
-    Server(ServerRequest),
+    Server(Box<ServerRequest>),
 }
 
 /// Combined notification types (client or server).

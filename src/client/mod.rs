@@ -227,11 +227,11 @@ impl<T: Transport> Client<T> {
         self.capabilities = Some(capabilities.clone());
 
         // Send initialize request
-        let request = Request::Client(ClientRequest::Initialize(InitializeRequest {
+        let request = Request::Client(Box::new(ClientRequest::Initialize(InitializeRequest {
             protocol_version: crate::types::LATEST_PROTOCOL_VERSION.to_string(),
             capabilities,
             client_info: self.info.clone(),
-        }));
+        })));
 
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
@@ -288,7 +288,7 @@ impl<T: Transport> Client<T> {
     /// Send a ping to the server.
     pub async fn ping(&self) -> Result<()> {
         self.ensure_initialized()?;
-        let request = Request::Client(ClientRequest::Ping);
+        let request = Request::Client(Box::new(ClientRequest::Ping));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -305,7 +305,7 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("logging", "logging/setLevel")?;
 
-        let request = Request::Client(ClientRequest::SetLoggingLevel { level });
+        let request = Request::Client(Box::new(ClientRequest::SetLoggingLevel { level }));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -350,7 +350,9 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("tools", "tools/list")?;
 
-        let request = Request::Client(ClientRequest::ListTools(ListToolsRequest { cursor }));
+        let request = Request::Client(Box::new(ClientRequest::ListTools(ListToolsRequest {
+            cursor,
+        })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -429,7 +431,10 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("tools", "tools/call")?;
 
-        let request = Request::Client(ClientRequest::CallTool(CallToolRequest { name, arguments }));
+        let request = Request::Client(Box::new(ClientRequest::CallTool(CallToolRequest {
+            name,
+            arguments,
+        })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -493,7 +498,9 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("prompts", "prompts/list")?;
 
-        let request = Request::Client(ClientRequest::ListPrompts(ListPromptsRequest { cursor }));
+        let request = Request::Client(Box::new(ClientRequest::ListPrompts(ListPromptsRequest {
+            cursor,
+        })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -571,10 +578,10 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("prompts", "prompts/get")?;
 
-        let request = Request::Client(ClientRequest::GetPrompt(GetPromptRequest {
+        let request = Request::Client(Box::new(ClientRequest::GetPrompt(GetPromptRequest {
             name,
             arguments,
-        }));
+        })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -632,9 +639,9 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/list")?;
 
-        let request = Request::Client(ClientRequest::ListResources(ListResourcesRequest {
-            cursor,
-        }));
+        let request = Request::Client(Box::new(ClientRequest::ListResources(
+            ListResourcesRequest { cursor },
+        )));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -692,9 +699,9 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/templates/list")?;
 
-        let request = Request::Client(ClientRequest::ListResourceTemplates(
+        let request = Request::Client(Box::new(ClientRequest::ListResourceTemplates(
             ListResourceTemplatesRequest { cursor },
-        ));
+        )));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -756,7 +763,9 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/read")?;
 
-        let request = Request::Client(ClientRequest::ReadResource(ReadResourceRequest { uri }));
+        let request = Request::Client(Box::new(ClientRequest::ReadResource(ReadResourceRequest {
+            uri,
+        })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -822,7 +831,7 @@ impl<T: Transport> Client<T> {
             }
         }
 
-        let request = Request::Client(ClientRequest::Subscribe(SubscribeRequest { uri }));
+        let request = Request::Client(Box::new(ClientRequest::Subscribe(SubscribeRequest { uri })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -873,7 +882,9 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/unsubscribe")?;
 
-        let request = Request::Client(ClientRequest::Unsubscribe(UnsubscribeRequest { uri }));
+        let request = Request::Client(Box::new(ClientRequest::Unsubscribe(UnsubscribeRequest {
+            uri,
+        })));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -934,7 +945,7 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("completions", "completion/complete")?;
 
-        let request = Request::Client(ClientRequest::Complete(params));
+        let request = Request::Client(Box::new(ClientRequest::Complete(params)));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 
@@ -1015,7 +1026,7 @@ impl<T: Transport> Client<T> {
         self.ensure_initialized()?;
         self.assert_capability("sampling", "sampling/createMessage")?;
 
-        let request = Request::Client(ClientRequest::CreateMessage(params));
+        let request = Request::Client(Box::new(ClientRequest::CreateMessage(params)));
         let request_id = RequestId::String(Uuid::new_v4().to_string());
         let response = self.send_request(request_id, request).await?;
 

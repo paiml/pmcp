@@ -18,7 +18,7 @@ struct CodeReviewPrompt;
 
 #[async_trait]
 impl PromptHandler for CodeReviewPrompt {
-    async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
+    async fn handle(&self, args: HashMap<String, String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<GetPromptResult> {
         let language = args
             .get("language")
             .map(|s| s.as_str())
@@ -68,7 +68,7 @@ struct DataAnalysisPrompt;
 
 #[async_trait]
 impl PromptHandler for DataAnalysisPrompt {
-    async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
+    async fn handle(&self, args: HashMap<String, String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<GetPromptResult> {
         let data_type = args.get("data_type").map(|s| s.as_str()).unwrap_or("CSV");
         let data = args
             .get("data")
@@ -117,7 +117,7 @@ struct WritingAssistantPrompt;
 
 #[async_trait]
 impl PromptHandler for WritingAssistantPrompt {
-    async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
+    async fn handle(&self, args: HashMap<String, String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<GetPromptResult> {
         let style = args
             .get("style")
             .map(|s| s.as_str())

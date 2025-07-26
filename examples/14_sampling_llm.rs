@@ -16,6 +16,7 @@ impl SamplingHandler for MockLLM {
     async fn create_message(
         &self,
         params: CreateMessageParams,
+        _extra: pmcp::RequestHandlerExtra,
     ) -> pmcp::Result<CreateMessageResult> {
         info!(
             "Received sampling request with {} messages",

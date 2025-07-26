@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-01-26
+
+### Added
+- **Server-side subscription management** - Complete resource subscription and notification system
+- **WebSocket server transport** - Full WebSocket server implementation for real-time communication
+- **Roots support** - Directory/URI registration and management for both client and server
+- **Request cancellation** - Comprehensive cancellation token system with async support
+- **Batch request processing** - JSON-RPC 2.0 compliant batch request handling
+- **Advanced server capabilities**:
+  - Resource subscription and notification
+  - WebSocket transport layer
+  - Root directory registration
+  - Request cancellation with CancellationToken
+  - Batch request support
+
+### Improved
+- **Enhanced type safety** - Boxed large enum variants to reduce memory usage
+- **Better error handling** - Comprehensive error propagation and handling
+- **Performance optimizations** - Reduced memory allocations and improved async performance
+- **Code quality** - All Clippy lints resolved, improved documentation
+
+### Fixed
+- **Subscription notification consistency** - Fixed subscription state management across server methods
+- **Memory management** - Resolved significant drop issues and reduced contention
+- **Type system improvements** - Better pattern matching and enum handling
+
+## [0.2.0] - 2025-01-15
+
+### Added
+- Additional server features and improvements
+- Enhanced client capabilities
+- Better error handling and validation
+
 ## [0.1.0] - 2024-01-26
 
 ### Added
