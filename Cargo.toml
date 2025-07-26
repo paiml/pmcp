@@ -19,7 +19,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value", "preserve_order"] }
 tokio = { version = "1.35", features = ["full"] }
 async-trait = "0.1"
-thiserror = "1.0"
+thiserror = "2.0"
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
