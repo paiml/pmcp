@@ -210,6 +210,65 @@ release-check: quality-gate coverage
 release: release-check
 	@echo "$(YELLOW)Ready to release. Run 'cargo publish' to publish$(NC)"
 
+# Version bumping helpers
+.PHONY: bump-patch
+bump-patch:
+	@echo "$(BLUE)Bumping patch version...$(NC)"
+	@OLD_VERSION=$$(cat VERSION); \
+	NEW_VERSION=$$(echo $$OLD_VERSION | awk -F. '{print $$1"."$$2"."$$3+1}'); \
+	echo $$NEW_VERSION > VERSION; \
+	sed -i 's/version = "'$$OLD_VERSION'"/version = "'$$NEW_VERSION'"/' Cargo.toml; \
+	echo "$(GREEN)✓ Version bumped from $$OLD_VERSION to $$NEW_VERSION$(NC)"
+
+.PHONY: bump-minor
+bump-minor:
+	@echo "$(BLUE)Bumping minor version...$(NC)"
+	@OLD_VERSION=$$(cat VERSION); \
+	NEW_VERSION=$$(echo $$OLD_VERSION | awk -F. '{print $$1"."$$2+1".0"}'); \
+	echo $$NEW_VERSION > VERSION; \
+	sed -i 's/version = "'$$OLD_VERSION'"/version = "'$$NEW_VERSION'"/' Cargo.toml; \
+	echo "$(GREEN)✓ Version bumped from $$OLD_VERSION to $$NEW_VERSION$(NC)"
+
+.PHONY: bump-major
+bump-major:
+	@echo "$(BLUE)Bumping major version...$(NC)"
+	@OLD_VERSION=$$(cat VERSION); \
+	NEW_VERSION=$$(echo $$OLD_VERSION | awk -F. '{print $$1+1".0.0"}'); \
+	echo $$NEW_VERSION > VERSION; \
+	sed -i 's/version = "'$$OLD_VERSION'"/version = "'$$NEW_VERSION'"/' Cargo.toml; \
+	echo "$(GREEN)✓ Version bumped from $$OLD_VERSION to $$NEW_VERSION$(NC)"
+
+# Automated release commands
+.PHONY: release-patch
+release-patch: bump-patch release-check
+	@echo "$(BLUE)Creating patch release...$(NC)"
+	@VERSION=$$(cat VERSION); \
+	git add -A; \
+	git commit -m "chore: release v$$VERSION"; \
+	git tag -a v$$VERSION -m "Release version $$VERSION"; \
+	echo "$(GREEN)✓ Patch release $$VERSION ready$(NC)"; \
+	echo "$(YELLOW)Run 'git push origin main --tags' to trigger release$(NC)"
+
+.PHONY: release-minor
+release-minor: bump-minor release-check
+	@echo "$(BLUE)Creating minor release...$(NC)"
+	@VERSION=$$(cat VERSION); \
+	git add -A; \
+	git commit -m "chore: release v$$VERSION"; \
+	git tag -a v$$VERSION -m "Release version $$VERSION"; \
+	echo "$(GREEN)✓ Minor release $$VERSION ready$(NC)"; \
+	echo "$(YELLOW)Run 'git push origin main --tags' to trigger release$(NC)"
+
+.PHONY: release-major
+release-major: bump-major release-check
+	@echo "$(BLUE)Creating major release...$(NC)"
+	@VERSION=$$(cat VERSION); \
+	git add -A; \
+	git commit -m "chore: release v$$VERSION"; \
+	git tag -a v$$VERSION -m "Release version $$VERSION"; \
+	echo "$(GREEN)✓ Major release $$VERSION ready$(NC)"; \
+	echo "$(YELLOW)Run 'git push origin main --tags' to trigger release$(NC)"
+
 # Development helpers
 .PHONY: watch
 watch:
@@ -257,6 +316,14 @@ help:
 	@echo "  test-all        - Run all tests"
 	@echo "  coverage        - Generate coverage report"
 	@echo "  mutants         - Run mutation testing"
+	@echo ""
+	@echo "$(YELLOW)Release:$(NC)"
+	@echo "  release-patch   - Create a patch release (x.y.Z)"
+	@echo "  release-minor   - Create a minor release (x.Y.0)"
+	@echo "  release-major   - Create a major release (X.0.0)"
+	@echo "  bump-patch      - Bump patch version only"
+	@echo "  bump-minor      - Bump minor version only"
+	@echo "  bump-major      - Bump major version only"
 	@echo ""
 	@echo "$(YELLOW)Other:$(NC)"
 	@echo "  doc             - Build documentation"

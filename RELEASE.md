@@ -16,6 +16,30 @@ This document describes the release process for pmcp.
 
 ## Release Steps
 
+### Automated Release (Recommended)
+
+For different types of releases, use the appropriate make command:
+
+1. **Patch Release** (bug fixes, documentation)
+   ```bash
+   make release-patch
+   git push origin main --tags
+   ```
+
+2. **Minor Release** (new features, backwards compatible)
+   ```bash
+   make release-minor
+   git push origin main --tags
+   ```
+
+3. **Major Release** (breaking changes)
+   ```bash
+   make release-major
+   git push origin main --tags
+   ```
+
+### Manual Release Process
+
 1. **Create a release commit**
    ```bash
    git add -A
