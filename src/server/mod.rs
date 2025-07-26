@@ -82,7 +82,7 @@ pub trait SamplingHandler: Send + Sync {
 ///
 /// #[async_trait]
 /// impl ToolHandler for MyTool {
-///     async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+///     async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
 ///         Ok(serde_json::json!({"result": "success"}))
 ///     }
 /// }
@@ -251,7 +251,7 @@ impl Server {
     ///
     /// #[async_trait]
     /// impl ToolHandler for HelloTool {
-    ///     async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    ///     async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
     ///         Ok(serde_json::json!({"message": "Hello, World!"}))
     ///     }
     /// }
@@ -286,7 +286,7 @@ impl Server {
     ///
     /// #[async_trait]
     /// impl ToolHandler for EchoTool {
-    ///     async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    ///     async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
     ///         Ok(args) // Echo the input
     ///     }
     /// }
@@ -336,7 +336,7 @@ impl Server {
     ///
     /// #[async_trait]
     /// impl ToolHandler for CalculatorTool {
-    ///     async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    ///     async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
     ///         let a = args["a"].as_f64().unwrap_or(0.0);
     ///         let b = args["b"].as_f64().unwrap_or(0.0);
     ///         Ok(serde_json::json!({"result": a + b}))
@@ -784,7 +784,7 @@ impl Server {
     /// ).await?;
     ///
     /// // Later, unregister the root
-    /// unregister().await;
+    /// unregister();
     /// # Ok(())
     /// # }
     /// ```
@@ -1167,7 +1167,7 @@ impl ServerBuilder {
     ///
     /// #[async_trait]
     /// impl ToolHandler for FileListTool {
-    ///     async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    ///     async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
     ///         let path = args["path"].as_str().unwrap_or(".");
     ///         // List files in path...
     ///         Ok(serde_json::json!({"files": ["file1.txt", "file2.txt"]}))
@@ -1207,7 +1207,7 @@ impl ServerBuilder {
     ///
     /// #[async_trait]
     /// impl PromptHandler for CodeReviewPrompt {
-    ///     async fn handle(&self, args: HashMap<String, String>) -> pmcp::Result<GetPromptResult> {
+    ///     async fn handle(&self, args: HashMap<String, String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<GetPromptResult> {
     ///         let language = args.get("language").map(|s| s.as_str()).unwrap_or("unknown");
     ///         Ok(GetPromptResult {
     ///             description: Some(format!("Code review prompt for {}", language)),
@@ -1256,7 +1256,7 @@ impl ServerBuilder {
     ///
     /// #[async_trait]
     /// impl ResourceHandler for FileResourceHandler {
-    ///     async fn read(&self, uri: &str) -> pmcp::Result<ReadResourceResult> {
+    ///     async fn read(&self, uri: &str, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ReadResourceResult> {
     ///         // Read file content...
     ///         Ok(ReadResourceResult {
     ///             contents: vec![pmcp::Content::Text {
@@ -1265,7 +1265,7 @@ impl ServerBuilder {
     ///         })
     ///     }
     ///
-    ///     async fn list(&self, _cursor: Option<String>) -> pmcp::Result<ListResourcesResult> {
+    ///     async fn list(&self, _cursor: Option<String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ListResourcesResult> {
     ///         Ok(ListResourcesResult {
     ///             resources: vec![pmcp::ResourceInfo {
     ///                 uri: "file://example.txt".to_string(),
@@ -1309,7 +1309,7 @@ impl ServerBuilder {
     ///
     /// #[async_trait]
     /// impl SamplingHandler for MockLLM {
-    ///     async fn create_message(&self, params: CreateMessageParams) -> pmcp::Result<CreateMessageResult> {
+    ///     async fn create_message(&self, params: CreateMessageParams, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<CreateMessageResult> {
     ///         // Process the messages and generate a response
     ///         Ok(CreateMessageResult {
     ///             content: pmcp::MessageContent::Text {
@@ -1356,7 +1356,7 @@ impl ServerBuilder {
     ///
     /// #[async_trait]
     /// impl ToolHandler for PingTool {
-    ///     async fn handle(&self, _args: Value) -> pmcp::Result<Value> {
+    ///     async fn handle(&self, _args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
     ///         Ok(serde_json::json!({"response": "pong"}))
     ///     }
     /// }

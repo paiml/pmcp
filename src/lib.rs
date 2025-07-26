@@ -41,7 +41,7 @@
 //!
 //! #[async_trait]
 //! impl ToolHandler for MyTool {
-//!     async fn handle(&self, args: Value) -> Result<Value, pmcp::Error> {
+//!     async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value, pmcp::Error> {
 //!         Ok(serde_json::json!({"result": "success"}))
 //!     }
 //! }
