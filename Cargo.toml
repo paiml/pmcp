@@ -56,7 +56,7 @@ rstest = "0.18"
 mockall = "0.12"
 pretty_assertions = "1.4"
 test-case = "3.3"
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 insta = { version = "1.34", features = ["json", "redactions"] }
 
 # For examples
