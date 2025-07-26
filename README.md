@@ -36,7 +36,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "0.3.0"
+pmcp = "0.3.1"
 ```
 
 ## Examples
