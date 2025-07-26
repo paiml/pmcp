@@ -3,9 +3,12 @@ name = "pmcp"
 version = "0.1.0"
 edition = "2021"
 authors = ["PAIML Team"]
-description = "Pragmatic Model Context Protocol - Rust implementation with pmat quality standards"
+description = "High-quality Rust SDK for Model Context Protocol (MCP) with full TypeScript SDK compatibility"
 license = "MIT"
 repository = "https://github.com/paiml/pmcp"
+homepage = "https://github.com/paiml/pmcp"
+documentation = "https://docs.rs/pmcp"
+readme = "README.md"
 keywords = ["mcp", "model-context-protocol", "sdk", "ai", "llm"]
 categories = ["api-bindings", "asynchronous", "network-programming"]
 rust-version = "1.80.0"
@@ -76,14 +79,25 @@ progress_example = []
 unstable = []
 simd = []
 
-# Benchmarks will be added later
-# [[bench]]
-# name = "protocol"
-# harness = false
+[[bench]]
+name = "simple_test"
+harness = false
 
-# [[bench]]
-# name = "transport"
-# harness = false
+[[bench]]
+name = "json_performance"
+harness = false
+
+[[bench]]
+name = "protocol_serialization"
+harness = false
+
+[[bench]]
+name = "transport_performance"
+harness = false
+
+[[bench]]
+name = "client_server_operations"
+harness = false
 
 [profile.release]
 lto = true

@@ -87,8 +87,12 @@ pub use error::{Error, ErrorCode, Result};
 pub use server::{PromptHandler, ResourceHandler, Server, ServerBuilder, ToolHandler};
 pub use shared::{StdioTransport, Transport};
 pub use types::{
-    ClientCapabilities, ClientNotification, ClientRequest, Implementation, ProtocolVersion,
-    ServerCapabilities, ServerNotification, ServerRequest,
+    CallToolRequest, CallToolResult, ClientCapabilities, ClientNotification, ClientRequest,
+    CompleteRequest, CompleteResult, CompletionArgument, CompletionReference, Content,
+    GetPromptResult, Implementation, ListResourcesResult, ListToolsResult, MessageContent,
+    ProgressNotification, ProgressToken, PromptMessage, ProtocolVersion, ReadResourceResult,
+    RequestId, ResourceInfo, Role, RootsCapabilities, ServerCapabilities, ServerNotification,
+    ServerRequest, ToolCapabilities,
 };
 
 // Re-export async_trait for convenience

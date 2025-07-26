@@ -1,7 +1,10 @@
 # PMCP - Pragmatic Model Context Protocol
 
+[![Crates.io](https://img.shields.io/crates/v/pmcp.svg)](https://crates.io/crates/pmcp)
+[![Documentation](https://docs.rs/pmcp/badge.svg)](https://docs.rs/pmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust 1.80+](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
+[![Coverage](https://img.shields.io/badge/coverage-84.83%25-brightgreen.svg)](https://github.com/paiml/pmcp)
 
 A high-quality Rust implementation of the [Model Context Protocol](https://modelcontextprotocol.io) (MCP) SDK, maintaining full compatibility with the TypeScript SDK while leveraging Rust's performance and safety guarantees.
 

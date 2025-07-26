@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9bc672cb42d08bc0011b767db5ae6b0be456c57d00bba3e4bfdec99cd7e19cdf # shrinks to sequence = [Initialize(InitializeRequest { protocol_version: "2024-11-05", capabilities: ClientCapabilities { tools: None, prompts: None, resources: None, logging: None, sampling: None, roots: None, experimental: None }, client_info: Implementation { name: "a", version: "0.0.0" } }), Shutdown, Ping], ping_positions = [88, 3, 90, 43]
+cc 2d2ee6439a1073f3a729a3d58f89d469e469f16ecea6f3fba8507e060e14c77d # shrinks to pre_shutdown_actions = [Initialize(InitializeRequest { protocol_version: "2024-11-05", capabilities: ClientCapabilities { tools: None, prompts: None, resources: None, logging: None, sampling: None, roots: None, experimental: None }, client_info: Implementation { name: "A", version: "0.0.0" } })], post_shutdown_actions = [CallTool("k__"), ListResources, Shutdown, Ping]

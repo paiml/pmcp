@@ -212,7 +212,7 @@ impl<P> JSONRPCNotification<P> {
 }
 
 /// JSON-RPC error object.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JSONRPCError {
     /// Error code
     pub code: i32,
@@ -257,6 +257,12 @@ impl From<crate::Error> for JSONRPCError {
             },
             _ => Self::new(-32603, err.to_string()),
         }
+    }
+}
+
+impl std::fmt::Display for JSONRPCError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "JSON-RPC error {}: {}", self.code, self.message)
     }
 }
 
@@ -363,5 +369,165 @@ mod tests {
         assert_eq!(json["jsonrpc"], "2.0");
         assert_eq!(json["method"], "test/notify");
         assert_eq!(json.get("params"), None);
+    }
+
+    #[test]
+    fn test_request_id_display() {
+        let string_id = RequestId::String("req-123".to_string());
+        let number_id = RequestId::Number(42);
+
+        assert_eq!(format!("{}", string_id), "req-123");
+        assert_eq!(format!("{}", number_id), "42");
+    }
+
+    #[test]
+    fn test_request_id_from_u64_overflow() {
+        // Test that large u64 values convert safely
+        let large_u64 = u64::MAX;
+        let id = RequestId::from(large_u64);
+        match id {
+            RequestId::Number(n) => assert_eq!(n, i64::MAX),
+            _ => panic!("Expected Number variant"),
+        }
+    }
+
+    #[test]
+    fn test_request_validation() {
+        let valid_request = JSONRPCRequest::new(1i64, "test", None::<serde_json::Value>);
+        assert!(valid_request.validate().is_ok());
+
+        let invalid_request: JSONRPCRequest<serde_json::Value> = JSONRPCRequest {
+            jsonrpc: "1.0".to_string(),
+            id: RequestId::Number(1),
+            method: "test".to_string(),
+            params: None,
+        };
+        let err = invalid_request.validate().unwrap_err();
+        assert!(err.to_string().contains("Invalid JSON-RPC version"));
+    }
+
+    #[test]
+    fn test_notification_with_params() {
+        let params = json!({"key": "value", "number": 42});
+        let notification = JSONRPCNotification::new("test/notify", Some(params.clone()));
+        let json = serde_json::to_value(&notification).unwrap();
+
+        assert_eq!(json["params"], params);
+    }
+
+    #[test]
+    fn test_jsonrpc_error_constructors() {
+        // Test error with data
+        let error =
+            JSONRPCError::with_data(-32000, "Custom error", json!({"details": "more info"}));
+        assert_eq!(error.code, -32000);
+        assert_eq!(error.message, "Custom error");
+        assert_eq!(error.data, Some(json!({"details": "more info"})));
+
+        // Test from MCP error
+        let mcp_err = crate::error::Error::validation("Bad input");
+        let jsonrpc_err = JSONRPCError::from(mcp_err);
+        assert_eq!(jsonrpc_err.code, -32603); // Internal error (default)
+        assert!(jsonrpc_err.message.contains("Bad input"));
+    }
+
+    #[test]
+    fn test_raw_message_type_detection() {
+        // Test request
+        let request_json = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "test",
+            "params": null
+        });
+        let request: RawMessage = serde_json::from_value(request_json).unwrap();
+        assert_eq!(request.message_type(), MessageType::Request);
+
+        // Test notification
+        let notification_json = json!({
+            "jsonrpc": "2.0",
+            "method": "notify",
+            "params": null
+        });
+        let notification: RawMessage = serde_json::from_value(notification_json).unwrap();
+        assert_eq!(notification.message_type(), MessageType::Notification);
+
+        // Test response
+        let response_json = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": "success"
+        });
+        let response: RawMessage = serde_json::from_value(response_json).unwrap();
+        assert_eq!(response.message_type(), MessageType::Response);
+
+        // Test error response
+        let error_json = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {
+                "code": -32600,
+                "message": "Invalid request"
+            }
+        });
+        let error_response: RawMessage = serde_json::from_value(error_json).unwrap();
+        assert_eq!(error_response.message_type(), MessageType::ErrorResponse);
+
+        // Test invalid
+        let invalid_json = json!({
+            "jsonrpc": "2.0"
+        });
+        let invalid: RawMessage = serde_json::from_value(invalid_json).unwrap();
+        assert_eq!(invalid.message_type(), MessageType::Invalid);
+    }
+
+    #[test]
+    fn test_response_payload_serialization() {
+        // Test result variant
+        let result_payload: ResponsePayload<String, JSONRPCError> =
+            ResponsePayload::Result("success".to_string());
+        let json = serde_json::to_value(&result_payload).unwrap();
+        assert_eq!(json["result"], "success");
+
+        // Test error variant
+        let error_payload: ResponsePayload<String, JSONRPCError> =
+            ResponsePayload::Error(JSONRPCError::new(-32601, "Method not found"));
+        let json = serde_json::to_value(&error_payload).unwrap();
+        assert_eq!(json["error"]["code"], -32601);
+    }
+
+    #[test]
+    fn test_jsonrpc_response_methods() {
+        // Create typed response for better testing
+        type TestResponse = JSONRPCResponse<String, JSONRPCError>;
+
+        let success_resp =
+            TestResponse::success(RequestId::from("req-1"), "result data".to_string());
+        assert!(success_resp.is_success());
+        assert!(!success_resp.is_error());
+        assert_eq!(success_resp.result(), Some(&"result data".to_string()));
+        assert_eq!(success_resp.get_error(), None);
+
+        let error_resp = TestResponse::error(
+            RequestId::from("req-2"),
+            JSONRPCError::new(-32700, "Parse error"),
+        );
+        assert!(!error_resp.is_success());
+        assert!(error_resp.is_error());
+        assert_eq!(error_resp.result(), None);
+        assert_eq!(error_resp.get_error().unwrap().code, -32700);
+    }
+
+    #[test]
+    fn test_jsonrpc_error_display() {
+        let error = JSONRPCError::new(-32600, "Invalid request");
+        let display = format!("{}", error);
+        assert!(display.contains("Invalid request"));
+        assert!(display.contains("-32600"));
+
+        let error_with_data =
+            JSONRPCError::with_data(-32000, "Server error", json!({"code": "ERR001"}));
+        let display = format!("{}", error_with_data);
+        assert!(display.contains("Server error"));
     }
 }

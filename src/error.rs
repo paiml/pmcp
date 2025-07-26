@@ -104,20 +104,51 @@ impl ErrorCode {
 
     /// Create error code from i32 value.
     pub fn from_i32(code: i32) -> Self {
-        match code {
-            -32700 => Self::PARSE_ERROR,
-            -32600 => Self::INVALID_REQUEST,
-            -32601 => Self::METHOD_NOT_FOUND,
-            -32602 => Self::INVALID_PARAMS,
-            -32603 => Self::INTERNAL_ERROR,
-            -32001 => Self::REQUEST_TIMEOUT,
-            -32002 => Self::UNSUPPORTED_CAPABILITY,
-            -32003 => Self::AUTHENTICATION_REQUIRED,
-            -32004 => Self::PERMISSION_DENIED,
-            // Map server errors to internal error
-            -32099..=-32000 => Self::INTERNAL_ERROR,
-            other => Self::other(other),
+        // First check JSON-RPC standard errors
+        if let Some(error_code) = Self::standard_jsonrpc_error(code) {
+            return error_code;
         }
+
+        // Then check MCP-specific errors
+        if let Some(error_code) = Self::mcp_specific_error(code) {
+            return error_code;
+        }
+
+        // Handle server error range
+        if Self::is_server_error_range(code) {
+            return Self::INTERNAL_ERROR;
+        }
+
+        // Default to other
+        Self::other(code)
+    }
+
+    /// Map standard JSON-RPC error codes.
+    fn standard_jsonrpc_error(code: i32) -> Option<Self> {
+        match code {
+            -32700 => Some(Self::PARSE_ERROR),
+            -32600 => Some(Self::INVALID_REQUEST),
+            -32601 => Some(Self::METHOD_NOT_FOUND),
+            -32602 => Some(Self::INVALID_PARAMS),
+            -32603 => Some(Self::INTERNAL_ERROR),
+            _ => None,
+        }
+    }
+
+    /// Map MCP-specific error codes.
+    fn mcp_specific_error(code: i32) -> Option<Self> {
+        match code {
+            -32001 => Some(Self::REQUEST_TIMEOUT),
+            -32002 => Some(Self::UNSUPPORTED_CAPABILITY),
+            -32003 => Some(Self::AUTHENTICATION_REQUIRED),
+            -32004 => Some(Self::PERMISSION_DENIED),
+            _ => None,
+        }
+    }
+
+    /// Check if code is in the server error range.
+    fn is_server_error_range(code: i32) -> bool {
+        matches!(code, -32099..=-32000)
     }
 }
 

@@ -20,7 +20,12 @@ pub mod transport;
 
 /// MCP client for connecting to servers.
 ///
+/// The client provides a high-level interface for interacting with MCP servers,
+/// handling initialization, capabilities negotiation, and tool/resource operations.
+///
 /// # Examples
+///
+/// ## Basic Client Setup
 ///
 /// ```rust,no_run
 /// use pmcp::{Client, StdioTransport, ClientCapabilities};
@@ -32,6 +37,46 @@ pub mod transport;
 /// // Initialize connection
 /// let server_info = client.initialize(ClientCapabilities::default()).await?;
 /// println!("Connected to: {}", server_info.server_info.name);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Custom Client Info
+///
+/// ```rust,no_run
+/// use pmcp::{Client, StdioTransport, Implementation};
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// let transport = StdioTransport::new();
+/// let client_info = Implementation {
+///     name: "my-mcp-client".to_string(),
+///     version: "1.0.0".to_string(),
+/// };
+/// let mut client = Client::with_info(transport, client_info);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Working with Tools
+///
+/// ```rust,no_run
+/// use pmcp::{Client, StdioTransport, ClientCapabilities};
+/// use serde_json::json;
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// let transport = StdioTransport::new();
+/// let mut client = Client::new(transport);
+/// client.initialize(ClientCapabilities::default()).await?;
+///
+/// // List available tools
+/// let tools = client.list_tools(None).await?;
+/// println!("Available tools: {}", tools.tools.len());
+///
+/// // Call a tool
+/// let result = client.call_tool(
+///     "calculator".to_string(),
+///     json!({"operation": "add", "a": 5, "b": 3})
+/// ).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -65,6 +110,18 @@ impl<T: Transport> std::fmt::Debug for Client<T> {
 
 impl<T: Transport> Client<T> {
     /// Create a new client with the given transport.
+    ///
+    /// Uses default client information with the name "pmcp-client" and the
+    /// current crate version.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Client, StdioTransport};
+    ///
+    /// let transport = StdioTransport::new();
+    /// let client = Client::new(transport);
+    /// ```
     pub fn new(transport: T) -> Self {
         Self::with_info(
             transport,
@@ -76,6 +133,22 @@ impl<T: Transport> Client<T> {
     }
 
     /// Create a new client with custom info.
+    ///
+    /// Allows specifying custom client name and version information that will
+    /// be sent to the server during initialization.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Client, StdioTransport, Implementation};
+    ///
+    /// let transport = StdioTransport::new();
+    /// let client_info = Implementation {
+    ///     name: "my-custom-client".to_string(),
+    ///     version: "2.1.0".to_string(),
+    /// };
+    /// let client = Client::with_info(transport, client_info);
+    /// ```
     pub fn with_info(transport: T, client_info: Implementation) -> Self {
         Self {
             transport: Arc::new(RwLock::new(transport)),
@@ -112,6 +185,36 @@ impl<T: Transport> Client<T> {
     }
 
     /// Initialize the connection with the server.
+    ///
+    /// Performs the MCP initialization handshake, negotiating capabilities and
+    /// receiving server information. This must be called before using other
+    /// client methods.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    ///
+    /// let capabilities = ClientCapabilities::default();
+    /// let server_info = client.initialize(capabilities).await?;
+    ///
+    /// println!("Server: {} v{}",
+    ///          server_info.server_info.name,
+    ///          server_info.server_info.version);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is already initialized
+    /// - The server rejects the initialization
+    /// - Communication with the server fails
     pub async fn initialize(
         &mut self,
         capabilities: ClientCapabilities,
@@ -214,6 +317,34 @@ impl<T: Transport> Client<T> {
     }
 
     /// List available tools.
+    ///
+    /// Retrieves information about all tools available on the server, including
+    /// their names, descriptions, and input schemas.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // List all tools
+    /// let tools = client.list_tools(None).await?;
+    /// for tool in tools.tools {
+    ///     println!("Tool: {} - {}",
+    ///              tool.name,
+    ///              tool.description.unwrap_or_else(|| "No description".to_string()));
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * `cursor` - Optional pagination cursor for retrieving additional results
     pub async fn list_tools(&self, cursor: Option<String>) -> Result<ListToolsResult> {
         self.ensure_initialized()?;
         self.assert_capability("tools", "tools/list")?;
@@ -233,6 +364,62 @@ impl<T: Transport> Client<T> {
     }
 
     /// Call a tool.
+    ///
+    /// Invokes a server-provided tool with the specified name and arguments.
+    /// The server must have declared the tool via the tools capability during initialization.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the tool to call
+    /// * `arguments` - JSON value containing the tool's arguments
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    /// use serde_json::json;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Call a simple tool with no arguments
+    /// let result = client.call_tool(
+    ///     "list_files".to_string(),
+    ///     json!({})
+    /// ).await?;
+    ///
+    /// // Call a tool with specific arguments
+    /// let search_result = client.call_tool(
+    ///     "search".to_string(),
+    ///     json!({
+    ///         "query": "rust programming",
+    ///         "limit": 10
+    ///     })
+    /// ).await?;
+    ///
+    /// // Tools can return structured data
+    /// if let Some(content) = result.content.first() {
+    ///     match content {
+    ///         pmcp::Content::Text { text } => {
+    ///             println!("Tool result: {}", text);
+    ///         }
+    ///         _ => println!("Non-text tool result"),
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support tools
+    /// - The tool name doesn't exist
+    /// - The arguments are invalid for the tool
+    /// - Network or protocol errors occur
     pub async fn call_tool(
         &self,
         name: String,
@@ -256,6 +443,51 @@ impl<T: Transport> Client<T> {
     }
 
     /// List available prompts.
+    ///
+    /// Retrieves information about all prompts available on the server, including
+    /// their names, descriptions, and required arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `cursor` - Optional cursor for pagination of large prompt lists
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // List all prompts
+    /// let prompts = client.list_prompts(None).await?;
+    /// for prompt in prompts.prompts {
+    ///     println!("Prompt: {} - {}",
+    ///              prompt.name,
+    ///              prompt.description.unwrap_or_else(|| "No description".to_string()));
+    ///     
+    ///     // Show required arguments
+    ///     if let Some(args) = prompt.arguments {
+    ///         for arg in args {
+    ///             println!("  - {}: {} (required: {})",
+    ///                      arg.name,
+    ///                      arg.description.unwrap_or_else(|| "No description".to_string()),
+    ///                      arg.required);
+    ///         }
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support prompts
+    /// - Network or protocol errors occur
     pub async fn list_prompts(&self, cursor: Option<String>) -> Result<ListPromptsResult> {
         self.ensure_initialized()?;
         self.assert_capability("prompts", "prompts/list")?;
@@ -275,6 +507,61 @@ impl<T: Transport> Client<T> {
     }
 
     /// Get a prompt.
+    ///
+    /// Retrieves a specific prompt from the server with the provided arguments.
+    /// The prompt is processed by the server and returned with filled-in content.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the prompt to retrieve
+    /// * `arguments` - Key-value pairs for prompt arguments
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    /// use std::collections::HashMap;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Get a prompt with arguments
+    /// let mut args = HashMap::new();
+    /// args.insert("language".to_string(), "Rust".to_string());
+    /// args.insert("topic".to_string(), "async programming".to_string());
+    ///
+    /// let prompt_result = client.get_prompt(
+    ///     "code_review".to_string(),
+    ///     args
+    /// ).await?;
+    ///
+    /// println!("Prompt description: {}",
+    ///          prompt_result.description.unwrap_or_else(|| "No description".to_string()));
+    ///
+    /// // Process the prompt messages
+    /// for message in prompt_result.messages {
+    ///     println!("Role: {}", message.role);
+    ///     match &message.content {
+    ///         pmcp::Content::Text { text } => {
+    ///             println!("Content: {}", text);
+    ///         }
+    ///         _ => println!("Non-text content"),
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support prompts
+    /// - The prompt name doesn't exist
+    /// - Required arguments are missing
+    /// - Network or protocol errors occur
     pub async fn get_prompt(
         &self,
         name: String,
@@ -301,6 +588,45 @@ impl<T: Transport> Client<T> {
     }
 
     /// List available resources.
+    ///
+    /// Retrieves information about all resources available on the server, including
+    /// their names, descriptions, URIs, and MIME types.
+    ///
+    /// # Arguments
+    ///
+    /// * `cursor` - Optional cursor for pagination of large resource lists
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // List all resources
+    /// let resources = client.list_resources(None).await?;
+    /// for resource in resources.resources {
+    ///     println!("Resource: {} ({})", resource.name, resource.uri);
+    ///     if let Some(description) = resource.description {
+    ///         println!("  Description: {}", description);
+    ///     }
+    ///     if let Some(mime_type) = resource.mime_type {
+    ///         println!("  MIME Type: {}", mime_type);
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support resources
+    /// - Network or protocol errors occur
     pub async fn list_resources(&self, cursor: Option<String>) -> Result<ListResourcesResult> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/list")?;
@@ -322,6 +648,42 @@ impl<T: Transport> Client<T> {
     }
 
     /// List resource templates.
+    ///
+    /// Retrieves information about all resource templates available on the server.
+    /// Resource templates define patterns for dynamically generated resources.
+    ///
+    /// # Arguments
+    ///
+    /// * `cursor` - Optional cursor for pagination of large template lists
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // List all resource templates
+    /// let templates = client.list_resource_templates(None).await?;
+    /// for template in templates.resource_templates {
+    ///     println!("Template: {} ({})", template.name, template.uri_template);
+    ///     if let Some(description) = template.description {
+    ///         println!("  Description: {}", description);
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support resource templates
+    /// - Network or protocol errors occur
     pub async fn list_resource_templates(
         &self,
         cursor: Option<String>,
@@ -346,6 +708,49 @@ impl<T: Transport> Client<T> {
     }
 
     /// Read a resource.
+    ///
+    /// Retrieves the content of a specific resource from the server by its URI.
+    /// Resources can contain text, binary data, or structured content.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The URI of the resource to read
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Read a text resource
+    /// let resource = client.read_resource("file://readme.txt".to_string()).await?;
+    /// for content in resource.contents {
+    ///     match content {
+    ///         pmcp::Content::Text { text } => {
+    ///             println!("Text content: {}", text);
+    ///         }
+    ///         pmcp::Content::Resource { uri, .. } => {
+    ///             println!("Resource reference: {}", uri);
+    ///         }
+    ///         _ => println!("Other content type"),
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support resources
+    /// - The resource URI doesn't exist
+    /// - Access to the resource is denied
+    /// - Network or protocol errors occur
     pub async fn read_resource(&self, uri: String) -> Result<ReadResourceResult> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/read")?;
@@ -365,6 +770,40 @@ impl<T: Transport> Client<T> {
     }
 
     /// Subscribe to resource updates.
+    ///
+    /// Subscribes to receive notifications when a resource changes.
+    /// The server will send notifications when the subscribed resource is modified.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The URI of the resource to subscribe to
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Subscribe to a configuration file
+    /// client.subscribe_resource("file://config/settings.json".to_string()).await?;
+    ///
+    /// // Now the client will receive notifications when settings.json changes
+    /// // Handle notifications in your event loop
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support resource subscriptions
+    /// - The resource URI doesn't exist
+    /// - Network or protocol errors occur
     pub async fn subscribe_resource(&self, uri: String) -> Result<()> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/subscribe")?;
@@ -395,6 +834,40 @@ impl<T: Transport> Client<T> {
     }
 
     /// Unsubscribe from resource updates.
+    ///
+    /// Unsubscribes from notifications for a previously subscribed resource.
+    /// After unsubscribing, the client will no longer receive change notifications.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The URI of the resource to unsubscribe from
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Subscribe to a resource
+    /// client.subscribe_resource("file://config/settings.json".to_string()).await?;
+    ///
+    /// // Later, unsubscribe when no longer needed
+    /// client.unsubscribe_resource("file://config/settings.json".to_string()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support resource subscriptions
+    /// - The resource URI was not previously subscribed to
+    /// - Network or protocol errors occur
     pub async fn unsubscribe_resource(&self, uri: String) -> Result<()> {
         self.ensure_initialized()?;
         self.assert_capability("resources", "resources/unsubscribe")?;
@@ -412,6 +885,50 @@ impl<T: Transport> Client<T> {
     }
 
     /// Request completion from the server.
+    ///
+    /// Requests auto-completion suggestions from the server for a given context.
+    /// This is useful for implementing IDE-like features with contextual suggestions.
+    ///
+    /// # Arguments
+    ///
+    /// * `params` - The completion request parameters
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities, CompleteRequest};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Request completion for partial text
+    /// let completion_request = CompleteRequest {
+    ///     r#ref: pmcp::CompletionReference::Resource {
+    ///         uri: "file://code.rs".to_string(),
+    ///     },
+    ///     argument: pmcp::CompletionArgument {
+    ///         name: "function_name".to_string(),
+    ///         value: "calc_".to_string(),
+    ///     },
+    /// };
+    ///
+    /// let completions = client.complete(completion_request).await?;
+    /// for completion in completions.completion.values {
+    ///     println!("Suggestion: {}", completion);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The server doesn't support completions
+    /// - The completion context is invalid
+    /// - Network or protocol errors occur
     pub async fn complete(&self, params: CompleteRequest) -> Result<CompleteResult> {
         self.ensure_initialized()?;
         self.assert_capability("completions", "completion/complete")?;
@@ -431,6 +948,38 @@ impl<T: Transport> Client<T> {
     }
 
     /// Send roots list changed notification.
+    ///
+    /// Notifies the server that the client's root list has changed.
+    /// This is typically sent when the workspace or project roots are modified.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let mut capabilities = ClientCapabilities::default();
+    /// // Enable roots list changed capability
+    /// capabilities.roots = Some(pmcp::RootsCapabilities {
+    ///     list_changed: true,
+    /// });
+    ///
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(capabilities).await?;
+    ///
+    /// // Notify server when project roots change
+    /// client.send_roots_list_changed().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The client is not initialized
+    /// - The client doesn't support roots list changed notifications
+    /// - Network or protocol errors occur
     pub async fn send_roots_list_changed(&self) -> Result<()> {
         self.ensure_initialized()?;
         if let Some(roots) = &self.capabilities.as_ref().and_then(|c| c.roots.as_ref()) {
@@ -448,6 +997,38 @@ impl<T: Transport> Client<T> {
     }
 
     /// Cancel a request.
+    ///
+    /// Sends a cancellation notification for an active request.
+    /// This allows graceful termination of long-running operations.
+    ///
+    /// # Arguments
+    ///
+    /// * `request_id` - The ID of the request to cancel
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities, RequestId};
+    /// use serde_json::json;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Start a long-running operation
+    /// let request_id = RequestId::String("long-operation-123".to_string());
+    ///
+    /// // Later, cancel the request if needed
+    /// client.cancel_request(&request_id).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Network or protocol errors occur while sending the cancellation
     pub async fn cancel_request(&self, request_id: &RequestId) -> Result<()> {
         // Send cancellation notification
         self.send_notification(Notification::Cancelled(CancelledNotification {
@@ -466,6 +1047,40 @@ impl<T: Transport> Client<T> {
     }
 
     /// Send a progress notification.
+    ///
+    /// Sends a progress update for a long-running operation.
+    /// This allows the server or client to track operation progress.
+    ///
+    /// # Arguments
+    ///
+    /// * `progress` - The progress notification to send
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::{Client, StdioTransport, ClientCapabilities, ProgressNotification, RequestId};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport = StdioTransport::new();
+    /// let mut client = Client::new(transport);
+    /// client.initialize(ClientCapabilities::default()).await?;
+    ///
+    /// // Send progress update for a file processing operation
+    /// let progress = ProgressNotification {
+    ///     progress_token: pmcp::ProgressToken::String("file-processing".to_string()),
+    ///     progress: 75.0,
+    ///     message: Some("Processing files...".to_string()),
+    /// };
+    ///
+    /// client.send_progress(progress).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Network or protocol errors occur while sending the notification
     pub async fn send_progress(&self, progress: ProgressNotification) -> Result<()> {
         self.send_notification(Notification::Progress(progress))
             .await
@@ -631,9 +1246,8 @@ mod tests {
     use crate::shared::Transport;
     use crate::types::{
         jsonrpc::{JSONRPCError, ResponsePayload},
-        JSONRPCResponse, ProgressNotification,
-        ProgressToken, TransportMessage,
-        ToolCapabilities, ResourceCapabilities,
+        JSONRPCResponse, ProgressNotification, ProgressToken, ResourceCapabilities,
+        ToolCapabilities, TransportMessage,
     };
     use async_trait::async_trait;
     use serde_json::json;
@@ -714,7 +1328,13 @@ mod tests {
             .enforce_strict_capabilities(true)
             .debounced_notifications(vec!["test".to_string()])
             .build();
-        assert!(tokio::runtime::Runtime::new().unwrap().block_on(client.protocol.read()).options().enforce_strict_capabilities);
+        assert!(
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(client.protocol.read())
+                .options()
+                .enforce_strict_capabilities
+        );
     }
 
     #[tokio::test]
@@ -738,7 +1358,9 @@ mod tests {
         let mut client = Client::new(transport);
 
         let caps = ClientCapabilities {
-            tools: Some(ToolCapabilities { list_changed: Some(true) }),
+            tools: Some(ToolCapabilities {
+                list_changed: Some(true),
+            }),
             ..Default::default()
         };
 
@@ -771,10 +1393,10 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![ping_response, init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize first
         let _ = client.initialize(ClientCapabilities::default()).await;
-        
+
         // Ping
         let result = client.ping().await;
         assert!(result.is_ok());
@@ -811,13 +1433,15 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![tools_response, init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize with tools capability
-        let _ = client.initialize(ClientCapabilities {
-            tools: Some(ToolCapabilities::default()),
-            ..Default::default()
-        }).await;
-        
+        let _ = client
+            .initialize(ClientCapabilities {
+                tools: Some(ToolCapabilities::default()),
+                ..Default::default()
+            })
+            .await;
+
         // List tools
         let result = client.list_tools(None).await;
         assert!(result.is_ok());
@@ -855,10 +1479,10 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![error_response, init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize
         let _ = client.initialize(ClientCapabilities::default()).await;
-        
+
         // Try to list tools - should get error
         let result = client.list_tools(None).await;
         assert!(result.is_err());
@@ -869,7 +1493,7 @@ mod tests {
     async fn test_uninitialized_error() {
         let transport = MockTransport::new();
         let client = Client::new(transport);
-        
+
         // Try to call method without initialization
         let result = client.ping().await;
         assert!(result.is_err());
@@ -895,10 +1519,10 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize without tools capability
         let _ = client.initialize(ClientCapabilities::default()).await;
-        
+
         // Try to list tools - should fail
         let result = client.list_tools(None).await;
         assert!(result.is_err());
@@ -922,17 +1546,17 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize
         let _ = client.initialize(ClientCapabilities::default()).await;
-        
+
         // Send progress
         let progress = ProgressNotification {
             progress_token: ProgressToken::String("test".to_string()),
             progress: 50.0,
             message: Some("Halfway done".to_string()),
         };
-        
+
         let result = client.send_progress(progress).await;
         assert!(result.is_ok());
     }
@@ -966,20 +1590,22 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![complete_response, init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize
         let _ = client.initialize(ClientCapabilities::default()).await;
-        
+
         // Complete
-        let result = client.complete(CompleteRequest {
-            r#ref: crate::types::CompletionReference::Resource {
-                uri: "test://test".to_string(),
-            },
-            argument: crate::types::CompletionArgument {
-                name: "test".to_string(),
-                value: "t".to_string(),
-            },
-        }).await;
+        let result = client
+            .complete(CompleteRequest {
+                r#ref: crate::types::CompletionReference::Resource {
+                    uri: "test://test".to_string(),
+                },
+                argument: crate::types::CompletionArgument {
+                    name: "test".to_string(),
+                    value: "t".to_string(),
+                },
+            })
+            .await;
         assert!(result.is_ok());
     }
 
@@ -1013,13 +1639,15 @@ mod tests {
 
         let transport = MockTransport::with_responses(vec![read_response, init_response]);
         let mut client = Client::new(transport);
-        
+
         // Initialize
-        let _ = client.initialize(ClientCapabilities {
-            resources: Some(ResourceCapabilities::default()),
-            ..Default::default()
-        }).await;
-        
+        let _ = client
+            .initialize(ClientCapabilities {
+                resources: Some(ResourceCapabilities::default()),
+                ..Default::default()
+            })
+            .await;
+
         // Read resource
         let result = client.read_resource("test://test".to_string()).await;
         if let Err(e) = &result {
