@@ -702,9 +702,6 @@ pub struct ProxyOAuthProvider {
     /// Upstream OAuth server URL.
     _upstream_url: String,
 
-    /// HTTP client.
-    _client: reqwest::Client,
-
     /// Local token cache.
     _token_cache: Arc<RwLock<HashMap<String, TokenInfo>>>,
 }
@@ -714,7 +711,6 @@ impl ProxyOAuthProvider {
     pub fn new(upstream_url: impl Into<String>) -> Self {
         Self {
             _upstream_url: upstream_url.into(),
-            _client: reqwest::Client::new(),
             _token_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
