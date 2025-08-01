@@ -89,6 +89,22 @@ jobs:
               echo "Skipping example: $example_name (requires authentication_example feature)"
               continue
             fi
+            if [[ "$example_name" == "10_progress_notifications" ]]; then
+              echo "Skipping example: $example_name (requires progress_example feature)"
+              continue
+            fi
+            if [[ "$example_name" == "11_request_cancellation" ]]; then
+              echo "Skipping example: $example_name (requires cancellation_example feature)"
+              continue
+            fi
+            if [[ "$example_name" == "13_websocket_transport" ]]; then
+              echo "Skipping example: $example_name (requires websocket feature)"
+              continue
+            fi
+            if [[ "$example_name" == "18_resource_watcher" ]]; then
+              echo "Skipping example: $example_name (requires resource-watcher feature)"
+              continue
+            fi
             echo "Checking example: $example_name"
             cargo check --example "$example_name"
           fi
