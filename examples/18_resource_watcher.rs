@@ -35,6 +35,7 @@ impl FileSystemResourceHandler {
 
     /// Initialize the resource watcher
     #[cfg(feature = "resource-watcher")]
+    #[allow(dead_code)]
     async fn start_watching(
         &self,
         notification_tx: mpsc::Sender<pmcp::types::protocol::Notification>,
@@ -121,8 +122,8 @@ impl FileSystemResourceHandler {
 impl ResourceHandler for FileSystemResourceHandler {
     async fn read(&self, uri: &str, _extra: RequestHandlerExtra) -> Result<ReadResourceResult> {
         // Convert URI to path
-        let path = if uri.starts_with("file://") {
-            PathBuf::from(&uri[7..])
+        let path = if let Some(path_str) = uri.strip_prefix("file://") {
+            PathBuf::from(path_str)
         } else {
             return Err(pmcp::error::Error::not_found("Invalid URI scheme"));
         };
