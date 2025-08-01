@@ -216,7 +216,8 @@ impl ReconnectManager {
             ConnectionState::Connected | ConnectionState::Connecting => false,
             ConnectionState::CircuitOpen => {
                 // Check if circuit should be closed
-                if let Some(opened_at) = *self.circuit_opened_at.lock().await {
+                let opened_at_opt = *self.circuit_opened_at.lock().await;
+                if let Some(opened_at) = opened_at_opt {
                     if opened_at.elapsed() >= self.config.circuit_breaker_timeout {
                         info!("Circuit breaker timeout reached, closing circuit");
                         *self.circuit_opened_at.lock().await = None;

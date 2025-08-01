@@ -231,7 +231,8 @@ impl CircuitBreaker {
             CircuitState::Closed => true,
             CircuitState::Open => {
                 // Check if we should transition to half-open
-                if let Some(last_failure) = *self.last_failure_time.read().await {
+                let last_failure_opt = *self.last_failure_time.read().await;
+                if let Some(last_failure) = last_failure_opt {
                     if last_failure.elapsed() >= self.config.timeout {
                         *self.state.write().await = CircuitState::HalfOpen;
                         *self.success_count.write().await = 0;
