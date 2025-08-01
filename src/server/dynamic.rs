@@ -302,6 +302,7 @@ impl std::fmt::Debug for DynamicServerManager {
 }
 
 /// Configuration for dynamic server updates
+#[derive(Default)]
 pub struct DynamicConfig {
     /// Dynamic tools to add
     pub tools: HashMap<String, DynamicTool>,
@@ -324,17 +325,6 @@ impl std::fmt::Debug for DynamicConfig {
             .field("resources", &self.resources.is_some())
             .field("sampling", &self.sampling.is_some())
             .finish()
-    }
-}
-
-impl Default for DynamicConfig {
-    fn default() -> Self {
-        Self {
-            tools: HashMap::new(),
-            prompts: HashMap::new(),
-            resources: None,
-            sampling: None,
-        }
     }
 }
 

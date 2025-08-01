@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-08-01
+
+### Added
+- **Session management for HTTP/SSE transports** - Complete session lifecycle management
+  - Session creation, validation, and destruction
+  - Configurable session timeouts and limits
+  - Session persistence and authentication tracking
+  - Cookie and header-based session ID extraction
+  - Session middleware for HTTP requests
+  - Automatic expired session cleanup
+- **Advanced reconnection logic** - Robust connection recovery with exponential backoff
+  - Configurable retry strategies with jitter
+  - Circuit breaker pattern implementation
+  - Connection state management
+  - Success threshold tracking for stable connections
+  - Comprehensive reconnection callbacks
+  - Statistics tracking for monitoring
+- **Enhanced error handling and recovery** - Sophisticated error recovery mechanisms
+  - Multiple recovery strategies (retry, fallback, circuit breaker)
+  - Policy-based error handling configuration
+  - Recovery executors with handler registration
+  - Automatic retry with fixed or exponential backoff
+  - Fallback handler support for graceful degradation
+- **Request context propagation** - Distributed tracing and correlation
+  - Request context with trace and span IDs
+  - Task-local context storage
+  - HTTP header conversion for propagation
+  - Context inheritance for nested operations
+  - Baggage support for custom metadata
+  - Integration with W3C Trace Context standard
+- **Advanced logging with correlation IDs** - Structured logging with request tracking
+  - Correlation layer for automatic context injection
+  - Multiple log formats (JSON, pretty, compact)
+  - Structured log entries with metadata
+  - Error details capture with stack traces
+  - Integration with tracing ecosystem
+  - Helper macros for correlated logging
+
+### Improved
+- **Error handling** - Removed Clone from Error types for better performance
+- **Type safety** - Added type aliases for complex callback types
+- **Code organization** - New error and shared submodules
+  - `src/error/recovery.rs` for recovery mechanisms
+  - `src/shared/session.rs` for session management
+  - `src/shared/reconnect.rs` for reconnection logic
+  - `src/shared/context.rs` for context propagation
+  - `src/shared/logging.rs` for structured logging
+- **Documentation** - Added comprehensive documentation for all new features
+
+### Fixed
+- **Compilation issues** - Fixed various type mismatches and missing imports
+- **Test failures** - Fixed test compilation errors in context and session modules
+- **Clippy warnings** - Addressed numerous clippy lints for better code quality
+
 ## [0.5.0] - 2025-08-01
 
 ### Added

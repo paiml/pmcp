@@ -3,6 +3,8 @@
 //! This module provides a comprehensive error type that covers all possible
 //! failure modes in the MCP protocol.
 
+pub mod recovery;
+
 use std::fmt;
 use thiserror::Error;
 
@@ -158,12 +160,19 @@ impl fmt::Display for ErrorCode {
     }
 }
 
+/// Implement Hash for ErrorCode to use in HashMap
+impl std::hash::Hash for ErrorCode {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
 /// Transport-specific errors.
 #[derive(Error, Debug)]
 pub enum TransportError {
     /// IO error
     #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(String),
 
     /// Connection closed
     #[error("Connection closed")]
@@ -182,6 +191,12 @@ pub enum TransportError {
     #[cfg(feature = "http")]
     #[error("HTTP error: {0}")]
     Http(String),
+}
+
+impl From<std::io::Error> for TransportError {
+    fn from(err: std::io::Error) -> Self {
+        TransportError::Io(err.to_string())
+    }
 }
 
 impl Error {
