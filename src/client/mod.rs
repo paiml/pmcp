@@ -166,6 +166,30 @@ impl<T: Transport> Client<T> {
     }
 
     /// Create a new client with custom protocol options.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Client, StdioTransport, Implementation};
+    /// use pmcp::shared::ProtocolOptions;
+    ///
+    /// // Custom options for high-throughput scenarios
+    /// let options = ProtocolOptions {
+    ///     enforce_strict_capabilities: false,
+    ///     debounced_notification_methods: vec![
+    ///         "notifications/progress".to_string(),
+    ///         "notifications/message".to_string(),
+    ///     ],
+    /// };
+    ///
+    /// let transport = StdioTransport::new();
+    /// let client_info = Implementation {
+    ///     name: "high-throughput-client".to_string(),
+    ///     version: "1.0.0".to_string(),
+    /// };
+    ///
+    /// let client = Client::with_options(transport, client_info, options);
+    /// ```
     pub fn with_options(
         transport: T,
         client_info: Implementation,
@@ -1330,6 +1354,38 @@ impl<T: Transport> Client<T> {
 }
 
 /// Builder for creating clients with custom configuration.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::{ClientBuilder, StdioTransport};
+///
+/// # async fn example() -> Result<(), pmcp::Error> {
+/// // Basic client builder
+/// let transport = StdioTransport::new();
+/// let client = ClientBuilder::new(transport)
+///     .enforce_strict_capabilities(true)
+///     .build();
+///
+/// // Client with debounced notifications
+/// let transport2 = StdioTransport::new();
+/// let debounced_client = ClientBuilder::new(transport2)
+///     .debounced_notifications(vec![
+///         "notifications/progress".to_string(),
+///         "notifications/log".to_string(),
+///     ])
+///     .enforce_strict_capabilities(false)
+///     .build();
+///
+/// // Chain multiple configurations
+/// let transport3 = StdioTransport::new();
+/// let configured_client = ClientBuilder::new(transport3)
+///     .enforce_strict_capabilities(true)
+///     .debounced_notifications(vec!["notifications/resources/changed".to_string()])
+///     .build();
+/// # Ok(())
+/// # }
+/// ```
 pub struct ClientBuilder<T: Transport> {
     transport: T,
     options: ProtocolOptions,

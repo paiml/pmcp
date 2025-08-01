@@ -5,6 +5,91 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Input elicitation request.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::types::elicitation::{ElicitInputRequest, InputType, InputValidation, SelectOption};
+/// use serde_json::json;
+/// use std::collections::HashMap;
+///
+/// // Text input request
+/// let text_request = ElicitInputRequest {
+///     elicitation_id: "get_username".to_string(),
+///     input_type: InputType::Text,
+///     prompt: "Please enter your username:".to_string(),
+///     description: Some("This will be used to identify you in the system".to_string()),
+///     default: Some(json!("guest")),
+///     validation: Some(InputValidation {
+///         required: true,
+///         pattern: Some(r"^[a-zA-Z0-9_]+$".to_string()),
+///         min: Some(3.0), // minimum length
+///         max: Some(20.0), // maximum length
+///         options: None,
+///         message: None,
+///     }),
+///     metadata: HashMap::new(),
+/// };
+///
+/// // Select input request
+/// let select_request = ElicitInputRequest {
+///     elicitation_id: "choose_theme".to_string(),
+///     input_type: InputType::Select,
+///     prompt: "Choose a theme:".to_string(),
+///     description: None,
+///     default: Some(json!("dark")),
+///     validation: Some(InputValidation {
+///         required: true,
+///         pattern: None,
+///         min: None,
+///         max: None,
+///         options: Some(vec![
+///             SelectOption {
+///                 value: json!("light"),
+///                 label: "Light Theme".to_string(),
+///                 description: None,
+///                 disabled: false,
+///             },
+///             SelectOption {
+///                 value: json!("dark"),
+///                 label: "Dark Theme".to_string(),
+///                 description: None,
+///                 disabled: false,
+///             },
+///             SelectOption {
+///                 value: json!("auto"),
+///                 label: "Auto (System)".to_string(),
+///                 description: None,
+///                 disabled: false,
+///             }
+///         ]),
+///         message: None,
+///     }),
+///     metadata: {
+///         let mut meta = HashMap::new();
+///         meta.insert("category".to_string(), json!("ui"));
+///         meta
+///     },
+/// };
+///
+/// // Number input request
+/// let number_request = ElicitInputRequest {
+///     elicitation_id: "set_timeout".to_string(),
+///     input_type: InputType::Number,
+///     prompt: "Set request timeout (seconds):".to_string(),
+///     description: Some("Timeout for network requests".to_string()),
+///     default: Some(json!(30)),
+///     validation: Some(InputValidation {
+///         required: true,
+///         pattern: None,
+///         min: Some(1.0),
+///         max: Some(300.0),
+///         options: None,
+///         message: None,
+///     }),
+///     metadata: HashMap::new(),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ElicitInputRequest {

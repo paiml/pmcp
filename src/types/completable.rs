@@ -5,6 +5,56 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Represents a completable argument that can provide suggestions.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::types::completable::{CompletableArgument, CompletionConfig, CompletionProvider};
+/// use std::collections::HashMap;
+/// use serde_json::json;
+///
+/// // Simple required argument
+/// let name_arg = CompletableArgument {
+///     name: "name".to_string(),
+///     description: Some("The name of the resource".to_string()),
+///     required: true,
+///     completion: None,
+/// };
+///
+/// // Argument with static completion
+/// let status_arg = CompletableArgument {
+///     name: "status".to_string(),
+///     description: Some("Status to filter by".to_string()),
+///     required: false,
+///     completion: Some(CompletionConfig {
+///         provider: CompletionProvider::Static,
+///         config: {
+///             let mut config = HashMap::new();
+///             config.insert("values".to_string(),
+///                 json!(["active", "inactive", "pending"]));
+///             config
+///         },
+///     }),
+/// };
+///
+/// // File path completion argument
+/// let file_arg = CompletableArgument {
+///     name: "file_path".to_string(),
+///     description: Some("Path to the file".to_string()),
+///     required: true,
+///     completion: Some(CompletionConfig {
+///         provider: CompletionProvider::File,
+///         config: {
+///             let mut config = HashMap::new();
+///             config.insert("extensions".to_string(),
+///                 json!([".txt", ".md", ".json"]));
+///             config.insert("basePath".to_string(),
+///                 json!("/home/user/documents"));
+///             config
+///         },
+///     }),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletableArgument {
@@ -117,6 +167,51 @@ pub trait CompletionProviderTrait: Send + Sync {
 }
 
 /// Static completion provider with a fixed list of values.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::types::completable::{StaticCompletionProvider, CompletionItem, CompletionRequest, CompletionProviderTrait};
+/// use std::collections::HashMap;
+///
+/// # async fn example() -> Result<(), pmcp::Error> {
+/// // Create from strings
+/// let colors = StaticCompletionProvider::from_strings(vec![
+///     "red".to_string(),
+///     "green".to_string(),
+///     "blue".to_string(),
+/// ]);
+///
+/// // Create with detailed items
+/// let languages = StaticCompletionProvider::new(vec![
+///     CompletionItem {
+///         value: "rust".to_string(),
+///         label: Some("Rust".to_string()),
+///         description: Some("A systems programming language".to_string()),
+///         icon: Some("🦀".to_string()),
+///         metadata: HashMap::new(),
+///     },
+///     CompletionItem {
+///         value: "python".to_string(),
+///         label: Some("Python".to_string()),
+///         description: Some("A high-level programming language".to_string()),
+///         icon: Some("🐍".to_string()),
+///         metadata: HashMap::new(),
+///     },
+/// ]);
+///
+/// // Use the completion provider
+/// let request = CompletionRequest {
+///     argument: "language".to_string(),
+///     partial: "r".to_string(),
+///     context: HashMap::new(),
+/// };
+///
+/// let response = languages.complete(request).await?;
+/// assert!(!response.completions.is_empty());
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct StaticCompletionProvider {
     /// List of completion items.

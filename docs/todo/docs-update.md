@@ -46,14 +46,14 @@ This is a granular list of all SDK functions that need doctests and examples. Ea
 - [x] Add doctest example for `Error::validation()`
 - [x] Add doctest example for `Error::internal()`
 - [x] Add doctest example for `Error::not_found()`
-- [ ] Add doctest example for `Error::parse()`
-- [ ] Add doctest example for `Error::invalid_request()`
-- [ ] Add doctest example for `Error::method_not_found()`
-- [ ] Add doctest example for `Error::invalid_params()`
+- [x] Add doctest example for `Error::parse()`
+- [x] Add doctest example for `Error::invalid_request()`
+- [x] Add doctest example for `Error::method_not_found()`
+- [x] Add doctest example for `Error::invalid_params()`
 - [x] Add doctest example for `Error::authentication()`
-- [ ] Add doctest example for `Error::capability()`
-- [ ] Add doctest example for `Error::resource_not_found()`
-- [ ] Add doctest example for `Error::cancelled()`
+- [x] Add doctest example for `Error::capability()`
+- [x] Add doctest example for `Error::resource_not_found()`
+- [x] Add doctest example for `Error::cancelled()`
 - [x] Add doctest example for `Error::from_jsonrpc_error()`
 - [x] Add doctest example for `Error::is_error_code()`
 - [x] Add doctest example for `Error::error_code()`
@@ -113,23 +113,23 @@ This is a granular list of all SDK functions that need doctests and examples. Ea
 ## Protocol Types
 
 ### JSON-RPC Types (src/types/jsonrpc.rs)
-- [ ] Add examples for JSONRPC request/response construction
-- [ ] Add examples for error handling with JSONRPC types
+- [x] Add examples for JSONRPC request/response construction
+- [x] Add examples for error handling with JSONRPC types
 
 ### Completable Types (src/types/completable.rs)
-- [ ] Add comprehensive example for `completable()` builder
-- [ ] Add examples for argument completion
+- [x] Add comprehensive example for `completable()` builder
+- [x] Add examples for argument completion
 
 ### Elicitation Types (src/types/elicitation.rs)
-- [ ] Add example for elicitation request handling
-- [ ] Add example for user input validation
+- [x] Add example for elicitation request handling
+- [x] Add example for user input validation
 
 ## Client Builder (src/client/mod.rs)
 
-- [ ] Add doctest example for `ClientBuilder::new()`
-- [ ] Add doctest example for `ClientBuilder::enforce_strict_capabilities()`
-- [ ] Add doctest example for `ClientBuilder::debounced_notifications()`
-- [ ] Add comprehensive builder pattern example
+- [x] Add doctest example for `ClientBuilder::new()`
+- [x] Add doctest example for `ClientBuilder::enforce_strict_capabilities()`
+- [x] Add doctest example for `ClientBuilder::debounced_notifications()`
+- [x] Add comprehensive builder pattern example
 
 ## Server Methods (src/server/mod.rs)
 

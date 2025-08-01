@@ -77,12 +77,40 @@ impl From<u64> for RequestId {
 /// use pmcp::types::{JSONRPCRequest, RequestId};
 /// use serde_json::json;
 ///
-/// let request = JSONRPCRequest {
+/// // Create a request with parameters
+/// let list_tools = JSONRPCRequest {
 ///     jsonrpc: "2.0".to_string(),
 ///     id: RequestId::from(1i64),
 ///     method: "tools/list".to_string(),
 ///     params: Some(json!({"cursor": null})),
 /// };
+///
+/// // Create a request without parameters
+/// let ping: JSONRPCRequest<serde_json::Value> = JSONRPCRequest {
+///     jsonrpc: "2.0".to_string(),
+///     id: RequestId::from("ping-001".to_string()),
+///     method: "ping".to_string(),
+///     params: None,
+/// };
+///
+/// // Using the constructor
+/// let initialize = JSONRPCRequest::new(
+///     42i64,
+///     "initialize",
+///     Some(json!({
+///         "protocolVersion": "2025-06-18",
+///         "capabilities": {},
+///         "clientInfo": {
+///             "name": "test-client",
+///             "version": "1.0.0"
+///         }
+///     }))
+/// );
+///
+/// // Validate requests
+/// assert!(list_tools.validate().is_ok());
+/// assert!(ping.validate().is_ok());
+/// assert!(initialize.validate().is_ok());
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JSONRPCRequest<P = serde_json::Value> {
@@ -121,6 +149,58 @@ impl<P> JSONRPCRequest<P> {
 }
 
 /// A JSON-RPC response.
+///
+/// # Examples  
+///
+/// ```rust
+/// use pmcp::types::{JSONRPCResponse, RequestId, JSONRPCError};
+/// use pmcp::types::jsonrpc::ResponsePayload;
+/// use serde_json::json;
+///
+/// // Success response
+/// let success: JSONRPCResponse<serde_json::Value, JSONRPCError> = JSONRPCResponse {
+///     jsonrpc: "2.0".to_string(),
+///     id: RequestId::from(1i64),
+///     payload: ResponsePayload::Result(json!({
+///         "tools": [
+///             {"name": "calculator", "description": "Perform calculations"},
+///             {"name": "weather", "description": "Get weather info"}
+///         ]
+///     })),
+/// };
+///
+/// // Error response
+/// let error: JSONRPCResponse<serde_json::Value, JSONRPCError> = JSONRPCResponse {
+///     jsonrpc: "2.0".to_string(),
+///     id: RequestId::from("req-123".to_string()),
+///     payload: ResponsePayload::Error(JSONRPCError {
+///         code: -32602,
+///         message: "Invalid parameters".to_string(),
+///         data: Some(json!({"field": "name", "reason": "required"})),
+///     }),
+/// };
+///
+/// // Using constructors
+/// let ping_response: JSONRPCResponse<serde_json::Value, JSONRPCError> = JSONRPCResponse::success(
+///     RequestId::from(99i64),
+///     json!({"status": "pong"})
+/// );
+///
+/// let not_found: JSONRPCResponse<serde_json::Value, JSONRPCError> = JSONRPCResponse::error(
+///     RequestId::from("missing".to_string()),
+///     JSONRPCError {
+///         code: -32601,
+///         message: "Method not found".to_string(),
+///         data: None,
+///     }
+/// );
+///
+/// // Check response types
+/// assert!(success.is_success());
+/// assert!(!success.is_error());
+/// assert!(error.is_error());
+/// assert!(!error.is_success());
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JSONRPCResponse<R = serde_json::Value, E = JSONRPCError> {
     /// Must be "2.0"

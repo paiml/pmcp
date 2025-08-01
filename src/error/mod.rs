@@ -472,6 +472,29 @@ impl Error {
     }
 
     /// Create a parse error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // JSON parsing error
+    /// let err = Error::parse("Invalid JSON syntax at line 5");
+    /// assert!(err.is_error_code(pmcp::error::ErrorCode::PARSE_ERROR));
+    ///
+    /// // Use in message parsing
+    /// fn parse_message(json: &str) -> Result<serde_json::Value, Error> {
+    ///     serde_json::from_str(json)
+    ///         .map_err(|e| Error::parse(format!("Failed to parse JSON: {}", e)))
+    /// }
+    ///
+    /// // Protocol frame parsing
+    /// fn parse_frame(data: &[u8]) -> Result<String, Error> {
+    ///     std::str::from_utf8(data)
+    ///         .map(|s| s.to_string())
+    ///         .map_err(|_| Error::parse("Invalid UTF-8 in message frame"))
+    /// }
+    /// ```
     pub fn parse(message: impl Into<String>) -> Self {
         Self::Protocol {
             code: ErrorCode::PARSE_ERROR,
@@ -481,6 +504,36 @@ impl Error {
     }
 
     /// Create an invalid request error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Missing required fields
+    /// let err = Error::invalid_request("Missing required field: 'method'");
+    /// assert!(err.is_error_code(pmcp::error::ErrorCode::INVALID_REQUEST));
+    ///
+    /// // Invalid request structure
+    /// fn validate_jsonrpc_request(req: &serde_json::Value) -> Result<(), Error> {
+    ///     if !req.is_object() {
+    ///         return Err(Error::invalid_request("Request must be a JSON object"));
+    ///     }
+    ///     if req.get("jsonrpc") != Some(&serde_json::Value::String("2.0".to_string())) {
+    ///         return Err(Error::invalid_request("Invalid jsonrpc version"));
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// // Protocol violations
+    /// fn check_request_id(id: Option<&serde_json::Value>) -> Result<(), Error> {
+    ///     match id {
+    ///         Some(v) if v.is_string() || v.is_number() => Ok(()),
+    ///         None => Ok(()), // notifications don't need ID
+    ///         _ => Err(Error::invalid_request("Request ID must be string or number")),
+    ///     }
+    /// }
+    /// ```
     pub fn invalid_request(message: impl Into<String>) -> Self {
         Self::Protocol {
             code: ErrorCode::INVALID_REQUEST,
@@ -490,6 +543,35 @@ impl Error {
     }
 
     /// Create a method not found error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Unknown method
+    /// let err = Error::method_not_found("unknown/method");
+    /// assert!(err.is_error_code(pmcp::error::ErrorCode::METHOD_NOT_FOUND));
+    ///
+    /// // Use in method dispatch
+    /// fn dispatch_method(method: &str) -> Result<String, Error> {
+    ///     match method {
+    ///         "initialize" => Ok("initializing...".to_string()),
+    ///         "ping" => Ok("pong".to_string()),
+    ///         "tools/list" => Ok("[]".to_string()),
+    ///         unknown => Err(Error::method_not_found(unknown)),
+    ///     }
+    /// }
+    ///
+    /// // Check supported methods
+    /// fn validate_method(method: &str, supported: &[&str]) -> Result<(), Error> {
+    ///     if supported.contains(&method) {
+    ///         Ok(())
+    ///     } else {
+    ///         Err(Error::method_not_found(format!("'{}' (supported: {:?})", method, supported)))
+    ///     }
+    /// }
+    /// ```
     pub fn method_not_found(method: impl Into<String>) -> Self {
         Self::Protocol {
             code: ErrorCode::METHOD_NOT_FOUND,
@@ -499,6 +581,47 @@ impl Error {
     }
 
     /// Create an invalid params error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Missing required parameter
+    /// let err = Error::invalid_params("Missing required parameter: 'name'");
+    /// assert!(err.is_error_code(pmcp::error::ErrorCode::INVALID_PARAMS));
+    ///
+    /// // Parameter validation
+    /// fn validate_tool_call(name: Option<&str>, args: &serde_json::Value) -> Result<(), Error> {
+    ///     let name = name.ok_or_else(|| Error::invalid_params("Tool name is required"))?;
+    ///     
+    ///     if name.is_empty() {
+    ///         return Err(Error::invalid_params("Tool name cannot be empty"));
+    ///     }
+    ///     
+    ///     if !args.is_object() {
+    ///         return Err(Error::invalid_params("Tool arguments must be an object"));
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    ///
+    /// // Type validation
+    /// fn validate_range(params: &serde_json::Value) -> Result<(i32, i32), Error> {
+    ///     let min = params.get("min")
+    ///         .and_then(|v| v.as_i64())
+    ///         .ok_or_else(|| Error::invalid_params("'min' must be a number"))?;
+    ///     let max = params.get("max")
+    ///         .and_then(|v| v.as_i64())
+    ///         .ok_or_else(|| Error::invalid_params("'max' must be a number"))?;
+    ///         
+    ///     if min >= max {
+    ///         return Err(Error::invalid_params("'min' must be less than 'max'"));
+    ///     }
+    ///     
+    ///     Ok((min as i32, max as i32))
+    /// }
+    /// ```
     pub fn invalid_params(message: impl Into<String>) -> Self {
         Self::Protocol {
             code: ErrorCode::INVALID_PARAMS,
@@ -544,16 +667,122 @@ impl Error {
     }
 
     /// Create a capability error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Unsupported capability
+    /// let err = Error::capability("Server does not support tools capability");
+    ///
+    /// // Feature check
+    /// fn check_sampling_support(server_caps: &pmcp::types::ServerCapabilities) -> Result<(), Error> {
+    ///     if server_caps.sampling.is_none() {
+    ///         return Err(Error::capability("Sampling not supported by server"));
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// // Protocol version mismatch
+    /// fn validate_protocol_version(version: &str) -> Result<(), Error> {
+    ///     match version {
+    ///         "2025-06-18" => Ok(()),
+    ///         other => Err(Error::capability(format!("Protocol version '{}' not supported", other))),
+    ///     }
+    /// }
+    ///
+    /// // Resource capability check
+    /// fn require_resources(has_resources: bool) -> Result<(), Error> {
+    ///     if !has_resources {
+    ///         Err(Error::capability("This operation requires resources capability"))
+    ///     } else {
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
     pub fn capability(message: impl Into<String>) -> Self {
         Self::UnsupportedCapability(message.into())
     }
 
     /// Create a resource not found error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // File resource not found
+    /// let err = Error::resource_not_found("file:///path/to/missing.txt");
+    ///
+    /// // Use in resource handlers
+    /// fn read_file_resource(uri: &str) -> Result<Vec<u8>, Error> {
+    ///     let path = uri.strip_prefix("file://").unwrap_or(uri);
+    ///     std::fs::read(path)
+    ///         .map_err(|_| Error::resource_not_found(uri))
+    /// }
+    ///
+    /// // Database resource
+    /// fn get_database_record(uri: &str) -> Result<String, Error> {
+    ///     // Extract ID from URI like "db://users/123"
+    ///     if let Some(id) = uri.strip_prefix("db://users/") {
+    ///         if id == "999" {
+    ///             return Err(Error::resource_not_found(uri));
+    ///         }
+    ///         Ok(format!("User {}", id))
+    ///     } else {
+    ///         Err(Error::resource_not_found(uri))
+    ///     }
+    /// }
+    ///
+    /// // API resource
+    /// fn fetch_api_resource(uri: &str) -> Result<serde_json::Value, Error> {
+    ///     if !uri.starts_with("https://api.example.com/") {
+    ///         return Err(Error::resource_not_found(format!("Invalid API URI: {}", uri)));
+    ///     }
+    ///     // Mock response
+    ///     Ok(serde_json::json!({"data": "found"}))
+    /// }
+    /// ```
     pub fn resource_not_found(uri: impl Into<String>) -> Self {
         Self::NotFound(format!("Resource not found: {}", uri.into()))
     }
 
     /// Create a cancelled operation error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // User-initiated cancellation
+    /// let err = Error::cancelled("User cancelled the operation");
+    ///
+    /// // Timeout cancellation
+    /// fn check_cancellation_token(cancelled: bool) -> Result<String, Error> {
+    ///     if cancelled {
+    ///         return Err(Error::cancelled("Operation timed out"));
+    ///     }
+    ///     Ok("completed".to_string())
+    ///     }
+    ///
+    /// // Tool execution cancellation
+    /// fn run_long_tool(should_cancel: bool) -> Result<serde_json::Value, Error> {
+    ///     if should_cancel {
+    ///         return Err(Error::cancelled("Tool execution was cancelled by client"));
+    ///     }
+    ///     Ok(serde_json::json!({"result": "success"}))
+    /// }
+    ///
+    /// // Progress notification cancellation
+    /// fn send_progress_update(cancelled: bool, progress: f64) -> Result<(), Error> {
+    ///     if cancelled {
+    ///         return Err(Error::cancelled(format!("Progress cancelled at {}%", progress * 100.0)));
+    ///     }
+    ///     println!("Progress: {}%", progress * 100.0);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn cancelled(message: impl Into<String>) -> Self {
         // For now, treat cancellation as a validation error with specific message
         Self::Validation(format!("Operation cancelled: {}", message.into()))
