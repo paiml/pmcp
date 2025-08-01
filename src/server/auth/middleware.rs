@@ -90,24 +90,21 @@ impl BearerTokenMiddleware {
 impl AuthMiddleware for BearerTokenMiddleware {
     async fn authenticate(&self, auth_info: Option<&AuthInfo>) -> Result<AuthContext> {
         // Check if auth info is provided
-        let auth_info = match auth_info {
-            Some(info) => info,
-            None => {
-                if self.required {
-                    return Err(Error::protocol(
-                        ErrorCode::AUTHENTICATION_REQUIRED,
-                        "Authentication required",
-                    ));
-                } else {
-                    // Return anonymous context
-                    return Ok(AuthContext {
-                        client_id: "anonymous".to_string(),
-                        user_id: "anonymous".to_string(),
-                        scopes: vec![],
-                        metadata: serde_json::Map::new(),
-                    });
-                }
-            },
+        let Some(auth_info) = auth_info else {
+            if self.required {
+                return Err(Error::protocol(
+                    ErrorCode::AUTHENTICATION_REQUIRED,
+                    "Authentication required",
+                ));
+            } else {
+                // Return anonymous context
+                return Ok(AuthContext {
+                    client_id: "anonymous".to_string(),
+                    user_id: "anonymous".to_string(),
+                    scopes: vec![],
+                    metadata: serde_json::Map::new(),
+                });
+            }
         };
 
         // Check auth scheme

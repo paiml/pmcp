@@ -236,11 +236,11 @@ pub struct TokenRequest {
     /// Grant type.
     pub grant_type: GrantType,
 
-    /// Authorization code (for authorization_code grant).
+    /// Authorization code (for `authorization_code` grant).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
 
-    /// Redirect URI (for authorization_code grant).
+    /// Redirect URI (for `authorization_code` grant).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redirect_uri: Option<String>,
 

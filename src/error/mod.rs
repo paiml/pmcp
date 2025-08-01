@@ -160,7 +160,7 @@ impl fmt::Display for ErrorCode {
     }
 }
 
-/// Implement Hash for ErrorCode to use in HashMap
+/// Implement Hash for `ErrorCode` to use in `HashMap`
 impl std::hash::Hash for ErrorCode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
@@ -195,7 +195,7 @@ pub enum TransportError {
 
 impl From<std::io::Error> for TransportError {
     fn from(err: std::io::Error) -> Self {
-        TransportError::Io(err.to_string())
+        Self::Io(err.to_string())
     }
 }
 
