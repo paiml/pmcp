@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-08-01
+
+### Added
+- **OAuth 2.0 server functionality** - Complete authorization code flow with PKCE support
+  - In-memory OAuth provider implementation
+  - Bearer token and client credentials middleware
+  - Scope-based authorization middleware
+  - Full example server (examples/16_oauth_server.rs)
+- **Completable arguments system** - Auto-completion support for prompts and resources
+  - Static and file-based completion providers
+  - Full TypeScript SDK compatibility
+  - Example implementation (examples/17_completable_prompts.rs)
+- **ResourceWatcher** - File system monitoring for automatic resource updates
+  - Cross-platform support using notify crate
+  - Pattern-based filtering with glob support
+  - Configurable debouncing
+  - Example server (examples/18_resource_watcher.rs)
+- **User input elicitation** - Interactive user input requests
+  - Support for all input types (text, boolean, select, file path, etc.)
+  - Timeout and cancellation handling
+  - Async request/response correlation
+  - Example implementation (examples/19_elicit_input.rs)
+
+### Improved
+- **Authentication support** - Extended RequestHandlerExtra to include auth_info
+- **Protocol extensions** - Added ElicitInput to ServerRequest and ElicitInputResponse to ClientRequest
+- **Error handling** - Comprehensive error types for all new features
+- **Type safety** - All new types implement Debug trait
+- **Code quality** - All clippy warnings resolved, improved documentation
+
+### Dependencies
+- Added `sha2` for OAuth PKCE support
+- Added `base64` for token encoding
+- Added `notify` for file system watching
+- Added `glob-match` for pattern matching
+- Added `reqwest` for future proxy OAuth support
+
 ## [0.3.1] - 2025-01-26
 
 ### Fixed
