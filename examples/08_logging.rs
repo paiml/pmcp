@@ -8,8 +8,8 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    types::protocol::LogLevel, Client, ClientCapabilities, Server, ServerCapabilities,
-    StdioTransport, ToolHandler,
+    types::{protocol::LogLevel, capabilities::{ClientCapabilities, ServerCapabilities}},
+    Client, Server, StdioTransport, ToolHandler,
 };
 use serde_json::{json, Value};
 use tokio::time::{sleep, Duration};

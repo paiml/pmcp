@@ -3,7 +3,8 @@
 use async_trait::async_trait;
 use pmcp::error::Result;
 use pmcp::server::elicitation::{ElicitInput, ElicitationContext, ElicitationManager};
-use pmcp::server::{Server, ServerCapabilities, ToolHandler};
+use pmcp::server::{Server, ToolHandler};
+use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::types::elicitation::{
     elicit_boolean, elicit_number, elicit_select, elicit_text, InputType, SelectOption,
 };

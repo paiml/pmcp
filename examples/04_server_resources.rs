@@ -8,8 +8,8 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    types::{Content, ListResourcesResult, ReadResourceResult, ResourceInfo},
-    ResourceHandler, Server, ServerCapabilities,
+    types::{Content, ListResourcesResult, ReadResourceResult, ResourceInfo, capabilities::ServerCapabilities},
+    ResourceHandler, Server,
 };
 use std::collections::HashMap;
 

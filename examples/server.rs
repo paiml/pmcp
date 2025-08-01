@@ -1,7 +1,8 @@
 //! Example MCP server implementation
 
 use async_trait::async_trait;
-use pmcp::{Server, ServerCapabilities, ToolHandler};
+use pmcp::{Server, ToolHandler};
+use pmcp::types::capabilities::ServerCapabilities;
 use serde_json::Value;
 
 struct EchoTool;

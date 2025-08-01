@@ -6,7 +6,8 @@ use pmcp::server::auth::{
     AuthMiddleware, BearerTokenMiddleware, GrantType, InMemoryOAuthProvider, OAuthClient,
     OAuthProvider, ResponseType, ScopeMiddleware,
 };
-use pmcp::server::{Server, ServerCapabilities, ToolHandler};
+use pmcp::server::{Server, ToolHandler};
+use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::RequestHandlerExtra;
 use serde_json::{json, Value};
 use std::collections::HashMap;

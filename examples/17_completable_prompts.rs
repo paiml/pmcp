@@ -2,7 +2,8 @@
 
 use async_trait::async_trait;
 use pmcp::error::Result;
-use pmcp::server::{PromptHandler, Server, ServerCapabilities};
+use pmcp::server::{PromptHandler, Server};
+use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::types::completable::{completable, StaticCompletionProvider};
 use pmcp::types::protocol::{GetPromptResult, PromptArgument, PromptMessage, Role};
 use pmcp::RequestHandlerExtra;

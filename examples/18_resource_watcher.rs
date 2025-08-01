@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use pmcp::error::Result;
 #[cfg(feature = "resource-watcher")]
 use pmcp::server::resource_watcher::{ResourceWatcher, ResourceWatcherBuilder, WatchConfig};
-use pmcp::server::{ResourceHandler, Server, ServerCapabilities};
+use pmcp::server::{ResourceHandler, Server};
+use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::types::protocol::{Content, ListResourcesResult, ReadResourceResult, ResourceInfo};
 use pmcp::RequestHandlerExtra;
 use std::collections::HashMap;
