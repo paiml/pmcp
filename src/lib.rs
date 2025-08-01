@@ -115,12 +115,62 @@ pub use utils::{BatchingConfig, DebouncingConfig, MessageBatcher, MessageDebounc
 pub use async_trait::async_trait;
 
 /// Protocol version constants
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::LATEST_PROTOCOL_VERSION;
+///
+/// // Use in client initialization
+/// let protocol_version = LATEST_PROTOCOL_VERSION;
+/// println!("Using MCP protocol version: {}", protocol_version);
+///
+/// // Check if a version is the latest
+/// assert_eq!(LATEST_PROTOCOL_VERSION, "2025-06-18");
+/// ```
 pub const LATEST_PROTOCOL_VERSION: &str = "2025-06-18";
 
 /// Default protocol version to use for negotiation
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::DEFAULT_PROTOCOL_VERSION;
+///
+/// // Use as fallback when negotiating protocol version
+/// let negotiated_version = DEFAULT_PROTOCOL_VERSION;
+/// println!("Negotiating with protocol version: {}", negotiated_version);
+///
+/// // This is typically used internally by the SDK
+/// assert_eq!(DEFAULT_PROTOCOL_VERSION, "2025-03-26");
+/// ```
 pub const DEFAULT_PROTOCOL_VERSION: &str = "2025-03-26";
 
 /// List of all protocol versions supported by this SDK
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::SUPPORTED_PROTOCOL_VERSIONS;
+///
+/// // Check if a version is supported
+/// let version_to_check = "2025-03-26";
+/// let is_supported = SUPPORTED_PROTOCOL_VERSIONS.contains(&version_to_check);
+/// assert!(is_supported);
+///
+/// // List all supported versions
+/// println!("Supported MCP protocol versions:");
+/// for version in SUPPORTED_PROTOCOL_VERSIONS {
+///     println!("  - {}", version);
+/// }
+///
+/// // Use in version negotiation
+/// fn negotiate_version(client_version: &str) -> Option<&'static str> {
+///     SUPPORTED_PROTOCOL_VERSIONS.iter()
+///         .find(|&&v| v == client_version)
+///         .copied()
+/// }
+/// ```
 pub const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
     LATEST_PROTOCOL_VERSION,
     "2025-03-26",
@@ -129,6 +179,33 @@ pub const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
 ];
 
 /// Default request timeout in milliseconds
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::DEFAULT_REQUEST_TIMEOUT_MS;
+/// use std::time::Duration;
+///
+/// // Convert to Duration for use with timeouts
+/// let timeout = Duration::from_millis(DEFAULT_REQUEST_TIMEOUT_MS);
+/// println!("Default timeout: {:?}", timeout);
+///
+/// // Use in custom transport configuration
+/// struct TransportConfig {
+///     timeout_ms: u64,
+/// }
+///
+/// impl Default for TransportConfig {
+///     fn default() -> Self {
+///         Self {
+///             timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS,
+///         }
+///     }
+/// }
+///
+/// // Verify default value
+/// assert_eq!(DEFAULT_REQUEST_TIMEOUT_MS, 60_000); // 60 seconds
+/// ```
 pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 60_000;
 
 /// Server-side logging function (placeholder for examples).

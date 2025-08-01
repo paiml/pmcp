@@ -95,16 +95,99 @@ impl ErrorCode {
     pub const PERMISSION_DENIED: Self = Self(-32004);
 
     /// Create a custom error code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::error::ErrorCode;
+    ///
+    /// // Create application-specific error codes
+    /// const RATE_LIMIT_ERROR: ErrorCode = ErrorCode::other(-32010);
+    /// const QUOTA_EXCEEDED: ErrorCode = ErrorCode::other(-32011);
+    /// const FEATURE_DISABLED: ErrorCode = ErrorCode::other(-32012);
+    ///
+    /// // Use in error handling
+    /// # use pmcp::Error;
+    /// fn check_rate_limit(count: u32) -> Result<(), Error> {
+    ///     if count > 100 {
+    ///         return Err(Error::protocol(
+    ///             RATE_LIMIT_ERROR,
+    ///             "Rate limit exceeded: max 100 requests per minute"
+    ///         ));
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// // Server-specific error codes (reserved range: -32099 to -32000)
+    /// const SERVER_MAINTENANCE: ErrorCode = ErrorCode::other(-32050);
+    /// const DATABASE_ERROR: ErrorCode = ErrorCode::other(-32051);
+    /// ```
     pub const fn other(code: i32) -> Self {
         Self(code)
     }
 
     /// Convert error code to i32 value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::error::ErrorCode;
+    ///
+    /// // Standard error codes
+    /// assert_eq!(ErrorCode::PARSE_ERROR.as_i32(), -32700);
+    /// assert_eq!(ErrorCode::INVALID_REQUEST.as_i32(), -32600);
+    /// assert_eq!(ErrorCode::METHOD_NOT_FOUND.as_i32(), -32601);
+    /// assert_eq!(ErrorCode::INVALID_PARAMS.as_i32(), -32602);
+    /// assert_eq!(ErrorCode::INTERNAL_ERROR.as_i32(), -32603);
+    ///
+    /// // MCP-specific error codes
+    /// assert_eq!(ErrorCode::REQUEST_TIMEOUT.as_i32(), -32001);
+    /// assert_eq!(ErrorCode::AUTHENTICATION_REQUIRED.as_i32(), -32003);
+    ///
+    /// // Custom error codes
+    /// let custom = ErrorCode::other(-32099);
+    /// assert_eq!(custom.as_i32(), -32099);
+    ///
+    /// // Use in JSON serialization
+    /// # use serde_json::json;
+    /// let error_json = json!({
+    ///     "code": ErrorCode::INVALID_PARAMS.as_i32(),
+    ///     "message": "Invalid parameters"
+    /// });
+    /// ```
     pub fn as_i32(&self) -> i32 {
         self.0
     }
 
     /// Create error code from i32 value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::error::ErrorCode;
+    ///
+    /// // Standard JSON-RPC errors are recognized
+    /// assert_eq!(ErrorCode::from_i32(-32700), ErrorCode::PARSE_ERROR);
+    /// assert_eq!(ErrorCode::from_i32(-32601), ErrorCode::METHOD_NOT_FOUND);
+    ///
+    /// // MCP-specific errors are recognized
+    /// assert_eq!(ErrorCode::from_i32(-32001), ErrorCode::REQUEST_TIMEOUT);
+    /// assert_eq!(ErrorCode::from_i32(-32003), ErrorCode::AUTHENTICATION_REQUIRED);
+    ///
+    /// // Server error range maps to INTERNAL_ERROR
+    /// assert_eq!(ErrorCode::from_i32(-32050), ErrorCode::INTERNAL_ERROR);
+    /// assert_eq!(ErrorCode::from_i32(-32099), ErrorCode::INTERNAL_ERROR);
+    ///
+    /// // Unknown codes create custom error
+    /// let custom = ErrorCode::from_i32(-40000);
+    /// assert_eq!(custom.as_i32(), -40000);
+    ///
+    /// // Use in error parsing
+    /// # use serde_json::json;
+    /// let error_data = json!({"code": -32602});
+    /// let code = ErrorCode::from_i32(error_data["code"].as_i64().unwrap() as i32);
+    /// assert_eq!(code, ErrorCode::INVALID_PARAMS);
+    /// ```
     pub fn from_i32(code: i32) -> Self {
         // First check JSON-RPC standard errors
         if let Some(error_code) = Self::standard_jsonrpc_error(code) {
@@ -201,6 +284,31 @@ impl From<std::io::Error> for TransportError {
 
 impl Error {
     /// Create a protocol error with the given code and message.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Error, error::ErrorCode};
+    ///
+    /// // Create a standard JSON-RPC error
+    /// let err = Error::protocol(ErrorCode::INVALID_REQUEST, "Missing required field");
+    /// assert!(err.is_error_code(ErrorCode::INVALID_REQUEST));
+    ///
+    /// // Create a custom error code
+    /// let custom_err = Error::protocol(ErrorCode::other(-32050), "Custom server error");
+    /// assert_eq!(custom_err.error_code().unwrap().as_i32(), -32050);
+    ///
+    /// // Use in error handling
+    /// fn validate_request(data: &str) -> Result<(), Error> {
+    ///     if data.is_empty() {
+    ///         return Err(Error::protocol(
+    ///             ErrorCode::INVALID_REQUEST,
+    ///             "Request data cannot be empty"
+    ///         ));
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn protocol(code: ErrorCode, message: impl Into<String>) -> Self {
         Self::Protocol {
             code,
@@ -219,6 +327,44 @@ impl Error {
     }
 
     /// Create a protocol error with additional data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Error, error::ErrorCode};
+    /// use serde_json::json;
+    ///
+    /// // Create error with structured data
+    /// let err = Error::protocol_with_data(
+    ///     ErrorCode::INVALID_PARAMS,
+    ///     "Invalid parameter type",
+    ///     json!({
+    ///         "expected": "string",
+    ///         "actual": "number",
+    ///         "field": "name"
+    ///     })
+    /// );
+    ///
+    /// // Create validation error with details
+    /// let validation_err = Error::protocol_with_data(
+    ///     ErrorCode::INVALID_PARAMS,
+    ///     "Validation failed",
+    ///     json!({
+    ///         "errors": [
+    ///             {"field": "age", "message": "Must be positive"},
+    ///             {"field": "email", "message": "Invalid format"}
+    ///         ]
+    ///     })
+    /// );
+    ///
+    /// // Access error details
+    /// match &validation_err {
+    ///     Error::Protocol { data: Some(details), .. } => {
+    ///         println!("Error details: {}", details);
+    ///     }
+    ///     _ => {}
+    /// }
+    /// ```
     pub fn protocol_with_data(
         code: ErrorCode,
         message: impl Into<String>,
@@ -232,16 +378,95 @@ impl Error {
     }
 
     /// Create a validation error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Simple validation error
+    /// let err = Error::validation("Email address is required");
+    ///
+    /// // Use in validation functions
+    /// fn validate_email(email: &str) -> Result<(), Error> {
+    ///     if email.is_empty() {
+    ///         return Err(Error::validation("Email cannot be empty"));
+    ///     }
+    ///     if !email.contains('@') {
+    ///         return Err(Error::validation("Invalid email format"));
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// // Validation with formatted messages
+    /// fn validate_range(value: i32, min: i32, max: i32) -> Result<(), Error> {
+    ///     if value < min || value > max {
+    ///         return Err(Error::validation(
+    ///             format!("Value {} must be between {} and {}", value, min, max)
+    ///         ));
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn validation(message: impl Into<String>) -> Self {
         Self::Validation(message.into())
     }
 
     /// Create an internal error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Simple internal error
+    /// let err = Error::internal("Unexpected state");
+    ///
+    /// // Use for unexpected conditions
+    /// fn process_data(data: &[u8]) -> Result<String, Error> {
+    ///     match std::str::from_utf8(data) {
+    ///         Ok(s) => Ok(s.to_string()),
+    ///         Err(_) => Err(Error::internal("Failed to decode UTF-8 data")),
+    ///     }
+    /// }
+    ///
+    /// // Wrap system errors
+    /// fn read_config() -> Result<String, Error> {
+    ///     std::fs::read_to_string("config.json")
+    ///         .map_err(|e| Error::internal(format!("Failed to read config: {}", e)))
+    /// }
+    /// ```
     pub fn internal(message: impl Into<String>) -> Self {
         Self::Internal(message.into())
     }
 
     /// Create a not found error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    /// use std::collections::HashMap;
+    ///
+    /// // Simple not found error
+    /// let err = Error::not_found("user:123");
+    ///
+    /// // Use in lookup functions
+    /// fn find_user(id: &str, users: &HashMap<String, String>) -> Result<String, Error> {
+    ///     users.get(id)
+    ///         .cloned()
+    ///         .ok_or_else(|| Error::not_found(format!("User with ID '{}'", id)))
+    /// }
+    ///
+    /// // Resource paths
+    /// fn load_resource(path: &str) -> Result<Vec<u8>, Error> {
+    ///     if !std::path::Path::new(path).exists() {
+    ///         return Err(Error::not_found(format!("File '{}'", path)));
+    ///     }
+    ///     // Load file...
+    ///     Ok(vec![])
+    /// }
+    /// ```
     pub fn not_found(resource: impl Into<String>) -> Self {
         Self::NotFound(resource.into())
     }
@@ -283,6 +508,37 @@ impl Error {
     }
 
     /// Create an authentication error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::Error;
+    ///
+    /// // Basic authentication error
+    /// let err = Error::authentication("Invalid API key");
+    ///
+    /// // Use in auth validation
+    /// fn validate_token(token: &str) -> Result<(), Error> {
+    ///     if token.is_empty() {
+    ///         return Err(Error::authentication("Token is required"));
+    ///     }
+    ///     if token.len() < 32 {
+    ///         return Err(Error::authentication("Token must be at least 32 characters"));
+    ///     }
+    ///     if !token.starts_with("Bearer ") {
+    ///         return Err(Error::authentication("Token must use Bearer scheme"));
+    ///     }
+    ///     Ok(())
+    /// }
+    ///
+    /// // OAuth errors
+    /// fn handle_oauth_callback(code: Option<&str>) -> Result<String, Error> {
+    ///     match code {
+    ///         Some(c) if !c.is_empty() => Ok(c.to_string()),
+    ///         _ => Err(Error::authentication("OAuth authorization code missing")),
+    ///     }
+    /// }
+    /// ```
     pub fn authentication(message: impl Into<String>) -> Self {
         Self::Authentication(message.into())
     }
@@ -304,6 +560,38 @@ impl Error {
     }
 
     /// Create from JSON-RPC error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Error, types::JSONRPCError};
+    /// use serde_json::json;
+    ///
+    /// // Convert from JSON-RPC error
+    /// let jsonrpc_error = JSONRPCError {
+    ///     code: -32602,
+    ///     message: "Invalid parameters".to_string(),
+    ///     data: Some(json!({"field": "name", "reason": "too short"})),
+    /// };
+    ///
+    /// let err = Error::from_jsonrpc_error(jsonrpc_error);
+    /// assert!(err.is_error_code(pmcp::error::ErrorCode::INVALID_PARAMS));
+    ///
+    /// // Parse from JSON response
+    /// let error_response = json!({
+    ///     "jsonrpc": "2.0",
+    ///     "error": {
+    ///         "code": -32601,
+    ///         "message": "Method not found: foo"
+    ///     },
+    ///     "id": 1
+    /// });
+    ///
+    /// if let Ok(jsonrpc_err) = serde_json::from_value::<JSONRPCError>(error_response["error"].clone()) {
+    ///     let err = Error::from_jsonrpc_error(jsonrpc_err);
+    ///     assert!(err.is_error_code(pmcp::error::ErrorCode::METHOD_NOT_FOUND));
+    /// }
+    /// ```
     pub fn from_jsonrpc_error(error: crate::types::JSONRPCError) -> Self {
         Self::Protocol {
             code: ErrorCode::from_i32(error.code),
@@ -313,11 +601,69 @@ impl Error {
     }
 
     /// Check if this is a protocol error with a specific code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Error, error::ErrorCode};
+    ///
+    /// // Check specific error codes
+    /// let err = Error::protocol(ErrorCode::INVALID_REQUEST, "Bad request");
+    /// assert!(err.is_error_code(ErrorCode::INVALID_REQUEST));
+    /// assert!(!err.is_error_code(ErrorCode::METHOD_NOT_FOUND));
+    ///
+    /// // Non-protocol errors return false
+    /// let validation_err = Error::validation("Invalid field");
+    /// assert!(!validation_err.is_error_code(ErrorCode::INVALID_REQUEST));
+    ///
+    /// // Use in error handling
+    /// fn handle_error(err: &Error) {
+    ///     if err.is_error_code(ErrorCode::AUTHENTICATION_REQUIRED) {
+    ///         println!("Please authenticate first");
+    ///     } else if err.is_error_code(ErrorCode::METHOD_NOT_FOUND) {
+    ///         println!("Unknown method called");
+    ///     } else {
+    ///         println!("Error: {}", err);
+    ///     }
+    /// }
+    /// ```
     pub fn is_error_code(&self, code: ErrorCode) -> bool {
         matches!(self, Self::Protocol { code: c, .. } if *c == code)
     }
 
     /// Get the error code if this is a protocol error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::{Error, error::ErrorCode};
+    ///
+    /// // Protocol errors have error codes
+    /// let protocol_err = Error::protocol(ErrorCode::INVALID_PARAMS, "Missing field");
+    /// assert_eq!(protocol_err.error_code(), Some(ErrorCode::INVALID_PARAMS));
+    ///
+    /// // Other error types return None
+    /// let internal_err = Error::internal("System failure");
+    /// assert_eq!(internal_err.error_code(), None);
+    ///
+    /// let auth_err = Error::authentication("Invalid token");
+    /// assert_eq!(auth_err.error_code(), None);
+    ///
+    /// // Use for error categorization
+    /// fn categorize_error(err: &Error) -> &'static str {
+    ///     match err.error_code() {
+    ///         Some(code) => match code.as_i32() {
+    ///             -32700 => "Parse error",
+    ///             -32600 => "Invalid request",
+    ///             -32601 => "Method not found",
+    ///             -32602 => "Invalid parameters",
+    ///             -32603 => "Internal error",
+    ///             _ => "Protocol error",
+    ///         },
+    ///         None => "Application error",
+    ///     }
+    /// }
+    /// ```
     pub fn error_code(&self) -> Option<ErrorCode> {
         match self {
             Self::Protocol { code, .. } => Some(*code),
