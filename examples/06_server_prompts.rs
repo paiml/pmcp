@@ -8,7 +8,10 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    types::{GetPromptResult, PromptArgument, PromptInfo, PromptMessage, Role, capabilities::ServerCapabilities},
+    types::{
+        capabilities::ServerCapabilities, GetPromptResult, PromptArgument, PromptInfo,
+        PromptMessage, Role,
+    },
     PromptHandler, Server,
 };
 use std::collections::HashMap;

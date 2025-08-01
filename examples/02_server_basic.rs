@@ -6,8 +6,8 @@
 //! - Running server with stdio transport
 
 use async_trait::async_trait;
-use pmcp::{Server, ToolHandler};
 use pmcp::types::capabilities::ServerCapabilities;
+use pmcp::{Server, ToolHandler};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

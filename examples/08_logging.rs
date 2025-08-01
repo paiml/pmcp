@@ -8,7 +8,10 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    types::{protocol::LogLevel, capabilities::{ClientCapabilities, ServerCapabilities}},
+    types::{
+        capabilities::{ClientCapabilities, ServerCapabilities},
+        protocol::LogLevel,
+    },
     Client, Server, StdioTransport, ToolHandler,
 };
 use serde_json::{json, Value};

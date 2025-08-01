@@ -2,7 +2,10 @@
 
 use async_trait::async_trait;
 use pmcp::{
-    types::{protocol::{Content, CreateMessageParams, CreateMessageResult, TokenUsage}, capabilities::ServerCapabilities},
+    types::{
+        capabilities::ServerCapabilities,
+        protocol::{Content, CreateMessageParams, CreateMessageResult, TokenUsage},
+    },
     SamplingHandler, Server,
 };
 use tracing::info;
