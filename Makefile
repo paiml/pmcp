@@ -80,7 +80,9 @@ lint:
 		-A clippy::cast_possible_truncation \
 		-A clippy::cast_precision_loss \
 		-A clippy::option_if_let_else \
-		-A clippy::derive_partial_eq_without_eq
+		-A clippy::derive_partial_eq_without_eq \
+		-A clippy::redundant_else \
+		-A clippy::match_same_arms
 	@echo "$(BLUE)Checking examples...$(NC)"
 	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) check --features "full" --examples
 	@echo "$(GREEN)✓ No lint issues$(NC)"

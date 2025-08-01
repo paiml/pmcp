@@ -10,10 +10,10 @@ use pmcp::types::protocol::{Content, ListResourcesResult, ReadResourceResult, Re
 use pmcp::RequestHandlerExtra;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
+use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use tracing::{error, info};
+use tracing::info;
 
 /// File system resource handler with watching capabilities
 struct FileSystemResourceHandler {
@@ -85,7 +85,7 @@ impl FileSystemResourceHandler {
                 if path.is_file() {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                         // Check if it's a supported file type
-                        let mime_type = match path.extension().and_then(|e| e.to_str()) {
+                        let _mime_type = match path.extension().and_then(|e| e.to_str()) {
                             Some("txt") => Some("text/plain".to_string()),
                             Some("md") => Some("text/markdown".to_string()),
                             Some("json") => Some("application/json".to_string()),
@@ -192,7 +192,7 @@ async fn main() -> Result<()> {
             }),
             ..Default::default()
         })
-        .resource_handler(handler.clone())
+        .resources(handler.clone())
         .build()?;
 
     #[cfg(feature = "resource-watcher")]

@@ -4,12 +4,11 @@ use async_trait::async_trait;
 use pmcp::error::Result;
 use pmcp::server::{PromptHandler, Server};
 use pmcp::types::capabilities::ServerCapabilities;
-use pmcp::types::completable::{completable, StaticCompletionProvider};
-use pmcp::types::protocol::{GetPromptResult, PromptArgument, PromptMessage, Role};
+use pmcp::types::completable::completable;
+use pmcp::types::protocol::{Content, GetPromptResult, PromptArgument, PromptMessage, Role};
 use pmcp::RequestHandlerExtra;
 use serde_json::json;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tracing::info;
 
 /// Database query prompt with completable arguments
@@ -44,17 +43,15 @@ impl PromptHandler for DatabaseQueryPrompt {
             messages: vec![
                 PromptMessage {
                     role: Role::System,
-                    content: json!({
-                        "type": "text",
-                        "text": format!("You are a database assistant. Execute the following query on database '{}' table '{}':", database, table)
-                    }),
+                    content: Content::Text {
+                        text: format!("You are a database assistant. Execute the following query on database '{}' table '{}':", database, table)
+                    },
                 },
                 PromptMessage {
                     role: Role::User,
-                    content: json!({
-                        "type": "text",
-                        "text": query
-                    }),
+                    content: Content::Text {
+                        text: query
+                    },
                 },
             ],
         })
@@ -106,18 +103,16 @@ impl PromptHandler for DeploymentPrompt {
             messages: vec![
                 PromptMessage {
                     role: Role::System,
-                    content: json!({
-                        "type": "text",
-                        "text": "You are a deployment assistant. Generate a deployment configuration based on the following parameters:"
-                    }),
+                    content: Content::Text {
+                        text: "You are a deployment assistant. Generate a deployment configuration based on the following parameters:".to_string()
+                    },
                 },
                 PromptMessage {
                     role: Role::User,
-                    content: json!({
-                        "type": "text",
-                        "text": format!("Deploy service '{}' version '{}' to '{}' environment with configuration: {}",
+                    content: Content::Text {
+                        text: format!("Deploy service '{}' version '{}' to '{}' environment with configuration: {}",
                             service, version, environment, serde_json::to_string_pretty(&config).unwrap())
-                    }),
+                    },
                 },
             ],
         })
