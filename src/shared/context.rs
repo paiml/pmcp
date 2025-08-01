@@ -192,7 +192,7 @@ impl RequestContext {
                 } else {
                     trace_id_hex.to_string()
                 };
-                
+
                 let span_id_hex = parts[2];
                 let span_id = if span_id_hex.len() == 16 {
                     format!(
