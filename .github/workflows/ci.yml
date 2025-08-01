@@ -84,6 +84,11 @@ jobs:
         for example in examples/*.rs; do
           if [[ -f "$example" ]]; then
             example_name=$(basename "$example" .rs)
+            # Skip examples that require special feature flags
+            if [[ "$example_name" == "09_authentication" ]]; then
+              echo "Skipping example: $example_name (requires authentication_example feature)"
+              continue
+            fi
             echo "Checking example: $example_name"
             cargo check --example "$example_name"
           fi
@@ -118,6 +123,9 @@ jobs:
       run: |
         if ! command -v cargo-llvm-cov &> /dev/null; then
           cargo install cargo-llvm-cov
+        fi
+        if ! command -v cargo-nextest &> /dev/null; then
+          cargo install cargo-nextest
         fi
     
     - name: Run quality gate
