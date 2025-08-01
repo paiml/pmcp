@@ -1,7 +1,7 @@
 //! Example OAuth 2.0 server implementation using PMCP.
 
 use async_trait::async_trait;
-use pmcp::error::{Error, ErrorCode, Result};
+use pmcp::error::Result;
 use pmcp::server::auth::{
     AuthMiddleware, BearerTokenMiddleware, GrantType, InMemoryOAuthProvider, OAuthClient,
     OAuthProvider, ResponseType, ScopeMiddleware,
