@@ -48,6 +48,32 @@ impl std::fmt::Debug for MessageBatcher {
 
 impl MessageBatcher {
     /// Create a new message batcher.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageBatcher, BatchingConfig};
+    /// use std::time::Duration;
+    ///
+    /// // Default configuration
+    /// let batcher = MessageBatcher::new(BatchingConfig::default());
+    ///
+    /// // Custom configuration for high-throughput scenarios
+    /// let config = BatchingConfig {
+    ///     max_batch_size: 50,
+    ///     max_wait_time: Duration::from_millis(200),
+    ///     batched_methods: vec!["logs.add".to_string(), "progress.update".to_string()],
+    /// };
+    /// let high_throughput_batcher = MessageBatcher::new(config);
+    ///
+    /// // Configuration for low-latency scenarios
+    /// let low_latency_config = BatchingConfig {
+    ///     max_batch_size: 5,
+    ///     max_wait_time: Duration::from_millis(10),
+    ///     batched_methods: vec![],
+    /// };
+    /// let low_latency_batcher = MessageBatcher::new(low_latency_config);
+    /// ```
     pub fn new(config: BatchingConfig) -> Self {
         let (tx, rx) = mpsc::channel(100);
         Self {
@@ -59,6 +85,31 @@ impl MessageBatcher {
     }
 
     /// Add a notification to the batch.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageBatcher, BatchingConfig};
+    /// use pmcp::types::{Notification, ClientNotification, ServerNotification};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let config = BatchingConfig {
+    ///     max_batch_size: 3,
+    ///     max_wait_time: Duration::from_millis(100),
+    ///     batched_methods: vec![],
+    /// };
+    /// let batcher = MessageBatcher::new(config);
+    ///
+    /// // Add various notifications
+    /// batcher.add(Notification::Client(ClientNotification::Initialized)).await?;
+    /// batcher.add(Notification::Client(ClientNotification::RootsListChanged)).await?;
+    ///
+    /// // This will trigger immediate batch send (max_batch_size reached)
+    /// batcher.add(Notification::Server(ServerNotification::ToolsChanged)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn add(&self, notification: Notification) -> Result<()> {
         let mut pending = self.pending.lock().await;
         pending.push(notification);
@@ -78,6 +129,32 @@ impl MessageBatcher {
     }
 
     /// Start the batching timer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageBatcher, BatchingConfig};
+    /// use pmcp::types::{Notification, ClientNotification};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let config = BatchingConfig {
+    ///     max_batch_size: 10,
+    ///     max_wait_time: Duration::from_millis(50),
+    ///     batched_methods: vec![],
+    /// };
+    /// let batcher = MessageBatcher::new(config);
+    ///
+    /// // Start the timer to automatically flush batches
+    /// batcher.start_timer();
+    ///
+    /// // Add notifications that won't reach max_batch_size
+    /// batcher.add(Notification::Client(ClientNotification::Initialized)).await?;
+    ///
+    /// // Timer will ensure this gets sent after max_wait_time
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn start_timer(&self) {
         let pending = self.pending.clone();
         let tx = self.tx.clone();
@@ -101,6 +178,37 @@ impl MessageBatcher {
     }
 
     /// Receive the next batch of notifications.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageBatcher, BatchingConfig};
+    /// use pmcp::types::{Notification, ClientNotification};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let config = BatchingConfig {
+    ///     max_batch_size: 2,
+    ///     max_wait_time: Duration::from_millis(100),
+    ///     batched_methods: vec![],
+    /// };
+    /// let batcher = MessageBatcher::new(config);
+    /// batcher.start_timer();
+    ///
+    /// // Add notifications
+    /// batcher.add(Notification::Client(ClientNotification::Initialized)).await?;
+    /// batcher.add(Notification::Client(ClientNotification::RootsListChanged)).await?;
+    ///
+    /// // Receive the batch (triggered by max_batch_size)
+    /// if let Some(batch) = batcher.receive_batch().await {
+    ///     println!("Received batch with {} notifications", batch.len());
+    ///     for notification in batch {
+    ///         // Process each notification
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn receive_batch(&self) -> Option<Vec<Notification>> {
         self.rx.lock().await.recv().await
     }
@@ -143,6 +251,35 @@ impl std::fmt::Debug for MessageDebouncer {
 
 impl MessageDebouncer {
     /// Create a new message debouncer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageDebouncer, DebouncingConfig};
+    /// use std::time::Duration;
+    /// use std::collections::HashMap;
+    ///
+    /// // Default configuration
+    /// let debouncer = MessageDebouncer::new(DebouncingConfig::default());
+    ///
+    /// // Custom configuration with per-method settings
+    /// let mut config = DebouncingConfig {
+    ///     wait_time: Duration::from_millis(100),
+    ///     debounced_methods: HashMap::new(),
+    /// };
+    ///
+    /// // Different debounce times for different notification types
+    /// config.debounced_methods.insert(
+    ///     "progress.update".to_string(),
+    ///     Duration::from_millis(50)
+    /// );
+    /// config.debounced_methods.insert(
+    ///     "file.changed".to_string(),
+    ///     Duration::from_millis(500)
+    /// );
+    ///
+    /// let custom_debouncer = MessageDebouncer::new(config);
+    /// ```
     pub fn new(config: DebouncingConfig) -> Self {
         let (tx, rx) = mpsc::channel(100);
         Self {
@@ -155,6 +292,37 @@ impl MessageDebouncer {
     }
 
     /// Add a notification to be debounced.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageDebouncer, DebouncingConfig};
+    /// use pmcp::types::{Notification, ServerNotification};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let debouncer = MessageDebouncer::new(DebouncingConfig {
+    ///     wait_time: Duration::from_millis(100),
+    ///     debounced_methods: Default::default(),
+    /// });
+    ///
+    /// // Rapid file change notifications
+    /// debouncer.add(
+    ///     "file:/path/to/file.rs".to_string(),
+    ///     Notification::Server(ServerNotification::ResourcesChanged)
+    /// ).await?;
+    ///
+    /// // Another change to same file within debounce window
+    /// tokio::time::sleep(Duration::from_millis(50)).await;
+    /// debouncer.add(
+    ///     "file:/path/to/file.rs".to_string(),
+    ///     Notification::Server(ServerNotification::ResourcesChanged)
+    /// ).await?;
+    ///
+    /// // Only the last notification will be sent after debounce period
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn add(&self, key: String, notification: Notification) -> Result<()> {
         trace!("Debouncing notification with key: {}", key);
 
@@ -214,11 +382,71 @@ impl MessageDebouncer {
     }
 
     /// Receive the next debounced notification.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageDebouncer, DebouncingConfig};
+    /// use pmcp::types::{Notification, ServerNotification};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let debouncer = MessageDebouncer::new(DebouncingConfig::default());
+    ///
+    /// // Spawn a task to receive notifications
+    /// tokio::spawn(async move {
+    ///     while let Some(notification) = debouncer.receive().await {
+    ///         match notification {
+    ///             Notification::Server(ServerNotification::ResourcesChanged) => {
+    ///                 println!("Resources changed (after debounce)");
+    ///             }
+    ///             _ => {}
+    ///         }
+    ///     }
+    /// });
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn receive(&self) -> Option<Notification> {
         self.rx.lock().await.recv().await
     }
 
     /// Flush all pending notifications immediately.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::utils::{MessageDebouncer, DebouncingConfig};
+    /// use pmcp::types::{Notification, ServerNotification, ClientNotification};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let debouncer = MessageDebouncer::new(DebouncingConfig {
+    ///     wait_time: Duration::from_secs(5), // Long debounce
+    ///     debounced_methods: Default::default(),
+    /// });
+    ///
+    /// // Add several notifications
+    /// debouncer.add(
+    ///     "resource1".to_string(),
+    ///     Notification::Server(ServerNotification::ResourcesChanged)
+    /// ).await?;
+    /// debouncer.add(
+    ///     "resource2".to_string(),
+    ///     Notification::Client(ClientNotification::RootsListChanged)
+    /// ).await?;
+    ///
+    /// // Flush immediately instead of waiting for debounce
+    /// let pending = debouncer.flush().await;
+    /// println!("Flushed {} pending notifications", pending.len());
+    ///
+    /// // Process all flushed notifications
+    /// for notification in pending {
+    ///     // Handle each notification immediately
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn flush(&self) -> Vec<Notification> {
         // Cancel all timers
         {

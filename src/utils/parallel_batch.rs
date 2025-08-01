@@ -12,6 +12,39 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 /// Configuration for parallel batch processing
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::utils::parallel_batch::ParallelBatchConfig;
+///
+/// // Default configuration for moderate load
+/// let default_config = ParallelBatchConfig::default();
+/// assert_eq!(default_config.max_concurrency, 10);
+/// assert_eq!(default_config.request_timeout_ms, Some(30_000));
+/// assert!(!default_config.fail_fast);
+///
+/// // High throughput configuration
+/// let high_throughput = ParallelBatchConfig {
+///     max_concurrency: 50,
+///     fail_fast: false,
+///     request_timeout_ms: Some(60_000), // 1 minute timeout
+/// };
+///
+/// // Low latency configuration with fail-fast
+/// let low_latency = ParallelBatchConfig {
+///     max_concurrency: 5,
+///     fail_fast: true, // Stop on first error
+///     request_timeout_ms: Some(5_000), // 5 second timeout
+/// };
+///
+/// // No timeout configuration for long-running operations
+/// let no_timeout = ParallelBatchConfig {
+///     max_concurrency: 20,
+///     fail_fast: false,
+///     request_timeout_ms: None, // No timeout
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct ParallelBatchConfig {
     /// Maximum number of concurrent requests
@@ -35,6 +68,55 @@ impl Default for ParallelBatchConfig {
 }
 
 /// Process a batch of requests in parallel while preserving order
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::utils::parallel_batch::{process_batch_parallel, ParallelBatchConfig};
+/// use pmcp::types::{JSONRPCRequest, JSONRPCResponse, RequestId};
+/// use serde_json::json;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create sample requests
+/// let requests = vec![
+///     JSONRPCRequest {
+///         jsonrpc: "2.0".to_string(),
+///         method: "tools.list".to_string(),
+///         params: None,
+///         id: RequestId::from(1i64),
+///     },
+///     JSONRPCRequest {
+///         jsonrpc: "2.0".to_string(),
+///         method: "resources.read".to_string(),
+///         params: Some(json!({"uri": "file:///example.txt"})),
+///         id: RequestId::from(2i64),
+///     },
+/// ];
+///
+/// // Define handler function
+/// let handler = |request: JSONRPCRequest| async move {
+///     // Simulate processing
+///     JSONRPCResponse {
+///         jsonrpc: "2.0".to_string(),
+///         id: request.id,
+///         payload: pmcp::types::jsonrpc::ResponsePayload::Result(
+///             json!({"status": "processed", "method": request.method})
+///         ),
+///     }
+/// };
+///
+/// // Process with custom config
+/// let config = ParallelBatchConfig {
+///     max_concurrency: 5,
+///     fail_fast: false,
+///     request_timeout_ms: Some(10_000),
+/// };
+///
+/// let responses = process_batch_parallel(requests, handler, config).await?;
+/// assert_eq!(responses.len(), 2);
+/// # Ok(())
+/// # }
+/// ```
 pub async fn process_batch_parallel<F, Fut>(
     requests: Vec<JSONRPCRequest>,
     handler: F,
@@ -116,6 +198,63 @@ where
 }
 
 /// Process a batch with a stateful handler that needs mutable access
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::utils::parallel_batch::{process_batch_parallel_stateful, ParallelBatchConfig};
+/// use pmcp::types::{JSONRPCRequest, JSONRPCResponse, RequestId};
+/// use std::sync::Arc;
+/// use tokio::sync::RwLock;
+/// use std::collections::HashMap;
+/// use serde_json::json;
+///
+/// #[derive(Default)]
+/// struct ProcessingState {
+///     request_count: u64,
+///     results: HashMap<String, String>,
+/// }
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let state = Arc::new(RwLock::new(ProcessingState::default()));
+///
+/// let requests = vec![
+///     JSONRPCRequest {
+///         jsonrpc: "2.0".to_string(),
+///         method: "process".to_string(),
+///         params: Some(json!({"data": "item1"})),
+///         id: RequestId::from(1i64),
+///     },
+/// ];
+///
+/// let handler = |req: JSONRPCRequest, state: Arc<RwLock<ProcessingState>>| async move {
+///     // Update shared state
+///     {
+///         let mut state = state.write().await;
+///         state.request_count += 1;
+///         state.results.insert(req.method.clone(), "processed".to_string());
+///     }
+///     
+///     JSONRPCResponse {
+///         jsonrpc: "2.0".to_string(),
+///         id: req.id,
+///         payload: pmcp::types::jsonrpc::ResponsePayload::Result(json!("ok")),
+///     }
+/// };
+///
+/// let responses = process_batch_parallel_stateful(
+///     requests,
+///     state.clone(),
+///     handler,
+///     ParallelBatchConfig::default()
+/// ).await?;
+///
+/// // Check state was updated
+/// let final_state = state.read().await;
+/// assert_eq!(final_state.request_count, 1);
+/// # Ok(())
+/// # }
+/// ```
 pub async fn process_batch_parallel_stateful<S, F, Fut>(
     requests: Vec<JSONRPCRequest>,
     state: Arc<tokio::sync::RwLock<S>>,
@@ -139,6 +278,54 @@ where
 }
 
 /// Batch processor with advanced features
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::utils::parallel_batch::{BatchProcessor, ParallelBatchConfig};
+/// use pmcp::types::{JSONRPCRequest, JSONRPCResponse, RequestId};
+/// use serde_json::json;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create processor with custom config
+/// let config = ParallelBatchConfig {
+///     max_concurrency: 20,
+///     fail_fast: false,
+///     request_timeout_ms: Some(15_000),
+/// };
+/// let processor = BatchProcessor::new(config);
+///
+/// // Define requests
+/// let requests = vec![
+///     JSONRPCRequest {
+///         jsonrpc: "2.0".to_string(),
+///         method: "compute".to_string(),
+///         params: Some(json!({"value": 42})),
+///         id: RequestId::from(1i64),
+///     },
+/// ];
+///
+/// // Process with metrics tracking
+/// let responses = processor.process(requests, |req| async move {
+///     // Simulate processing
+///     JSONRPCResponse {
+///         jsonrpc: "2.0".to_string(),
+///         id: req.id,
+///         payload: pmcp::types::jsonrpc::ResponsePayload::Result(
+///             json!({"result": "computed"})
+///         ),
+///     }
+/// }).await?;
+///
+/// // Get metrics
+/// let metrics = processor.metrics().await;
+/// println!("Processed {} requests", metrics.total_requests);
+/// println!("Success rate: {:.2}%",
+///     (metrics.successful_responses as f64 / metrics.total_requests as f64) * 100.0
+/// );
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct BatchProcessor {
     config: ParallelBatchConfig,
@@ -146,6 +333,34 @@ pub struct BatchProcessor {
 }
 
 /// Metrics for batch processing
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::utils::parallel_batch::BatchMetrics;
+///
+/// // Create and update metrics
+/// let mut metrics = BatchMetrics::default();
+/// metrics.total_requests = 100;
+/// metrics.successful_responses = 95;
+/// metrics.error_responses = 3;
+/// metrics.timeout_responses = 2;
+/// metrics.avg_processing_time_ms = 125.5;
+/// metrics.max_processing_time_ms = 850;
+///
+/// // Calculate success rate
+/// let success_rate = (metrics.successful_responses as f64 / metrics.total_requests as f64) * 100.0;
+/// println!("Success rate: {:.2}%", success_rate);
+///
+/// // Check if performance is acceptable
+/// if metrics.avg_processing_time_ms > 500.0 {
+///     println!("Warning: Average processing time is high");
+/// }
+///
+/// if metrics.timeout_responses > 0 {
+///     println!("Warning: {} requests timed out", metrics.timeout_responses);
+/// }
+/// ```
 #[derive(Debug, Default)]
 pub struct BatchMetrics {
     /// Total requests processed
@@ -248,6 +463,30 @@ impl BatchProcessor {
 pub type BatchProcessingFuture = Pin<Box<dyn Future<Output = Result<Vec<JSONRPCResponse>>> + Send>>;
 
 /// Create a rate-limited batch processor
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::utils::parallel_batch::{rate_limited_processor, ParallelBatchConfig};
+/// use pmcp::types::{JSONRPCRequest, RequestId};
+///
+/// // Create processor that limits to 100 requests per second
+/// let processor = rate_limited_processor(100, ParallelBatchConfig::default());
+///
+/// // Use with batch of requests
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let requests = vec![
+///     JSONRPCRequest::new(1i64, "api.call", None::<serde_json::Value>),
+///     // ... more requests  
+/// ];
+///
+/// // Process will be rate-limited to 100 req/sec
+/// // let future = processor(requests);
+/// // Note: This example processor returns placeholder responses
+/// // The actual usage would involve calling the processor function
+/// # Ok(())
+/// # }
+/// ```
 pub fn rate_limited_processor(
     max_requests_per_second: usize,
     config: ParallelBatchConfig,

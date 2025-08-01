@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - 2025-08-01
+
+### Added
+- **Comprehensive doctests for advanced SDK types** - Major documentation enhancement
+  - Transport layer types (TransportMessage, MessageMetadata, MessagePriority, SendOptions)
+  - Utility types - Message batching and debouncing with complete examples
+  - Parallel processing utilities (BatchProcessor, ParallelBatchConfig, BatchMetrics)
+  - Context propagation system (RequestContext, ContextPropagator, context macros)
+  - Middleware system (Middleware trait, LoggingMiddleware, AuthMiddleware, RetryMiddleware, MiddlewareChain)
+  - Added 65+ new doctest examples covering complex async patterns and middleware usage
+  - Updated documentation todo tracker with completion status
+
+### Fixed
+- Fixed all doctest compilation issues with proper type annotations
+- Corrected import paths in transport layer doctests
+- Fixed RequestId type issues in parallel processing examples
+- Improved code formatting throughout doctest examples
+
 ## [0.6.3] - 2025-08-01
 
 ### Added

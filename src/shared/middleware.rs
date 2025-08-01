@@ -8,6 +8,58 @@ use std::fmt;
 use std::sync::Arc;
 
 /// Middleware that can intercept and modify requests and responses.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::{Middleware, TransportMessage};
+/// use pmcp::types::{JSONRPCRequest, JSONRPCResponse, RequestId};
+/// use async_trait::async_trait;
+///
+/// // Custom middleware that adds timing information
+/// #[derive(Debug)]
+/// struct TimingMiddleware {
+///     start_time: std::time::Instant,
+/// }
+///
+/// impl TimingMiddleware {
+///     fn new() -> Self {
+///         Self { start_time: std::time::Instant::now() }
+///     }
+/// }
+///
+/// #[async_trait]
+/// impl Middleware for TimingMiddleware {
+///     async fn on_request(&self, request: &mut JSONRPCRequest) -> pmcp::Result<()> {
+///         // Add timing metadata to request params
+///         println!("Processing request {} at {}ms",
+///             request.method,
+///             self.start_time.elapsed().as_millis());
+///         Ok(())
+///     }
+///
+///     async fn on_response(&self, response: &mut JSONRPCResponse) -> pmcp::Result<()> {
+///         println!("Response for {:?} received at {}ms",
+///             response.id,
+///             self.start_time.elapsed().as_millis());
+///         Ok(())
+///     }
+/// }
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// let middleware = TimingMiddleware::new();
+/// let mut request = JSONRPCRequest {
+///     jsonrpc: "2.0".to_string(),
+///     method: "test".to_string(),
+///     params: None,
+///     id: RequestId::from(123i64),
+/// };
+///
+/// // Process request through middleware
+/// middleware.on_request(&mut request).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[async_trait]
 pub trait Middleware: Send + Sync {
     /// Called before a request is sent.
@@ -36,6 +88,57 @@ pub trait Middleware: Send + Sync {
 }
 
 /// Chain of middleware handlers.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::{MiddlewareChain, LoggingMiddleware, AuthMiddleware, RetryMiddleware};
+/// use pmcp::types::{JSONRPCRequest, JSONRPCResponse, RequestId};
+/// use std::sync::Arc;
+/// use tracing::Level;
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// // Create a middleware chain
+/// let mut chain = MiddlewareChain::new();
+///
+/// // Add different types of middleware in order
+/// chain.add(Arc::new(LoggingMiddleware::new(Level::INFO)));
+/// chain.add(Arc::new(AuthMiddleware::new("Bearer token-123".to_string())));
+/// chain.add(Arc::new(RetryMiddleware::default()));
+///
+/// // Create a request to process
+/// let mut request = JSONRPCRequest {
+///     jsonrpc: "2.0".to_string(),
+///     method: "prompts.get".to_string(),
+///     params: Some(serde_json::json!({
+///         "name": "code_review",
+///         "arguments": {"language": "rust", "style": "detailed"}
+///     })),
+///     id: RequestId::from(1001i64),
+/// };
+///
+/// // Process request through all middleware in order
+/// chain.process_request(&mut request).await?;
+///
+/// // Create a response to process
+/// let mut response = JSONRPCResponse {
+///     jsonrpc: "2.0".to_string(),
+///     id: RequestId::from(1001i64),
+///     payload: pmcp::types::jsonrpc::ResponsePayload::Result(
+///         serde_json::json!({"prompt": "Review the following code..."})
+///     ),
+/// };
+///
+/// // Process response through all middleware
+/// chain.process_response(&mut response).await?;
+///
+/// // The chain processes middleware in the order they were added
+/// // 1. LoggingMiddleware logs the request/response
+/// // 2. AuthMiddleware adds authentication
+/// // 3. RetryMiddleware configures retry behavior
+/// # Ok(())
+/// # }
+/// ```
 pub struct MiddlewareChain {
     middlewares: Vec<Arc<dyn Middleware>>,
 }
@@ -101,6 +204,34 @@ impl MiddlewareChain {
 }
 
 /// Logging middleware that logs all messages.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::{LoggingMiddleware, Middleware};
+/// use pmcp::types::{JSONRPCRequest, RequestId};
+/// use tracing::Level;
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// // Create logging middleware with different levels
+/// let debug_logger = LoggingMiddleware::new(Level::DEBUG);
+/// let info_logger = LoggingMiddleware::new(Level::INFO);
+/// let default_logger = LoggingMiddleware::default(); // Uses DEBUG level
+///
+/// let mut request = JSONRPCRequest {
+///     jsonrpc: "2.0".to_string(),
+///     method: "tools.list".to_string(),
+///     params: Some(serde_json::json!({"category": "development"})),
+///     id: RequestId::from(456i64),
+/// };
+///
+/// // Log at different levels
+/// debug_logger.on_request(&mut request).await?;
+/// info_logger.on_request(&mut request).await?;
+/// default_logger.on_request(&mut request).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct LoggingMiddleware {
     level: tracing::Level,
@@ -145,6 +276,32 @@ impl Middleware for LoggingMiddleware {
 }
 
 /// Authentication middleware that adds auth headers.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::{AuthMiddleware, Middleware};
+/// use pmcp::types::{JSONRPCRequest, RequestId};
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// // Create auth middleware with API token
+/// let auth_middleware = AuthMiddleware::new("Bearer api-token-12345".to_string());
+///
+/// let mut request = JSONRPCRequest {
+///     jsonrpc: "2.0".to_string(),
+///     method: "resources.read".to_string(),
+///     params: Some(serde_json::json!({"uri": "file:///secure/data.txt"})),
+///     id: RequestId::from(789i64),
+/// };
+///
+/// // Process request and add authentication
+/// auth_middleware.on_request(&mut request).await?;
+///
+/// // In a real implementation, the middleware would modify the request
+/// // to include authentication information
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct AuthMiddleware {
     #[allow(dead_code)]
@@ -169,6 +326,42 @@ impl Middleware for AuthMiddleware {
 }
 
 /// Retry middleware that implements exponential backoff.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::{RetryMiddleware, Middleware};
+/// use pmcp::types::{JSONRPCRequest, RequestId};
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// // Create retry middleware with custom settings
+/// let retry_middleware = RetryMiddleware::new(
+///     5,      // max_retries
+///     1000,   // initial_delay_ms (1 second)
+///     30000   // max_delay_ms (30 seconds)
+/// );
+///
+/// // Default retry middleware (3 retries, 1s initial, 30s max)
+/// let default_retry = RetryMiddleware::default();
+///
+/// let mut request = JSONRPCRequest {
+///     jsonrpc: "2.0".to_string(),
+///     method: "tools.call".to_string(),
+///     params: Some(serde_json::json!({
+///         "name": "network_tool",
+///         "arguments": {"url": "https://api.example.com/data"}
+///     })),
+///     id: RequestId::from(999i64),
+/// };
+///
+/// // Configure request for retry handling
+/// retry_middleware.on_request(&mut request).await?;
+/// default_retry.on_request(&mut request).await?;
+///
+/// // The actual retry logic would be implemented at the transport level
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct RetryMiddleware {
     max_retries: u32,

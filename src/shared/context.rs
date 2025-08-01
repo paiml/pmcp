@@ -15,6 +15,41 @@ task_local! {
 }
 
 /// Request context containing metadata and tracing information.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::context::{RequestContext, ClientInfo};
+/// use pmcp::types::RequestId;
+/// use serde_json::json;
+///
+/// // Create a new context for a request
+/// let context = RequestContext::new(RequestId::from(123i64))
+///     .with_user_id("user-456".to_string())
+///     .with_session_id("session-789".to_string())
+///     .with_metadata("environment".to_string(), json!("production"))
+///     .with_baggage("feature-flag".to_string(), "new-ui-enabled".to_string());
+///
+/// // Add client information
+/// let client_info = ClientInfo {
+///     client_id: "web-app-v2".to_string(),
+///     version: Some("2.1.0".to_string()),
+///     ip_address: Some("192.168.1.100".to_string()),
+///     user_agent: Some("Mozilla/5.0...".to_string()),
+/// };
+/// let context = context.with_client_info(client_info);
+///
+/// // Create child context for nested operations
+/// let child_context = context.child();
+/// assert_eq!(child_context.trace_id, context.trace_id);
+/// assert_eq!(child_context.parent_span_id, Some(context.span_id.clone()));
+///
+/// // Convert to HTTP headers for propagation
+/// let headers = context.to_headers();
+/// assert!(headers.contains_key("traceparent"));
+/// assert!(headers.contains_key("x-request-id"));
+/// assert_eq!(headers.get("x-user-id"), Some(&"user-456".to_string()));
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestContext {
     /// Unique request ID.
@@ -49,6 +84,36 @@ pub struct RequestContext {
 }
 
 /// Client information in context.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::context::ClientInfo;
+///
+/// // Create client info for a web application
+/// let web_client = ClientInfo {
+///     client_id: "web-dashboard".to_string(),
+///     version: Some("3.2.1".to_string()),
+///     ip_address: Some("10.0.0.50".to_string()),
+///     user_agent: Some("Mozilla/5.0 (Windows NT 10.0; Win64; x64)".to_string()),
+/// };
+///
+/// // Create client info for a mobile app
+/// let mobile_client = ClientInfo {
+///     client_id: "ios-app".to_string(),
+///     version: Some("1.5.0".to_string()),
+///     ip_address: Some("172.16.0.100".to_string()),
+///     user_agent: Some("MyApp/1.5.0 (iOS 15.0)".to_string()),
+/// };
+///
+/// // Create minimal client info
+/// let minimal_client = ClientInfo {
+///     client_id: "cli-tool".to_string(),
+///     version: None,
+///     ip_address: None,
+///     user_agent: None,
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInfo {
     /// Client ID.
@@ -248,6 +313,37 @@ impl RequestContext {
 }
 
 /// Context propagator for middleware integration.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::context::{ContextPropagator, RequestContext};
+/// use pmcp::types::RequestId;
+/// use std::collections::HashMap;
+///
+/// // Extract context from incoming HTTP headers
+/// let mut headers = HashMap::new();
+/// headers.insert("traceparent".to_string(),
+///     "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01".to_string());
+/// headers.insert("x-request-id".to_string(), "12345".to_string());
+/// headers.insert("x-user-id".to_string(), "user-789".to_string());
+/// headers.insert("baggage-tenant".to_string(), "acme-corp".to_string());
+///
+/// let context = ContextPropagator::extract(&headers);
+/// assert!(context.is_some());
+///
+/// if let Some(ctx) = context {
+///     assert_eq!(ctx.user_id, Some("user-789".to_string()));
+///     assert_eq!(ctx.baggage.get("tenant"), Some(&"acme-corp".to_string()));
+/// }
+///
+/// // Inject context into outgoing HTTP headers
+/// let context = RequestContext::new(RequestId::from(999i64))
+///     .with_user_id("admin".to_string());
+/// let outgoing_headers = ContextPropagator::inject(&context);
+/// assert!(outgoing_headers.contains_key("traceparent"));
+/// assert_eq!(outgoing_headers.get("x-user-id"), Some(&"admin".to_string()));
+/// ```
 #[derive(Debug)]
 pub struct ContextPropagator;
 
@@ -264,6 +360,38 @@ impl ContextPropagator {
 }
 
 /// Macro to run code with request context.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::{with_context, shared::context::RequestContext};
+/// use pmcp::types::RequestId;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create a context
+/// let context = RequestContext::new(RequestId::from(123i64))
+///     .with_user_id("user-456".to_string())
+///     .with_metadata("region".to_string(), serde_json::json!("us-east-1"));
+///
+/// // Run async code with the context
+/// let result = with_context!(context, {
+///     // This code runs with the context available
+///     let current = RequestContext::current().expect("Context should be set");
+///     assert_eq!(current.user_id, Some("user-456".to_string()));
+///     
+///     // Perform some async operation
+///     async {
+///         // The context is available in nested async blocks too
+///         let ctx = RequestContext::current().unwrap();
+///         assert_eq!(ctx.request_id, RequestId::from(123i64));
+///         42
+///     }.await
+/// });
+///
+/// assert_eq!(result, 42);
+/// # Ok(())
+/// # }
+/// ```
 #[macro_export]
 macro_rules! with_context {
     ($ctx:expr, $body:expr) => {
@@ -272,6 +400,34 @@ macro_rules! with_context {
 }
 
 /// Macro to get current context or create new one.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::{context_or_new, with_context, shared::context::RequestContext};
+/// use pmcp::types::RequestId;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // When no context is set, creates a new one
+/// let context = context_or_new!(RequestId::from(999i64));
+/// assert_eq!(context.request_id, RequestId::from(999i64));
+///
+/// // When context is set, uses the existing one
+/// let parent_context = RequestContext::new(RequestId::from(123i64))
+///     .with_user_id("admin".to_string());
+///
+/// let result = with_context!(parent_context, {
+///     // This uses the existing context
+///     let ctx = context_or_new!(RequestId::from(999i64));
+///     assert_eq!(ctx.request_id, RequestId::from(123i64)); // Uses parent context ID
+///     assert_eq!(ctx.user_id, Some("admin".to_string()));
+///     ctx
+/// });
+///
+/// assert_eq!(result.request_id, RequestId::from(123i64));
+/// # Ok(())
+/// # }
+/// ```
 #[macro_export]
 macro_rules! context_or_new {
     ($request_id:expr) => {

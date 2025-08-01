@@ -8,6 +8,58 @@ use async_trait::async_trait;
 use std::fmt::Debug;
 
 /// A message that can be sent/received over a transport.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::TransportMessage;
+/// use pmcp::types::{Request, RequestId, JSONRPCResponse, Notification, ProgressNotification, ProgressToken, ClientRequest};
+///
+/// // Create a request message
+/// let request_msg = TransportMessage::Request {
+///     id: RequestId::from(1i64),
+///     request: Request::Client(Box::new(ClientRequest::Ping)),
+/// };
+///
+/// // Create a response message
+/// let response = JSONRPCResponse {
+///     jsonrpc: "2.0".to_string(),
+///     id: RequestId::from(1i64),
+///     payload: pmcp::types::jsonrpc::ResponsePayload::Result(
+///         serde_json::json!({"status": "ok"})
+///     ),
+/// };
+/// let response_msg = TransportMessage::Response(response);
+///
+/// // Create a notification message
+/// let notification = Notification::Progress(ProgressNotification {
+///     progress_token: ProgressToken::String("task-123".to_string()),
+///     progress: 75.0,
+///     message: Some("Processing nearly complete".to_string()),
+/// });
+/// let notification_msg = TransportMessage::Notification(notification);
+///
+/// // Pattern matching on messages
+/// match request_msg {
+///     TransportMessage::Request { id, request } => {
+///         println!("Received request with ID {:?}", id);
+///         match &request {
+///             Request::Client(client_req) => {
+///                 println!("Client request: {:?}", client_req);
+///             }
+///             Request::Server(server_req) => {
+///                 println!("Server request: {:?}", server_req);
+///             }
+///         }
+///     }
+///     TransportMessage::Response(resp) => {
+///         println!("Received response for request {:?}", resp.id);
+///     }
+///     TransportMessage::Notification(notif) => {
+///         println!("Received notification");
+///     }
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub enum TransportMessage {
     /// Request message with ID
@@ -24,6 +76,31 @@ pub enum TransportMessage {
 }
 
 /// Metadata associated with a transport message.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::transport::{MessageMetadata, MessagePriority};
+///
+/// // Create default metadata
+/// let default_meta = MessageMetadata::default();
+/// assert!(default_meta.content_type.is_none());
+/// assert!(!default_meta.flush);
+///
+/// // Create metadata with specific settings
+/// let meta = MessageMetadata {
+///     content_type: Some("application/json".to_string()),
+///     priority: Some(MessagePriority::High),
+///     flush: true,
+/// };
+///
+/// // Use in transport implementations
+/// fn should_flush_immediately(meta: &MessageMetadata) -> bool {
+///     meta.flush || matches!(meta.priority, Some(MessagePriority::High))
+/// }
+///
+/// assert!(should_flush_immediately(&meta));
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct MessageMetadata {
     /// Content type (e.g., "application/json")
@@ -35,6 +112,33 @@ pub struct MessageMetadata {
 }
 
 /// Message priority levels.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::transport::MessagePriority;
+///
+/// // Priority levels are ordered
+/// assert!(MessagePriority::Low < MessagePriority::Normal);
+/// assert!(MessagePriority::Normal < MessagePriority::High);
+///
+/// // Default is Normal
+/// let default_priority = MessagePriority::default();
+/// assert_eq!(default_priority, MessagePriority::Normal);
+///
+/// // Use in message queue prioritization
+/// let mut messages = vec![
+///     ("msg1", MessagePriority::Low),
+///     ("msg2", MessagePriority::High),
+///     ("msg3", MessagePriority::Normal),
+/// ];
+///
+/// // Sort by priority (highest first)
+/// messages.sort_by_key(|(_, priority)| std::cmp::Reverse(*priority));
+/// assert_eq!(messages[0].0, "msg2"); // High priority first
+/// assert_eq!(messages[1].0, "msg3"); // Normal priority second
+/// assert_eq!(messages[2].0, "msg1"); // Low priority last
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MessagePriority {
     /// Low priority
@@ -122,6 +226,43 @@ pub trait Transport: Send + Sync + Debug {
 }
 
 /// Options for sending messages.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::transport::{SendOptions, MessagePriority};
+/// use std::time::Duration;
+///
+/// // Default options
+/// let default_opts = SendOptions::default();
+/// assert!(default_opts.priority.is_none());
+/// assert!(!default_opts.flush);
+/// assert!(default_opts.timeout.is_none());
+///
+/// // High priority message with immediate flush
+/// let urgent_opts = SendOptions {
+///     priority: Some(MessagePriority::High),
+///     flush: true,
+///     timeout: Some(Duration::from_secs(5)),
+/// };
+///
+/// // Builder pattern for options
+/// fn build_send_options(urgent: bool) -> SendOptions {
+///     SendOptions {
+///         priority: if urgent {
+///             Some(MessagePriority::High)
+///         } else {
+///             Some(MessagePriority::Normal)
+///         },
+///         flush: urgent,
+///         timeout: Some(Duration::from_secs(if urgent { 5 } else { 30 })),
+///     }
+/// }
+///
+/// let opts = build_send_options(true);
+/// assert_eq!(opts.priority, Some(MessagePriority::High));
+/// assert!(opts.flush);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct SendOptions {
     /// Message priority
