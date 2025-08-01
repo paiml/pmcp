@@ -252,7 +252,10 @@ impl ReconnectManager {
 
         // Calculate base delay with exponential backoff
         let base_delay = self.config.initial_delay.as_secs_f64()
-            * self.config.growth_factor.powi(i32::try_from(retry_count).unwrap_or(i32::MAX));
+            * self
+                .config
+                .growth_factor
+                .powi(i32::try_from(retry_count).unwrap_or(i32::MAX));
 
         // Cap at maximum delay
         let capped_delay = base_delay.min(self.config.max_delay.as_secs_f64());
