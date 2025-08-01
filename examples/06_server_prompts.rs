@@ -189,6 +189,7 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                     name: "code".to_string(),
                     description: Some("The code to review".to_string()),
                     required: true,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "language".to_string(),
@@ -196,6 +197,7 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                         "Programming language (e.g., rust, python, javascript)".to_string(),
                     ),
                     required: false,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "focus".to_string(),
@@ -203,6 +205,7 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                         "Review focus: general, performance, security, style".to_string(),
                     ),
                     required: false,
+                    completion: None,
                 },
             ]),
         },
@@ -214,16 +217,19 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                     name: "data".to_string(),
                     description: Some("The data to analyze".to_string()),
                     required: true,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "data_type".to_string(),
                     description: Some("Type of data: CSV, JSON, text".to_string()),
                     required: false,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "question".to_string(),
                     description: Some("Specific question about the data".to_string()),
                     required: false,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "output_format".to_string(),
@@ -231,6 +237,7 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                         "Output format: summary, detailed, visualization".to_string(),
                     ),
                     required: false,
+                    completion: None,
                 },
             ]),
         },
@@ -242,6 +249,7 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                     name: "topic".to_string(),
                     description: Some("The topic to write about".to_string()),
                     required: true,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "style".to_string(),
@@ -249,11 +257,13 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                         "Writing style: professional, casual, academic, creative".to_string(),
                     ),
                     required: false,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "length".to_string(),
                     description: Some("Content length: short, medium, long".to_string()),
                     required: false,
+                    completion: None,
                 },
                 PromptArgument {
                     name: "audience".to_string(),
@@ -261,6 +271,7 @@ fn get_available_prompts() -> Vec<PromptInfo> {
                         "Target audience: general, technical, children, experts".to_string(),
                     ),
                     required: false,
+                    completion: None,
                 },
             ]),
         },

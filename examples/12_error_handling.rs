@@ -7,7 +7,9 @@
 //! - Custom error handling
 
 use async_trait::async_trait;
-use pmcp::{Client, ClientCapabilities, Error, ErrorCode, StdioTransport, ToolHandler};
+use pmcp::error::{Error, ErrorCode};
+use pmcp::types::capabilities::ClientCapabilities;
+use pmcp::{Client, StdioTransport, ToolHandler};
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
