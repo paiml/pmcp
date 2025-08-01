@@ -252,7 +252,7 @@ impl ReconnectManager {
 
         // Calculate base delay with exponential backoff
         let base_delay = self.config.initial_delay.as_secs_f64()
-            * self.config.growth_factor.powi(retry_count as i32);
+            * self.config.growth_factor.powi(i32::try_from(retry_count).unwrap_or(i32::MAX));
 
         // Cap at maximum delay
         let capped_delay = base_delay.min(self.config.max_delay.as_secs_f64());
@@ -267,7 +267,7 @@ impl ReconnectManager {
                 .unwrap()
                 .subsec_nanos();
             let random_factor = nanos as f64 / 1_000_000_000.0; // 0.0 to 1.0
-            random_factor * jitter_range * 2.0 - jitter_range
+            (random_factor * jitter_range).mul_add(2.0, -jitter_range)
         };
         let final_delay = (capped_delay + jitter).max(0.0);
 
@@ -340,7 +340,8 @@ impl ReconnectManager {
         let state = *self.state.read().await;
         if state == ConnectionState::Connected {
             // Check if connection was successful long enough
-            if let Some(last_success) = *self.last_success.lock().await {
+            let last_success_opt = *self.last_success.lock().await;
+            if let Some(last_success) = last_success_opt {
                 if last_success.elapsed() >= self.config.success_threshold {
                     // Reset retry count for long-lived connections
                     self.retry_count.store(0, Ordering::Relaxed);

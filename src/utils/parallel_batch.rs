@@ -217,8 +217,7 @@ impl BatchProcessor {
 
         // Update average processing time
         let total_time = metrics.avg_processing_time_ms
-            * (metrics.total_requests - request_count) as f64
-            + processing_time_ms as f64;
+            .mul_add((metrics.total_requests - request_count) as f64, processing_time_ms as f64);
         metrics.avg_processing_time_ms = total_time / metrics.total_requests as f64;
 
         Ok(responses)

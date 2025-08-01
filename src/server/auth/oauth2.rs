@@ -252,7 +252,7 @@ pub struct TokenRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_secret: Option<String>,
 
-    /// Refresh token (for refresh_token grant).
+    /// Refresh token (for `refresh_token` grant).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
 

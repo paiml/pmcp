@@ -166,6 +166,7 @@ async fn main() -> Result<()> {
 
 /// Helper to create prompt info with completable arguments.
 /// This would be used during server registration to define prompts with completions.
+#[allow(dead_code)]
 fn create_database_prompt_info() -> pmcp::types::protocol::PromptInfo {
     pmcp::types::protocol::PromptInfo {
         name: "database_query".to_string(),

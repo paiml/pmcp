@@ -307,7 +307,7 @@ impl LogEntry {
             entry.request_id = Some(context.request_id.clone());
             entry.trace_id = Some(context.trace_id.clone());
             entry.span_id = Some(context.span_id.clone());
-            entry.user_id = context.user_id.clone();
+            entry.user_id.clone_from(&context.user_id);
             entry.session_id.clone_from(&context.session_id);
         }
 

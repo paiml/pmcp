@@ -128,7 +128,7 @@ impl RequestContext {
     }
 
     /// Get current context from task-local storage.
-    pub fn current() -> Option<Arc<RequestContext>> {
+    pub fn current() -> Option<Arc<Self>> {
         REQUEST_CONTEXT.try_with(|ctx| ctx.clone()).ok()
     }
 
@@ -210,8 +210,7 @@ impl RequestContext {
                 let request_id = headers
                     .get("x-request-id")
                     .and_then(|id| id.parse::<i64>().ok())
-                    .map(RequestId::from)
-                    .unwrap_or_else(|| RequestId::from(uuid::Uuid::new_v4().as_u128() as i64));
+                    .map_or_else(|| RequestId::from(uuid::Uuid::new_v4().as_u128() as i64), RequestId::from);
 
                 let mut context = Self::new(request_id);
                 context.trace_id = trace_id;

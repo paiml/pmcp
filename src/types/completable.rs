@@ -217,7 +217,7 @@ impl CompletionProviderTrait for FileCompletionProvider {
             (partial_path, "")
         } else {
             (
-                partial_path.parent().unwrap_or(Path::new(".")),
+                partial_path.parent().unwrap_or_else(|| Path::new(".")),
                 partial_path
                     .file_name()
                     .and_then(|s| s.to_str())

@@ -8,6 +8,7 @@
 
 use crate::error::{Error, ErrorCode, Result};
 use crate::server::{PromptHandler, ResourceHandler, SamplingHandler, Server, ToolHandler};
+use crate::types::capabilities::SamplingCapabilities;
 use crate::types::{PromptInfo, ServerCapabilities, ToolInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -189,7 +190,7 @@ impl DynamicServerManager {
 
         // Update server capabilities
         self.update_capabilities(|caps| {
-            caps.sampling = Some(Default::default());
+            caps.sampling = Some(SamplingCapabilities::default());
         })
         .await;
 

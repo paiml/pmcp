@@ -335,9 +335,8 @@ impl ResourceWatcher {
         patterns: &[String],
         ignore_patterns: &[String],
     ) -> bool {
-        let relative_path = match path.strip_prefix(base_dir) {
-            Ok(p) => p,
-            Err(_) => return false,
+        let Ok(relative_path) = path.strip_prefix(base_dir) else {
+            return false;
         };
 
         let path_str = relative_path.to_string_lossy();
