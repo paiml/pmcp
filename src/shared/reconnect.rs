@@ -113,9 +113,32 @@ pub struct ReconnectManager {
     callbacks: Arc<ReconnectCallbacks>,
 }
 
+impl std::fmt::Debug for ReconnectManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReconnectManager")
+            .field("config", &self.config)
+            .field("state", &"Arc<RwLock<ConnectionState>>")
+            .field("retry_count", &self.retry_count.load(Ordering::Relaxed))
+            .field("failure_count", &self.failure_count.load(Ordering::Relaxed))
+            .field(
+                "total_attempts",
+                &self.total_attempts.load(Ordering::Relaxed),
+            )
+            .field(
+                "total_successes",
+                &self.total_successes.load(Ordering::Relaxed),
+            )
+            .field("enabled", &self.enabled.load(Ordering::Relaxed))
+            .finish()
+    }
+}
+
 /// Callback types for reconnection events.
+/// Callback invoked when attempting to connect with retry count
 pub type ConnectingCallback = Box<dyn Fn(u32) + Send + Sync>;
+/// Callback invoked on connection state changes
 pub type ConnectionCallback = Box<dyn Fn() + Send + Sync>;
+/// Callback invoked on connection failures with error details
 pub type FailureCallback = Box<dyn Fn(&Error) + Send + Sync>;
 
 /// Callbacks for reconnection events.
@@ -135,6 +158,18 @@ pub struct ReconnectCallbacks {
 
     /// Called when circuit breaker closes.
     pub on_circuit_close: Option<ConnectionCallback>,
+}
+
+impl std::fmt::Debug for ReconnectCallbacks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReconnectCallbacks")
+            .field("on_connecting", &self.on_connecting.is_some())
+            .field("on_connected", &self.on_connected.is_some())
+            .field("on_failed", &self.on_failed.is_some())
+            .field("on_circuit_open", &self.on_circuit_open.is_some())
+            .field("on_circuit_close", &self.on_circuit_close.is_some())
+            .finish()
+    }
 }
 
 impl ReconnectManager {
@@ -389,6 +424,14 @@ pub struct ReconnectStats {
 /// Reconnection guard that automatically notifies disconnection on drop.
 pub struct ReconnectGuard {
     manager: Arc<ReconnectManager>,
+}
+
+impl std::fmt::Debug for ReconnectGuard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReconnectGuard")
+            .field("manager", &"Arc<ReconnectManager>")
+            .finish()
+    }
 }
 
 impl ReconnectGuard {

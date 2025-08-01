@@ -91,6 +91,16 @@ pub struct SessionManager {
     callbacks: Arc<SessionCallbacks>,
 }
 
+impl std::fmt::Debug for SessionManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionManager")
+            .field("sessions", &self.sessions.len())
+            .field("config", &self.config)
+            .field("callbacks", &"Arc<SessionCallbacks>")
+            .finish()
+    }
+}
+
 /// Session callback type.
 pub type SessionCallback = Box<dyn Fn(&Session) + Send + Sync>;
 
@@ -105,6 +115,16 @@ pub struct SessionCallbacks {
 
     /// Called when a session expires.
     pub on_expire: Option<SessionCallback>,
+}
+
+impl std::fmt::Debug for SessionCallbacks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionCallbacks")
+            .field("on_create", &self.on_create.is_some())
+            .field("on_destroy", &self.on_destroy.is_some())
+            .field("on_expire", &self.on_expire.is_some())
+            .finish()
+    }
 }
 
 impl SessionManager {
@@ -308,6 +328,14 @@ pub struct SessionMiddleware {
     manager: Arc<SessionManager>,
 }
 
+impl std::fmt::Debug for SessionMiddleware {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionMiddleware")
+            .field("manager", &"Arc<SessionManager>")
+            .finish()
+    }
+}
+
 impl SessionMiddleware {
     /// Create new session middleware.
     pub fn new(manager: Arc<SessionManager>) -> Self {
@@ -391,8 +419,10 @@ mod tests {
 
     #[test]
     fn test_session_expiry() {
-        let mut config = SessionConfig::default();
-        config.timeout = Duration::milliseconds(100); // Very short timeout
+        let config = SessionConfig {
+            timeout: Duration::milliseconds(100), // Very short timeout
+            ..Default::default()
+        };
         let manager = SessionManager::new(config);
 
         let session = manager.create_session(None).unwrap();
@@ -410,8 +440,10 @@ mod tests {
 
     #[test]
     fn test_session_limit() {
-        let mut config = SessionConfig::default();
-        config.max_sessions = 2;
+        let config = SessionConfig {
+            max_sessions: 2,
+            ..Default::default()
+        };
         let manager = SessionManager::new(config);
 
         // Create max sessions

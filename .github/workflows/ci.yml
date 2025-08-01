@@ -122,13 +122,13 @@ jobs:
       run: cargo bench --no-run
 
   msrv:
-    name: Minimum Supported Rust Version (1.80)
+    name: Minimum Supported Rust Version (1.82)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install Rust 1.80
-      uses: dtolnay/rust-toolchain@1.80
+    - name: Install Rust 1.82
+      uses: dtolnay/rust-toolchain@1.82
     
     - name: Cache cargo
       uses: actions/cache@v4

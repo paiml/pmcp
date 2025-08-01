@@ -15,7 +15,7 @@ struct BenchmarkTool;
 
 #[async_trait]
 impl ToolHandler for BenchmarkTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         // Simulate some processing
         let input = args
             .get("input")
@@ -34,7 +34,7 @@ struct ComplexBenchmarkTool;
 
 #[async_trait]
 impl ToolHandler for ComplexBenchmarkTool {
-    async fn handle(&self, args: Value) -> pmcp::Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         // Simulate more complex processing
         let empty_vec = Vec::new();
         let data = args

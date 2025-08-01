@@ -254,7 +254,7 @@ async fn flush_pending(
                 .copied()
                 .unwrap_or(config.default_interval);
 
-            let should_flush = 
+            let should_flush =
                 // Debounce interval has passed
                 now.duration_since(pending_notif.last_updated) >= interval ||
                 // Maximum wait time exceeded
@@ -448,7 +448,7 @@ mod tests {
         // The count depends on whether merging happened
         if enable_merging {
             // With merging, we might get multiple notifications
-            assert!(notifications.len() >= 1);
+            assert!(!notifications.is_empty());
         } else {
             // Without merging, we should get only the last one
             assert_eq!(notifications.len(), 1);

@@ -217,6 +217,7 @@ impl RequestContext {
 }
 
 /// Context propagator for middleware integration.
+#[derive(Debug)]
 pub struct ContextPropagator;
 
 impl ContextPropagator {

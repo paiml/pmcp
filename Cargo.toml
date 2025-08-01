@@ -11,7 +11,7 @@ documentation = "https://docs.rs/pmcp"
 readme = "README.md"
 keywords = ["mcp", "model-context", "sdk", "ai", "llm"]
 categories = ["api-bindings", "asynchronous", "network-programming"]
-rust-version = "1.80.0"
+rust-version = "1.82.0"
 
 [dependencies]
 # Core dependencies

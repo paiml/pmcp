@@ -38,10 +38,15 @@ pub struct LogConfig {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
+    /// Trace level logging
     Trace,
+    /// Debug level logging
     Debug,
+    /// Info level logging
     Info,
+    /// Warning level logging
     Warn,
+    /// Error level logging
     Error,
 }
 
@@ -49,8 +54,11 @@ pub enum LogLevel {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LogFormat {
+    /// JSON formatted logs
     Json,
+    /// Pretty formatted logs
     Pretty,
+    /// Compact formatted logs
     Compact,
 }
 
@@ -102,6 +110,14 @@ pub struct CorrelationLayer {
     config: LogConfig,
 }
 
+impl std::fmt::Debug for CorrelationLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CorrelationLayer")
+            .field("config", &self.config)
+            .finish()
+    }
+}
+
 impl CorrelationLayer {
     /// Create a new correlation layer.
     pub fn new(config: LogConfig) -> Self {
@@ -133,6 +149,14 @@ where
 /// Logger with correlation ID support.
 pub struct CorrelatedLogger {
     span: Span,
+}
+
+impl std::fmt::Debug for CorrelatedLogger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CorrelatedLogger")
+            .field("span", &"Span")
+            .finish()
+    }
 }
 
 impl CorrelatedLogger {
@@ -189,10 +213,10 @@ impl CorrelatedLogger {
         );
 
         if let Some(user_id) = &context.user_id {
-            span.record("user_id", &field::display(user_id));
+            span.record("user_id", field::display(user_id));
         }
         if let Some(session_id) = &context.session_id {
-            span.record("session_id", &field::display(session_id));
+            span.record("session_id", field::display(session_id));
         }
 
         Self { span }

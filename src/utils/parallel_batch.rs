@@ -394,8 +394,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_concurrent_limit() {
-        let mut config = ParallelBatchConfig::default();
-        config.max_concurrency = 2;
+        let config = ParallelBatchConfig {
+            max_concurrency: 2,
+            ..Default::default()
+        };
 
         let active = Arc::new(tokio::sync::RwLock::new(0));
         let max_active = Arc::new(tokio::sync::RwLock::new(0));

@@ -16,13 +16,22 @@ use tracing::{debug, error, info, warn};
 #[derive(Debug, Clone)]
 pub enum RecoveryStrategy {
     /// Retry with fixed delay.
-    RetryFixed { attempts: u32, delay: Duration },
+    RetryFixed {
+        /// Number of retry attempts
+        attempts: u32,
+        /// Delay between retries
+        delay: Duration,
+    },
 
     /// Retry with exponential backoff.
     RetryExponential {
+        /// Number of retry attempts
         attempts: u32,
+        /// Initial delay before first retry
         initial_delay: Duration,
+        /// Maximum delay between retries
         max_delay: Duration,
+        /// Backoff multiplier
         multiplier: f64,
     },
 
@@ -31,8 +40,11 @@ pub enum RecoveryStrategy {
 
     /// Circuit breaker pattern.
     CircuitBreaker {
+        /// Number of failures before opening circuit
         failure_threshold: u32,
+        /// Number of successes before closing circuit
         success_threshold: u32,
+        /// Timeout duration for half-open state
         timeout: Duration,
     },
 
@@ -116,6 +128,7 @@ pub trait RecoveryHandler: Send + Sync {
 }
 
 /// Default recovery handler.
+#[derive(Debug)]
 pub struct DefaultRecoveryHandler;
 
 #[async_trait]
@@ -128,6 +141,14 @@ impl RecoveryHandler for DefaultRecoveryHandler {
 /// Fallback recovery handler.
 pub struct FallbackHandler<F> {
     fallback: F,
+}
+
+impl<F> std::fmt::Debug for FallbackHandler<F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FallbackHandler")
+            .field("fallback", &"<function>")
+            .finish()
+    }
 }
 
 impl<F> FallbackHandler<F> {
@@ -163,6 +184,18 @@ pub struct CircuitBreaker {
     success_count: Arc<RwLock<u32>>,
     last_failure_time: Arc<RwLock<Option<std::time::Instant>>>,
     config: CircuitBreakerConfig,
+}
+
+impl std::fmt::Debug for CircuitBreaker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CircuitBreaker")
+            .field("state", &"Arc<RwLock<CircuitState>>")
+            .field("failure_count", &"Arc<RwLock<u32>>")
+            .field("success_count", &"Arc<RwLock<u32>>")
+            .field("last_failure_time", &"Arc<RwLock<Option<Instant>>>")
+            .field("config", &self.config)
+            .finish()
+    }
 }
 
 /// Circuit breaker configuration.
@@ -275,6 +308,16 @@ pub struct RecoveryExecutor {
     policy: RecoveryPolicy,
     handlers: HashMap<String, Arc<dyn RecoveryHandler>>,
     circuit_breakers: Arc<RwLock<HashMap<String, Arc<CircuitBreaker>>>>,
+}
+
+impl std::fmt::Debug for RecoveryExecutor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RecoveryExecutor")
+            .field("policy", &self.policy)
+            .field("handlers", &self.handlers.keys().collect::<Vec<_>>())
+            .field("circuit_breakers", &"Arc<RwLock<HashMap<...>>>")
+            .finish()
+    }
 }
 
 impl RecoveryExecutor {
