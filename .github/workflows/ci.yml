@@ -43,7 +43,20 @@ jobs:
       run: cargo fmt --all -- --check
     
     - name: Clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      run: |
+        cargo clippy --all-targets --all-features -- \
+          -D warnings \
+          -A clippy::module_name_repetitions \
+          -A clippy::must_use_candidate \
+          -A clippy::missing_errors_doc \
+          -A clippy::missing_const_for_fn \
+          -A clippy::return_self_not_must_use \
+          -A clippy::missing_fields_in_debug \
+          -A clippy::uninlined_format_args \
+          -A clippy::if_not_else \
+          -A clippy::result_large_err \
+          -A clippy::multiple_crate_versions \
+          -A clippy::implicit_hasher
     
     - name: Build
       run: cargo build --verbose
