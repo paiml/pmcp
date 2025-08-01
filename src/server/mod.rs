@@ -18,7 +18,9 @@ use tokio::sync::{mpsc, RwLock};
 pub mod auth;
 pub mod batch;
 pub mod cancellation;
+pub mod dynamic;
 pub mod elicitation;
+pub mod notification_debouncer;
 #[cfg(feature = "resource-watcher")]
 pub mod resource_watcher;
 pub mod roots;
@@ -138,6 +140,15 @@ impl std::fmt::Debug for Server {
 }
 
 impl Server {
+    /// Check if a tool exists
+    pub fn has_tool(&self, name: &str) -> bool {
+        self.tools.contains_key(name)
+    }
+
+    /// Check if a prompt exists
+    pub fn has_prompt(&self, name: &str) -> bool {
+        self.prompts.contains_key(name)
+    }
     /// Send a notification.
     ///
     /// Sends a notification to the connected client. Notifications are one-way

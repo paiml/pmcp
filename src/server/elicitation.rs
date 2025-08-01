@@ -206,7 +206,7 @@ impl ElicitInput for ElicitationContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::elicitation::{elicit_text, InputType};
+    use crate::types::elicitation::elicit_text;
 
     #[tokio::test]
     async fn test_elicitation_manager() {

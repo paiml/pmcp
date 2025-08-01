@@ -106,31 +106,45 @@ impl WebSocketServerTransport {
         *self.incoming_rx.lock().await = Some(incoming_rx);
         *self.outgoing_tx.lock().await = Some(outgoing_tx);
 
+        // Create channel for ping/pong messages
+        let (pong_tx, mut pong_rx) = mpsc::channel::<Vec<u8>>(10);
+
         let (mut ws_sink, mut ws_stream) = ws_stream.split();
 
-        // Spawn task to handle outgoing messages
+        // Spawn task to handle outgoing messages and pongs
         tokio::spawn(async move {
-            while let Some(msg) = outgoing_rx.recv().await {
-                let json_bytes = match crate::shared::stdio::StdioTransport::serialize_message(&msg)
-                {
-                    Ok(bytes) => bytes,
-                    Err(e) => {
-                        error!("Failed to serialize message: {}", e);
-                        continue;
-                    },
-                };
+            loop {
+                tokio::select! {
+                    Some(msg) = outgoing_rx.recv() => {
+                        let json_bytes = match crate::shared::stdio::StdioTransport::serialize_message(&msg)
+                        {
+                            Ok(bytes) => bytes,
+                            Err(e) => {
+                                error!("Failed to serialize message: {}", e);
+                                continue;
+                            },
+                        };
 
-                let json = match String::from_utf8(json_bytes) {
-                    Ok(json) => json,
-                    Err(e) => {
-                        error!("Failed to convert to UTF-8: {}", e);
-                        continue;
-                    },
-                };
+                        let json = match String::from_utf8(json_bytes) {
+                            Ok(json) => json,
+                            Err(e) => {
+                                error!("Failed to convert to UTF-8: {}", e);
+                                continue;
+                            },
+                        };
 
-                if let Err(e) = ws_sink.send(Message::Text(json.into())).await {
-                    error!("Failed to send WebSocket message: {}", e);
-                    break;
+                        if let Err(e) = ws_sink.send(Message::Text(json.into())).await {
+                            error!("Failed to send WebSocket message: {}", e);
+                            break;
+                        }
+                    }
+                    Some(data) = pong_rx.recv() => {
+                        if let Err(e) = ws_sink.send(Message::Pong(data.into())).await {
+                            error!("Failed to send pong: {}", e);
+                            break;
+                        }
+                    }
+                    else => break,
                 }
             }
         });
@@ -159,9 +173,12 @@ impl WebSocketServerTransport {
                         info!("WebSocket closed by peer");
                         break;
                     },
-                    Ok(Message::Ping(_data)) => {
-                        // TODO: Handle ping/pong properly
-                        warn!("Received ping, automatic pong not yet implemented");
+                    Ok(Message::Ping(data)) => {
+                        // Queue pong response
+                        if let Err(e) = pong_tx.send(data.to_vec()).await {
+                            error!("Failed to queue pong: {}", e);
+                            break;
+                        }
                     },
                     Ok(_) => {
                         // All message types, ignore (including Pong)

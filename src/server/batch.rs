@@ -15,8 +15,9 @@ impl Server {
         self: &Arc<Self>,
         batch: BatchRequest,
     ) -> Result<BatchResponse> {
-        let handler = |req: JSONRPCRequest| {
-            let server = self.clone();
+        let server = self.clone();
+        let handler = move |req: JSONRPCRequest| {
+            let server = server.clone();
             async move {
                 // Convert JSONRPCRequest to our internal request type
                 match crate::shared::protocol_helpers::parse_request(req.clone()) {

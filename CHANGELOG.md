@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-08-01
+
+### Added
+- **Parallel batch processing** - Concurrent request processing with order preservation
+  - Configurable concurrency limits and timeouts
+  - Batch processor with metrics tracking
+  - Rate-limited batch processing support
+  - Integration with shared batch module for automatic parallel processing
+- **WebSocket ping/pong handling** - Fixed proper ping/pong frame handling
+  - Async channel for pong responses
+  - Connection health monitoring
+- **Dynamic server management** - Runtime configuration changes
+  - Add/remove tools and prompts at runtime
+  - Dynamic resource and sampling handler management
+  - Capability update notifications
+  - Configuration hot-reloading support
+- **Notification debouncing system** - Advanced notification rate limiting
+  - Per-notification type configurable intervals
+  - Notification merging support
+  - Batch notification delivery
+  - Maximum wait time to prevent indefinite delays
+
+### Improved
+- **Batch processing** - Automatic parallel processing for batch requests
+- **Type safety** - Added Debug implementations for all new types
+- **Code organization** - New modules for better separation of concerns
+  - `src/utils/parallel_batch.rs` for batch processing
+  - `src/server/dynamic.rs` for dynamic management
+  - `src/server/notification_debouncer.rs` for debouncing
+- **Test coverage** - Added comprehensive tests for all new features (156 total tests)
+
+### Fixed
+- **WebSocket transport** - Fixed undefined `connection_tx` variable in ping handler
+- **Type issues** - Fixed RequestId conversion from i32 to i64 in tests
+- **Import issues** - Resolved various missing imports and visibility issues
+
 ## [0.4.0] - 2025-08-01
 
 ### Added

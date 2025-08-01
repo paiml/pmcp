@@ -106,8 +106,8 @@ impl BatchResponse {
 /// request (potentially in parallel), and returns a batch response.
 pub async fn process_batch_request<F, Fut>(batch: BatchRequest, handler: F) -> Result<BatchResponse>
 where
-    F: Fn(JSONRPCRequest) -> Fut,
-    Fut: std::future::Future<Output = JSONRPCResponse>,
+    F: Fn(JSONRPCRequest) -> Fut + Clone + Send + Sync + 'static,
+    Fut: std::future::Future<Output = JSONRPCResponse> + Send + 'static,
 {
     let requests = batch.into_requests();
 
@@ -119,11 +119,18 @@ where
     // Process all requests
     let mut responses = Vec::with_capacity(requests.len());
 
-    // Process requests sequentially to maintain order
-    // TODO: Consider parallel processing with order preservation
-    for request in requests {
-        let response = handler(request).await;
-        responses.push(response);
+    // Process requests in parallel while maintaining order
+    if requests.len() > 1 {
+        // Use parallel processing for multiple requests
+        let config = crate::utils::parallel_batch::ParallelBatchConfig::default();
+        responses =
+            crate::utils::parallel_batch::process_batch_parallel(requests, handler, config).await?;
+    } else {
+        // For single request, process directly
+        for request in requests {
+            let response = handler(request).await;
+            responses.push(response);
+        }
     }
 
     Ok(BatchResponse::from_responses(responses))

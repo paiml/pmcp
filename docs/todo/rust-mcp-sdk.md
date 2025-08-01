@@ -524,15 +524,58 @@ Each feature will be implemented with:
   - Elicitation manager with async response correlation
   - Example: `examples/19_elicit_input.rs`
 
-### Remaining Features
-- 🚧 Complete streamable HTTP transport implementation
-- 🚧 Parallel batch processing with order preservation
-- 🚧 WebSocket ping/pong handling fix
-- 🚧 Dynamic server management
-- 🚧 Notification debouncing system
+## Implementation Tracking
+
+### Update 1 (Completed - v0.4.0)
+- [x] OAuth 2.0 server implementation
+- [x] Completable arguments for prompts/tools
+- [x] Resource watcher with file system monitoring
+- [x] User input elicitation support
+
+### Update 2 (Completed - v0.5.0)
+- [x] Parallel batch processing with order preservation
+- [x] WebSocket ping/pong handling fix
+- [x] Dynamic server management
+- [x] Notification debouncing system
+- [ ] Streamable HTTP transport (skipped - requires async_stream dependency)
 
 ### Quality Status
 - ✅ All clippy warnings resolved
-- ✅ All library tests passing
+- ✅ All library tests passing (156 tests)
 - ✅ Code formatted with rustfmt
+- ✅ Zero unwraps in production code
 - ⚠️ Some example code needs updates for new features
+
+### Features Completed in v0.5.0
+
+#### Parallel Batch Processing
+- Full parallel request processing with order preservation
+- Configurable concurrency limits and timeouts
+- Batch processor with metrics tracking
+- Rate-limited batch processing support
+- Located in: `src/utils/parallel_batch.rs`
+
+#### WebSocket Ping/Pong Handling
+- Fixed WebSocket ping/pong frame handling
+- Proper async channel for pong responses
+- Maintains connection health
+- Located in: `src/server/transport/websocket.rs`
+
+#### Dynamic Server Management
+- Runtime addition/removal of tools and prompts
+- Dynamic resource and sampling handler management
+- Capability update notifications
+- Configuration hot-reloading support
+- Located in: `src/server/dynamic.rs`
+
+#### Notification Debouncing System
+- Advanced debouncing for rapid state changes
+- Per-notification type configurable intervals
+- Notification merging support
+- Batch notification delivery
+- Located in: `src/server/notification_debouncer.rs`
+
+### Remaining TypeScript SDK Features
+- Advanced session management
+- Legacy protocol version support
+- Additional transport implementations
