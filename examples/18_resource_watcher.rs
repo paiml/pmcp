@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use pmcp::error::Result;
 #[cfg(feature = "resource-watcher")]
-use pmcp::server::resource_watcher::{ResourceWatcher, ResourceWatcherBuilder, WatchConfig};
+use pmcp::server::resource_watcher::{ResourceWatcher, ResourceWatcherBuilder};
 use pmcp::server::{ResourceHandler, Server};
 use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::types::protocol::{Content, ListResourcesResult, ReadResourceResult, ResourceInfo};
@@ -85,7 +85,7 @@ impl FileSystemResourceHandler {
                 if path.is_file() {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                         // Check if it's a supported file type
-                        let _mime_type = match path.extension().and_then(|e| e.to_str()) {
+                        let mime_type = match path.extension().and_then(|e| e.to_str()) {
                             Some("txt") => Some("text/plain".to_string()),
                             Some("md") => Some("text/markdown".to_string()),
                             Some("json") => Some("application/json".to_string()),
@@ -132,7 +132,7 @@ impl ResourceHandler for FileSystemResourceHandler {
             .await
             .map_err(|e| pmcp::error::Error::not_found(format!("Failed to read file: {}", e)))?;
 
-        let mime_type = path
+        let _mime_type = path
             .extension()
             .and_then(|e| e.to_str())
             .and_then(|ext| match ext {
@@ -179,7 +179,7 @@ async fn main() -> Result<()> {
     info!("Watching directory: {:?}", watch_dir);
 
     // Create resource handler
-    let handler = Arc::new(FileSystemResourceHandler::new(watch_dir));
+    let handler = FileSystemResourceHandler::new(watch_dir);
 
     // Create server
     let server = Server::builder()
@@ -192,7 +192,7 @@ async fn main() -> Result<()> {
             }),
             ..Default::default()
         })
-        .resources(handler.clone())
+        .resources(handler)
         .build()?;
 
     #[cfg(feature = "resource-watcher")]
