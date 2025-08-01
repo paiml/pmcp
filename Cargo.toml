@@ -54,7 +54,7 @@ notify = { version = "6.1", optional = true }
 glob-match = "0.2"
 
 # Validation
-jsonschema = { version = "0.30", optional = true }
+jsonschema = { version = "0.32", optional = true }
 garde = { version = "0.22", optional = true }
 
 [dev-dependencies]
