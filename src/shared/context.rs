@@ -145,9 +145,12 @@ impl RequestContext {
         let mut headers = HashMap::new();
 
         // Standard trace context headers
+        // Trace ID should be 32 hex chars, Span ID should be 16 hex chars
+        let trace_id_hex = self.trace_id.replace('-', "");
+        let span_id_hex = self.span_id.replace('-', "")[..16].to_string();
         headers.insert(
             "traceparent".to_string(),
-            format!("00-{}-{}-01", self.trace_id, self.span_id),
+            format!("00-{}-{}-01", trace_id_hex, span_id_hex),
         );
 
         // Custom headers
@@ -175,8 +178,34 @@ impl RequestContext {
         if let Some(traceparent) = headers.get("traceparent") {
             let parts: Vec<&str> = traceparent.split('-').collect();
             if parts.len() >= 4 {
-                let trace_id = parts[1].to_string();
-                let span_id = parts[2].to_string();
+                // Restore UUIDs from hex format
+                let trace_id_hex = parts[1];
+                let trace_id = if trace_id_hex.len() == 32 {
+                    format!(
+                        "{}-{}-{}-{}-{}",
+                        &trace_id_hex[0..8],
+                        &trace_id_hex[8..12],
+                        &trace_id_hex[12..16],
+                        &trace_id_hex[16..20],
+                        &trace_id_hex[20..32]
+                    )
+                } else {
+                    trace_id_hex.to_string()
+                };
+                
+                let span_id_hex = parts[2];
+                let span_id = if span_id_hex.len() == 16 {
+                    format!(
+                        "{}-{}-{}-{}-{}",
+                        &span_id_hex[0..8],
+                        &span_id_hex[8..12],
+                        &span_id_hex[12..16],
+                        "0000",
+                        "000000000000"
+                    )
+                } else {
+                    span_id_hex.to_string()
+                };
 
                 let request_id = headers
                     .get("x-request-id")

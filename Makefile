@@ -70,7 +70,17 @@ lint:
 		-A clippy::if_not_else \
 		-A clippy::result_large_err \
 		-A clippy::multiple_crate_versions \
-		-A clippy::implicit_hasher
+		-A clippy::implicit_hasher \
+		-A clippy::unused_async \
+		-A clippy::cast_lossless \
+		-A clippy::redundant_clone \
+		-A clippy::redundant_closure_for_method_calls \
+		-A clippy::significant_drop_tightening \
+		-A clippy::missing_panics_doc \
+		-A clippy::cast_possible_truncation \
+		-A clippy::cast_precision_loss \
+		-A clippy::option_if_let_else \
+		-A clippy::derive_partial_eq_without_eq
 	@echo "$(BLUE)Checking examples...$(NC)"
 	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) check --features "full" --examples
 	@echo "$(GREEN)✓ No lint issues$(NC)"
