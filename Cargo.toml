@@ -44,6 +44,15 @@ parking_lot = "0.12"
 dashmap = "6.1"
 tokio-util = { version = "0.7", features = ["rt"] }
 
+# OAuth dependencies
+sha2 = "0.10"
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["json"], optional = true }
+
+# File watching dependencies
+notify = { version = "6.1", optional = true }
+glob-match = "0.2"
+
 # Validation
 jsonschema = { version = "0.30", optional = true }
 garde = { version = "0.22", optional = true }
@@ -67,10 +76,11 @@ dashmap = "6.1"  # Already in main deps but needed for examples
 
 [features]
 default = ["full"]
-full = ["websocket", "http", "validation"]
+full = ["websocket", "http", "validation", "resource-watcher"]
 websocket = ["dep:tokio-tungstenite"]
 http = ["dep:hyper", "dep:hyper-util"]
 validation = ["dep:jsonschema", "dep:garde"]
+resource-watcher = ["dep:notify"]
 
 # Example features
 authentication_example = []
@@ -176,6 +186,23 @@ path = "examples/14_sampling_llm.rs"
 [[example]]
 name = "15_middleware"
 path = "examples/15_middleware.rs"
+
+[[example]]
+name = "16_oauth_server"
+path = "examples/16_oauth_server.rs"
+
+[[example]]
+name = "17_completable_prompts"
+path = "examples/17_completable_prompts.rs"
+
+[[example]]
+name = "18_resource_watcher"
+path = "examples/18_resource_watcher.rs"
+required-features = ["resource-watcher"]
+
+[[example]]
+name = "19_elicit_input"
+path = "examples/19_elicit_input.rs"
 
 [workspace]
 members = []

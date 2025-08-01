@@ -5,6 +5,8 @@
 
 pub mod auth;
 pub mod capabilities;
+pub mod completable;
+pub mod elicitation;
 pub mod jsonrpc;
 pub mod protocol;
 

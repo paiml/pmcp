@@ -52,7 +52,11 @@ impl FileSystemResources {
 
 #[async_trait]
 impl ResourceHandler for FileSystemResources {
-    async fn read(&self, uri: &str, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ReadResourceResult> {
+    async fn read(
+        &self,
+        uri: &str,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<ReadResourceResult> {
         match self.files.get(uri) {
             Some(content) => Ok(ReadResourceResult {
                 contents: vec![Content::Text {
@@ -66,7 +70,11 @@ impl ResourceHandler for FileSystemResources {
         }
     }
 
-    async fn list(&self, _cursor: Option<String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ListResourcesResult> {
+    async fn list(
+        &self,
+        _cursor: Option<String>,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<ListResourcesResult> {
         let resources: Vec<ResourceInfo> = self
             .files
             .keys()
@@ -102,7 +110,11 @@ struct TemplateResources;
 
 #[async_trait]
 impl ResourceHandler for TemplateResources {
-    async fn read(&self, uri: &str, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ReadResourceResult> {
+    async fn read(
+        &self,
+        uri: &str,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<ReadResourceResult> {
         // Example: Handle parameterized URIs like "template://greeting/{name}"
         if uri.starts_with("template://greeting/") {
             let name = uri.strip_prefix("template://greeting/").unwrap_or("World");
@@ -132,7 +144,11 @@ impl ResourceHandler for TemplateResources {
         }
     }
 
-    async fn list(&self, _cursor: Option<String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ListResourcesResult> {
+    async fn list(
+        &self,
+        _cursor: Option<String>,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<ListResourcesResult> {
         Ok(ListResourcesResult {
             resources: vec![
                 ResourceInfo {
@@ -161,7 +177,11 @@ struct CombinedResources {
 
 #[async_trait]
 impl ResourceHandler for CombinedResources {
-    async fn read(&self, uri: &str, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ReadResourceResult> {
+    async fn read(
+        &self,
+        uri: &str,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<ReadResourceResult> {
         if uri.starts_with("file://") {
             self.filesystem.read(uri, _extra).await
         } else if uri.starts_with("template://") {
@@ -174,7 +194,11 @@ impl ResourceHandler for CombinedResources {
         }
     }
 
-    async fn list(&self, cursor: Option<String>, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<ListResourcesResult> {
+    async fn list(
+        &self,
+        cursor: Option<String>,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<ListResourcesResult> {
         // Simple pagination: use cursor to determine which handler to list from
         match cursor.as_deref() {
             None | Some("") => {

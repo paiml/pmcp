@@ -61,7 +61,12 @@ impl SubscriptionManager {
     /// * `uri` - The resource URI to subscribe to
     /// * `subscriber_id` - Unique identifier for the subscriber (usually session ID)
     pub async fn subscribe(&self, uri: String, subscriber_id: String) -> Result<()> {
-        self.subscriptions.write().await.entry(uri).or_default().insert(subscriber_id);
+        self.subscriptions
+            .write()
+            .await
+            .entry(uri)
+            .or_default()
+            .insert(subscriber_id);
         Ok(())
     }
 

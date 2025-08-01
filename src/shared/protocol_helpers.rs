@@ -172,6 +172,10 @@ fn client_request_to_jsonrpc(req: ClientRequest) -> (String, Option<Value>) {
         ClientRequest::CreateMessage(params) => {
             create_method_params("sampling/createMessage", params)
         },
+        // Elicitation response
+        ClientRequest::ElicitInputResponse(params) => {
+            create_method_params("elicitation/response", params)
+        },
     }
 }
 
@@ -190,6 +194,10 @@ fn server_request_to_jsonrpc(req: ServerRequest) -> (String, Option<Value>) {
             Some(serde_json::to_value(params).unwrap()),
         ),
         ServerRequest::ListRoots => ("roots/list".to_string(), None),
+        ServerRequest::ElicitInput(params) => (
+            "elicitation/input".to_string(),
+            Some(serde_json::to_value(params).unwrap()),
+        ),
     }
 }
 

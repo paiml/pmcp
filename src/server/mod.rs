@@ -18,6 +18,9 @@ use tokio::sync::{mpsc, RwLock};
 pub mod auth;
 pub mod batch;
 pub mod cancellation;
+pub mod elicitation;
+#[cfg(feature = "resource-watcher")]
+pub mod resource_watcher;
 pub mod roots;
 pub mod subscriptions;
 pub mod transport;
@@ -116,6 +119,8 @@ pub struct Server {
     roots_manager: Arc<RwLock<roots::RootsManager>>,
     /// Subscription manager for resource subscriptions
     subscription_manager: Arc<RwLock<subscriptions::SubscriptionManager>>,
+    /// Elicitation manager for user input requests
+    elicitation_manager: Option<Arc<elicitation::ElicitationManager>>,
 }
 
 impl std::fmt::Debug for Server {
@@ -565,6 +570,13 @@ impl Server {
             | ClientRequest::SetLoggingLevel { level: _ }
             | ClientRequest::Ping => Ok(serde_json::json!({})),
             ClientRequest::CreateMessage(req) => self.handle_create_message(request_id, req).await,
+            ClientRequest::ElicitInputResponse(response) => {
+                // Handle elicitation response if we have a manager
+                if let Some(elicitation_manager) = &self.elicitation_manager {
+                    elicitation_manager.handle_response(response).await?;
+                }
+                Ok(serde_json::json!({}))
+            },
         }
     }
 
@@ -871,15 +883,11 @@ impl Server {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn subscribe_resource(
-        &self,
-        uri: String,
-        client_id: String,
-    ) -> Result<()> {
+    pub async fn subscribe_resource(&self, uri: String, client_id: String) -> Result<()> {
         if uri.is_empty() || client_id.is_empty() {
             return Err(Error::invalid_params("URI and client_id must not be empty"));
         }
-        
+
         let mut subscription_manager = self.subscription_manager.write().await;
         if let Some(tx) = &self.notification_tx {
             subscription_manager.set_notification_sender({
@@ -889,7 +897,7 @@ impl Server {
                 }
             });
         }
-        
+
         subscription_manager.subscribe(uri, client_id).await
     }
 
@@ -922,16 +930,14 @@ impl Server {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn cancel_request(
-        &self,
-        request_id: String,
-        reason: Option<String>,
-    ) -> Result<()> {
+    pub async fn cancel_request(&self, request_id: String, reason: Option<String>) -> Result<()> {
         if request_id.is_empty() {
             return Err(Error::invalid_params("Request ID must not be empty"));
         }
-        
-        self.cancellation_manager.cancel_request(request_id, reason).await
+
+        self.cancellation_manager
+            .cancel_request(request_id, reason)
+            .await
     }
 
     /// Unsubscribe a client from resource updates.
@@ -963,15 +969,11 @@ impl Server {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn unsubscribe_resource(
-        &self,
-        uri: String,
-        client_id: String,
-    ) -> Result<()> {
+    pub async fn unsubscribe_resource(&self, uri: String, client_id: String) -> Result<()> {
         if uri.is_empty() || client_id.is_empty() {
             return Err(Error::invalid_params("URI and client_id must not be empty"));
         }
-        
+
         let subscription_manager = self.subscription_manager.read().await;
         subscription_manager.unsubscribe(uri, client_id).await
     }
@@ -1398,6 +1400,7 @@ impl ServerBuilder {
             cancellation_manager: self.cancellation_manager,
             roots_manager: Arc::new(RwLock::new(self.roots_manager)),
             subscription_manager: Arc::new(RwLock::new(subscriptions::SubscriptionManager::new())),
+            elicitation_manager: None,
         })
     }
 }
@@ -1964,8 +1967,8 @@ mod tests {
             .build()
             .unwrap();
 
-        let request = Request::Server(Box::new(crate::types::ServerRequest::CreateMessage(Box::new(
-            crate::types::protocol::CreateMessageParams {
+        let request = Request::Server(Box::new(crate::types::ServerRequest::CreateMessage(
+            Box::new(crate::types::protocol::CreateMessageParams {
                 messages: vec![],
                 model_preferences: None,
                 system_prompt: None,
@@ -1974,8 +1977,8 @@ mod tests {
                 max_tokens: None,
                 stop_sequences: None,
                 metadata: None,
-            },
-        ))));
+            }),
+        )));
         let response = server.handle_request(RequestId::from(1i64), request).await;
 
         match response.payload {

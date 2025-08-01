@@ -210,6 +210,9 @@ pub struct PromptArgument {
     /// Whether the argument is required
     #[serde(default)]
     pub required: bool,
+    /// Completion configuration for this argument
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completion: Option<crate::types::completable::CompletionConfig>,
 }
 
 /// List prompts response.
@@ -568,6 +571,9 @@ pub enum ClientRequest {
     /// Create message (sampling)
     #[serde(rename = "sampling/createMessage")]
     CreateMessage(CreateMessageRequest),
+    /// Response to elicitation request
+    #[serde(rename = "elicitation/response")]
+    ElicitInputResponse(crate::types::elicitation::ElicitInputResponse),
 }
 
 /// Server request types.
@@ -580,6 +586,9 @@ pub enum ServerRequest {
     /// List roots request
     #[serde(rename = "roots/list")]
     ListRoots,
+    /// Elicit input from user
+    #[serde(rename = "elicitation/elicitInput")]
+    ElicitInput(Box<crate::types::elicitation::ElicitInputRequest>),
 }
 
 /// Create message parameters (for server requests).

@@ -404,3 +404,135 @@ Based on pmat's performance characteristics:
 - Doctests: 14 passed
 - Quality gate: PASSED ✅
 ```
+
+## Remaining TypeScript SDK Features to Port (Updated: 2025-08-01)
+
+### High Priority Features
+
+#### 1. OAuth 2.0 Server Implementation
+- [ ] Full OAuth 2.0 server with authorization endpoints
+- [ ] Authorization handler (`/oauth2/authorize`)
+- [ ] Token handler (`/oauth2/token`)
+- [ ] Client registration (`/oauth2/register`)
+- [ ] Token revocation (`/oauth2/revoke`)
+- [ ] OAuth metadata endpoints
+- [ ] ProxyOAuthServerProvider for upstream delegation
+- [ ] Bearer token middleware
+- [ ] Client authentication middleware
+
+#### 2. Completable Arguments System
+- [ ] `completable()` function for argument auto-completion
+- [ ] Integration with prompts system
+- [ ] Integration with resources system
+- [ ] Context-aware completion suggestions
+
+#### 3. ResourceWatcher & File System Monitoring
+- [ ] `ResourceWatcher` class implementation
+- [ ] File system monitoring with configurable debouncing
+- [ ] Automatic resource update notifications
+- [ ] Watch pattern configuration
+- [ ] Ignore rules support
+- [ ] Integration with resource subscription system
+
+#### 4. User Input Elicitation
+- [ ] `elicitInput()` method for interactive workflows
+- [ ] Support for different input types
+- [ ] Validation and error handling
+- [ ] Integration with tool execution
+
+#### 5. Complete Streamable HTTP Transport
+- [ ] Implement new streamable HTTP format
+- [ ] Advanced SSE connection management
+- [ ] Automatic reconnection and error recovery
+- [ ] Session management for stateful servers
+- [ ] Backwards compatibility with legacy SSE
+
+### Medium Priority Features
+
+#### 6. Parallel Batch Processing
+- [ ] Implement parallel processing with order preservation
+- [ ] Advanced batching strategies
+- [ ] Performance optimization for batch operations
+
+#### 7. WebSocket Enhancements
+- [ ] Proper ping/pong frame handling
+- [ ] Advanced connection lifecycle management
+- [ ] Reconnection logic
+- [ ] Connection health monitoring
+
+#### 8. Dynamic Server Management
+- [ ] Runtime addition/removal of tools
+- [ ] Runtime addition/removal of prompts
+- [ ] Runtime addition/removal of resources
+- [ ] Automatic `listChanged` notifications
+- [ ] State synchronization
+
+#### 9. Notification Debouncing System
+- [ ] Advanced debouncing for rapid state changes
+- [ ] Configurable debounce intervals
+- [ ] Batch notification delivery
+- [ ] Network efficiency optimizations
+
+### Low Priority Features
+
+#### 10. Advanced Session Management
+- [ ] Sophisticated HTTP session handling
+- [ ] Session persistence across connections
+- [ ] Session timeout management
+- [ ] Multi-tenant session support
+
+#### 11. Backwards Compatibility Features
+- [ ] SSE fallback mechanisms
+- [ ] Legacy protocol version support
+- [ ] Graceful degradation strategies
+
+### Implementation Tracking
+
+Each feature will be implemented with:
+- Comprehensive unit tests
+- Integration tests
+- Documentation updates
+- Example code
+- Performance benchmarks where applicable
+
+## TypeScript SDK Feature Parity Status (Updated)
+
+### Completed in v0.3.1
+- ✅ **OAuth 2.0 server functionality**
+  - Full authorization code flow with PKCE support
+  - In-memory provider implementation
+  - Bearer token and client credentials middleware
+  - Scope-based authorization
+  - Example: `examples/16_oauth_server.rs`
+  
+- ✅ **Completable arguments system**
+  - Static and file-based completion providers
+  - Integration with prompts and resources
+  - Full TypeScript SDK compatibility
+  - Example: `examples/17_completable_prompts.rs`
+  
+- ✅ **ResourceWatcher with file system monitoring**
+  - Cross-platform file watching using notify crate
+  - Pattern-based filtering with glob support
+  - Configurable debouncing
+  - Integration with resource update notifications
+  - Example: `examples/18_resource_watcher.rs`
+  
+- ✅ **User input elicitation (elicitInput)**
+  - Full protocol support for all input types
+  - Timeout and cancellation handling
+  - Elicitation manager with async response correlation
+  - Example: `examples/19_elicit_input.rs`
+
+### Remaining Features
+- 🚧 Complete streamable HTTP transport implementation
+- 🚧 Parallel batch processing with order preservation
+- 🚧 WebSocket ping/pong handling fix
+- 🚧 Dynamic server management
+- 🚧 Notification debouncing system
+
+### Quality Status
+- ✅ All clippy warnings resolved
+- ✅ All library tests passing
+- ✅ Code formatted with rustfmt
+- ⚠️ Some example code needs updates for new features

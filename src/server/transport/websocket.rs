@@ -189,7 +189,8 @@ impl Transport for WebSocketServerTransport {
             .as_ref()
             .ok_or_else(|| Error::internal("No active connection"))?;
 
-        let result = tx.send(message)
+        let result = tx
+            .send(message)
             .await
             .map_err(|_| Error::internal("Failed to send message"));
         drop(tx_guard);
@@ -204,7 +205,10 @@ impl Transport for WebSocketServerTransport {
             .as_mut()
             .ok_or_else(|| Error::internal("No active connection"))?;
 
-        let result = rx.recv().await.ok_or_else(|| Error::internal("Connection closed"));
+        let result = rx
+            .recv()
+            .await
+            .ok_or_else(|| Error::internal("Connection closed"));
         drop(rx_guard);
         result
     }

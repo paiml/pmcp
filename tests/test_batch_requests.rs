@@ -154,7 +154,9 @@ async fn test_batch_multiple_requests() {
         pmcp::types::jsonrpc::ResponsePayload::Result(value) => {
             assert!(value.get("resources").is_some());
         },
-        pmcp::types::jsonrpc::ResponsePayload::Error(_) => panic!("Expected successful result for resources/list"),
+        pmcp::types::jsonrpc::ResponsePayload::Error(_) => {
+            panic!("Expected successful result for resources/list")
+        },
     }
 
     // Check tools/call response
@@ -163,7 +165,9 @@ async fn test_batch_multiple_requests() {
         pmcp::types::jsonrpc::ResponsePayload::Result(value) => {
             assert!(value.get("content").is_some());
         },
-        pmcp::types::jsonrpc::ResponsePayload::Error(_) => panic!("Expected successful result for tools/call"),
+        pmcp::types::jsonrpc::ResponsePayload::Error(_) => {
+            panic!("Expected successful result for tools/call")
+        },
     }
 
     // Check resources/read response
@@ -172,7 +176,9 @@ async fn test_batch_multiple_requests() {
         pmcp::types::jsonrpc::ResponsePayload::Result(value) => {
             assert!(value.get("contents").is_some());
         },
-        pmcp::types::jsonrpc::ResponsePayload::Error(_) => panic!("Expected successful result for resources/read"),
+        pmcp::types::jsonrpc::ResponsePayload::Error(_) => {
+            panic!("Expected successful result for resources/read")
+        },
     }
 }
 
@@ -231,7 +237,9 @@ async fn test_batch_error_handling() {
         pmcp::types::jsonrpc::ResponsePayload::Error(error) => {
             assert_eq!(error.code, -32700, "Error: {:?}", error); // Parse error
         },
-        pmcp::types::jsonrpc::ResponsePayload::Result(_) => panic!("Expected error for invalid method"),
+        pmcp::types::jsonrpc::ResponsePayload::Result(_) => {
+            panic!("Expected error for invalid method")
+        },
     }
 
     // Third should be not found error for non-existent tool
@@ -240,7 +248,9 @@ async fn test_batch_error_handling() {
         pmcp::types::jsonrpc::ResponsePayload::Error(error) => {
             assert_eq!(error.code, -32603); // Internal error (not found)
         },
-        pmcp::types::jsonrpc::ResponsePayload::Result(_) => panic!("Expected error for non-existent tool"),
+        pmcp::types::jsonrpc::ResponsePayload::Result(_) => {
+            panic!("Expected error for non-existent tool")
+        },
     }
 }
 

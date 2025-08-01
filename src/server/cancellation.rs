@@ -72,7 +72,9 @@ impl CancellationManager {
     /// Check if a request is cancelled.
     pub async fn is_cancelled(&self, request_id: &str) -> bool {
         let tokens = self.tokens.read().await;
-        tokens.get(request_id).is_some_and(tokio_util::sync::CancellationToken::is_cancelled)
+        tokens
+            .get(request_id)
+            .is_some_and(tokio_util::sync::CancellationToken::is_cancelled)
     }
 
     /// Get the cancellation token for a request.
@@ -118,6 +120,8 @@ pub struct RequestHandlerExtra {
     pub request_id: String,
     /// Session ID
     pub session_id: Option<String>,
+    /// Authentication info
+    pub auth_info: Option<crate::types::auth::AuthInfo>,
 }
 
 impl RequestHandlerExtra {
@@ -127,12 +131,19 @@ impl RequestHandlerExtra {
             cancellation_token,
             request_id,
             session_id: None,
+            auth_info: None,
         }
     }
 
     /// Set the session ID.
     pub fn with_session_id(mut self, session_id: Option<String>) -> Self {
         self.session_id = session_id;
+        self
+    }
+
+    /// Set the auth info.
+    pub fn with_auth_info(mut self, auth_info: Option<crate::types::auth::AuthInfo>) -> Self {
+        self.auth_info = auth_info;
         self
     }
 

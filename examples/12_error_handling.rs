@@ -30,7 +30,11 @@ impl ErrorDemoTool {
 
 #[async_trait]
 impl ToolHandler for ErrorDemoTool {
-    async fn handle(&self, arguments: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
+    async fn handle(
+        &self,
+        arguments: Value,
+        _extra: pmcp::RequestHandlerExtra,
+    ) -> pmcp::Result<Value> {
         let scenario = arguments
             .get("scenario")
             .and_then(|v| v.as_str())

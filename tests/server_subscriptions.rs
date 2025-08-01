@@ -46,14 +46,21 @@ impl ResourceHandler for TestResourceHandler {
     ) -> pmcp::Result<ReadResourceResult> {
         let resources = self.resources.read().await;
 
-        resources.get(uri).map_or_else(|| Err(pmcp::Error::not_found(format!(
-                "Resource {} not found",
-                uri
-            ))), |content| Ok(ReadResourceResult {
-                contents: vec![Content::Text {
-                    text: content.clone(),
-                }],
-            }))
+        resources.get(uri).map_or_else(
+            || {
+                Err(pmcp::Error::not_found(format!(
+                    "Resource {} not found",
+                    uri
+                )))
+            },
+            |content| {
+                Ok(ReadResourceResult {
+                    contents: vec![Content::Text {
+                        text: content.clone(),
+                    }],
+                })
+            },
+        )
     }
 
     async fn list(
@@ -61,7 +68,10 @@ impl ResourceHandler for TestResourceHandler {
         _cursor: Option<String>,
         _extra: pmcp::RequestHandlerExtra,
     ) -> pmcp::Result<ListResourcesResult> {
-        let resource_list: Vec<ResourceInfo> = self.resources.read().await
+        let resource_list: Vec<ResourceInfo> = self
+            .resources
+            .read()
+            .await
             .keys()
             .map(|uri| ResourceInfo {
                 uri: uri.clone(),
