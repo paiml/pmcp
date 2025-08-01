@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2025-08-01
+
+### Added
+- **Comprehensive doctests for core SDK types** - Improved documentation with realistic examples
+  - Core constants (protocol versions, timeouts) with usage examples
+  - Authentication types (AuthInfo methods, OAuth flow examples)
+  - Capability types (client/server capability helpers)
+  - Error types (error creation methods, error codes)
+  - All doctests include real-world usage patterns
+  - Added 85+ new doctest examples across the SDK
+
+### Fixed
+- **CI pipeline improvements** - Enhanced build reliability
+  - Fixed cargo-deny configuration to use v2 format
+  - Added missing tools (cargo-nextest, cargo-audit) to CI
+  - Properly skip feature-gated examples in CI checks
+  - Fixed all clippy pedantic warnings
+
 ## [0.6.0] - 2025-08-01
 
 ### Added
