@@ -36,7 +36,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "0.6.5"
+pmcp = "0.6.6"
 ```
 
 ## Examples
@@ -95,7 +95,7 @@ cargo run --example 16_batching
 
 See the [examples directory](examples/) for detailed documentation.
 
-## What's New in v0.6.5
+## What's New in v0.6.6
 
 ### 🔐 OIDC Discovery Support
 - Full OpenID Connect discovery implementation
