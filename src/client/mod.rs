@@ -17,6 +17,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, RwLock};
 use uuid::Uuid;
 
+pub mod auth;
 pub mod transport;
 
 /// MCP client for connecting to servers.

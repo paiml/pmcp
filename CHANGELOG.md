@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5] - 2025-08-06
+
+### Added
+- **OIDC Discovery Support** - Full OpenID Connect configuration discovery
+  - `OidcDiscoveryMetadata` struct for OAuth 2.0/OIDC server metadata
+  - `OidcDiscoveryClient` with automatic retry on CORS/network errors
+  - Token exchange client with explicit JSON accept headers
+  - Comprehensive `client::auth` module with helpers for OAuth flows
+  - New example: `20_oidc_discovery` demonstrating OIDC discovery and token exchange
+  
+- **Transport Response Isolation** - Enhanced safety for concurrent transports
+  - `TransportId` type for unique transport identification
+  - Protocol-level request-response correlation per transport
+  - `complete_request_for_transport` method for transport-specific completion
+  - Prevents responses being routed to wrong transport instances
+  - Property tests ensuring transport isolation invariants
+
+- **Enhanced Testing**
+  - 5 new property tests for transport isolation
+  - 10+ unit tests for OIDC discovery and auth
+  - Integration tests for concurrent transport operations
+  - 135+ doctests with comprehensive examples
+
+### Changed
+- Updated to align with TypeScript SDK v1.17.1 features
+- Added `reqwest` as a required dependency for HTTP client functionality
+- Enhanced error handling with proper retry logic for auth operations
+
+### Fixed
+- Token exchange now explicitly sets `Accept: application/json` header
+- Improved error messages for authentication failures
+- Fixed potential race conditions in multi-transport scenarios
+
 ## [0.6.4] - 2025-08-01
 
 ### Added

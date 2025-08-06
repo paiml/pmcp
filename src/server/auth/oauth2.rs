@@ -165,25 +165,38 @@ pub struct OAuthError {
     pub error_uri: Option<String>,
 }
 
-/// OAuth 2.0 server metadata.
+/// `OpenID Connect Discovery` metadata.
+/// Represents the well-known configuration for OAuth 2.0/OIDC servers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OAuthMetadata {
+pub struct OidcDiscoveryMetadata {
     /// Issuer identifier.
     pub issuer: String,
 
-    /// Authorization endpoint.
+    /// Authorization endpoint URL.
     pub authorization_endpoint: String,
 
-    /// Token endpoint.
+    /// Token endpoint URL.
     pub token_endpoint: String,
+
+    /// JWKS (JSON Web Key Set) URI.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jwks_uri: Option<String>,
+
+    /// User info endpoint URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub userinfo_endpoint: Option<String>,
 
     /// Registration endpoint.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub registration_endpoint: Option<String>,
 
-    /// Revocation endpoint.
+    /// Revocation endpoint URL.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub revocation_endpoint: Option<String>,
+
+    /// Introspection endpoint URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub introspection_endpoint: Option<String>,
 
     /// Supported response types.
     pub response_types_supported: Vec<ResponseType>,
@@ -194,12 +207,15 @@ pub struct OAuthMetadata {
     /// Supported scopes.
     pub scopes_supported: Vec<String>,
 
-    /// Token endpoint auth methods.
+    /// Supported token endpoint auth methods.
     pub token_endpoint_auth_methods_supported: Vec<String>,
 
-    /// PKCE support.
+    /// Supported PKCE code challenge methods.
     pub code_challenge_methods_supported: Vec<String>,
 }
+
+/// OAuth 2.0 server metadata (alias for backward compatibility).
+pub type OAuthMetadata = OidcDiscoveryMetadata;
 
 /// OAuth 2.0 authorization request.
 #[derive(Debug, Clone, Deserialize)]
@@ -337,6 +353,18 @@ pub trait OAuthProvider: Send + Sync {
 
     /// Get server metadata.
     async fn metadata(&self) -> Result<OAuthMetadata>;
+
+    /// Discover OIDC configuration from well-known endpoint.
+    /// Returns the discovery metadata if successful.
+    /// Implementations should handle retries for network failures.
+    async fn discover(&self, _issuer_url: &str) -> Result<OidcDiscoveryMetadata> {
+        // Default implementation that would fetch from .well-known/openid-configuration
+        // For now, return an error indicating it needs implementation
+        Err(Error::protocol(
+            ErrorCode::METHOD_NOT_FOUND,
+            "OIDC discovery not implemented for this provider",
+        ))
+    }
 }
 
 /// In-memory OAuth 2.0 provider implementation.
@@ -682,8 +710,11 @@ impl OAuthProvider for InMemoryOAuthProvider {
             issuer: self.base_url.clone(),
             authorization_endpoint: format!("{}/oauth2/authorize", self.base_url),
             token_endpoint: format!("{}/oauth2/token", self.base_url),
+            jwks_uri: Some(format!("{}/oauth2/jwks", self.base_url)),
+            userinfo_endpoint: Some(format!("{}/oauth2/userinfo", self.base_url)),
             registration_endpoint: Some(format!("{}/oauth2/register", self.base_url)),
             revocation_endpoint: Some(format!("{}/oauth2/revoke", self.base_url)),
+            introspection_endpoint: Some(format!("{}/oauth2/introspect", self.base_url)),
             response_types_supported: vec![ResponseType::Code],
             grant_types_supported: vec![GrantType::AuthorizationCode, GrantType::RefreshToken],
             scopes_supported: self.supported_scopes.clone(),

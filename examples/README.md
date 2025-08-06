@@ -178,6 +178,18 @@ For production applications, consider:
 - **Error Recovery**: Example 12 for resilient error handling
 - **Cancellation**: Example 11 for responsive applications
 
+### 20. OIDC Discovery and OAuth 2.0
+```bash
+cargo run --example 20_oidc_discovery
+```
+Demonstrates:
+- OpenID Connect discovery from well-known endpoints
+- Automatic retry on CORS/network errors
+- OAuth 2.0 token exchange (authorization code flow)
+- Token refresh flow
+- Transport isolation with unique IDs
+- Concurrent transport operations
+
 ## Dependencies
 
 All examples use the same dependencies as the main PMCP library. Some examples may demonstrate optional features like WebSocket or HTTP transports (when implemented).

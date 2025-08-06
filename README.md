@@ -36,7 +36,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "0.3.1"
+pmcp = "0.6.5"
 ```
 
 ## Examples
@@ -94,6 +94,24 @@ cargo run --example 16_batching
 ```
 
 See the [examples directory](examples/) for detailed documentation.
+
+## What's New in v0.6.5
+
+### 🔐 OIDC Discovery Support
+- Full OpenID Connect discovery implementation
+- Automatic retry on CORS/network errors
+- Token exchange with explicit JSON accept headers
+- Comprehensive auth client module
+
+### 🔒 Transport Response Isolation  
+- Unique transport IDs prevent cross-transport response routing
+- Enhanced protocol safety for multiple concurrent connections
+- Request-response correlation per transport instance
+
+### 📚 Enhanced Documentation
+- 135+ doctests with real-world examples
+- Complete property test coverage
+- New OIDC discovery example (example 20)
 
 ## What's New in v0.2.0
 

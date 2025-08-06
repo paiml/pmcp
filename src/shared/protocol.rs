@@ -5,6 +5,7 @@
 use crate::error::Result;
 use crate::types::{JSONRPCResponse, RequestId};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
 
@@ -41,21 +42,120 @@ impl std::fmt::Debug for RequestOptions {
     }
 }
 
+/// Unique identifier for a transport instance.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::protocol::TransportId;
+/// use std::collections::HashSet;
+///
+/// // Create a new unique transport ID
+/// let id1 = TransportId::new();
+/// let id2 = TransportId::new();
+/// assert_ne!(id1, id2);
+///
+/// // Create from a specific string
+/// let id3 = TransportId::from_string("custom-transport-1".to_string());
+/// let id4 = TransportId::from_string("custom-transport-1".to_string());
+/// assert_eq!(id3, id4);
+///
+/// // Use in collections
+/// let mut transports = HashSet::new();
+/// transports.insert(id1.clone());
+/// transports.insert(id2.clone());
+/// assert_eq!(transports.len(), 2);
+/// ```
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct TransportId(Arc<str>);
+
+impl TransportId {
+    /// Create a new transport ID.
+    pub fn new() -> Self {
+        Self(Arc::from(uuid::Uuid::new_v4().to_string()))
+    }
+
+    /// Create a transport ID from a string.
+    pub fn from_string(s: String) -> Self {
+        Self(Arc::from(s))
+    }
+}
+
+impl Default for TransportId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Request context containing transport information.
+#[derive(Debug, Clone)]
+struct RequestContext {
+    /// Transport ID that initiated the request.
+    transport_id: TransportId,
+    /// Response sender.
+    sender: Arc<tokio::sync::Mutex<Option<oneshot::Sender<JSONRPCResponse>>>>,
+}
+
 /// Protocol state machine for handling JSON-RPC communication.
 #[derive(Debug)]
 pub struct Protocol {
     /// Protocol options.
     options: ProtocolOptions,
-    /// Pending requests waiting for responses.
-    pending_requests: HashMap<RequestId, oneshot::Sender<JSONRPCResponse>>,
+    /// Pending requests waiting for responses, keyed by request ID.
+    /// Each request stores the transport ID to ensure responses go to the correct transport.
+    pending_requests: HashMap<RequestId, RequestContext>,
+    /// Current transport ID for this protocol instance.
+    transport_id: TransportId,
 }
 
 impl Protocol {
     /// Create a new protocol instance.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::protocol::{Protocol, ProtocolOptions};
+    ///
+    /// // Create with default options
+    /// let protocol = Protocol::new(ProtocolOptions::default());
+    ///
+    /// // Create with custom options
+    /// let options = ProtocolOptions {
+    ///     enforce_strict_capabilities: true,
+    ///     debounced_notification_methods: vec!["progress".to_string()],
+    /// };
+    /// let protocol = Protocol::new(options);
+    /// ```
     pub fn new(options: ProtocolOptions) -> Self {
         Self {
             options,
             pending_requests: HashMap::new(),
+            transport_id: TransportId::new(),
+        }
+    }
+
+    /// Create a new protocol instance with a specific transport ID.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::protocol::{Protocol, ProtocolOptions, TransportId};
+    ///
+    /// // Create with a specific transport ID
+    /// let transport_id = TransportId::from_string("websocket-1".to_string());
+    /// let protocol = Protocol::with_transport_id(
+    ///     ProtocolOptions::default(),
+    ///     transport_id.clone()
+    /// );
+    ///
+    /// // Verify the transport ID is set
+    /// assert_eq!(protocol.transport_id(), &transport_id);
+    /// ```
+    pub fn with_transport_id(options: ProtocolOptions, transport_id: TransportId) -> Self {
+        Self {
+            options,
+            pending_requests: HashMap::new(),
+            transport_id,
         }
     }
 
@@ -64,19 +164,108 @@ impl Protocol {
         &self.options
     }
 
+    /// Get the transport ID for this protocol instance.
+    pub fn transport_id(&self) -> &TransportId {
+        &self.transport_id
+    }
+
     /// Register a pending request.
     pub fn register_request(&mut self, id: RequestId) -> oneshot::Receiver<JSONRPCResponse> {
         let (tx, rx) = oneshot::channel();
-        self.pending_requests.insert(id, tx);
+        let context = RequestContext {
+            transport_id: self.transport_id.clone(),
+            sender: Arc::new(tokio::sync::Mutex::new(Some(tx))),
+        };
+        self.pending_requests.insert(id, context);
         rx
     }
 
     /// Complete a pending request.
+    /// Only completes if the request was initiated by this transport.
     pub fn complete_request(&mut self, id: &RequestId, response: JSONRPCResponse) -> Result<()> {
-        if let Some(tx) = self.pending_requests.remove(id) {
-            let _ = tx.send(response);
+        if let Some(context) = self.pending_requests.remove(id) {
+            // Verify the response is for a request from this transport
+            if context.transport_id == self.transport_id {
+                // Use async runtime to send response
+                let sender = context.sender;
+                tokio::spawn(async move {
+                    let tx_option = sender.lock().await.take();
+                    if let Some(tx) = tx_option {
+                        let _ = tx.send(response);
+                    }
+                });
+            } else {
+                // Response is for a different transport, re-insert the request
+                self.pending_requests.insert(id.clone(), context);
+            }
         }
         Ok(())
+    }
+
+    /// Complete a pending request with transport verification.
+    /// Only completes if the transport ID matches.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::shared::protocol::{Protocol, ProtocolOptions, TransportId};
+    /// use pmcp::types::{RequestId, JSONRPCResponse};
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let transport_id = TransportId::new();
+    /// let mut protocol = Protocol::with_transport_id(
+    ///     ProtocolOptions::default(),
+    ///     transport_id.clone()
+    /// );
+    ///
+    /// // Register a request
+    /// let request_id = RequestId::from("req-123");
+    /// let _rx = protocol.register_request(request_id.clone());
+    ///
+    /// // Complete with matching transport ID - succeeds
+    /// let response = JSONRPCResponse::success(
+    ///     request_id.clone(),
+    ///     serde_json::json!("result")
+    /// );
+    /// let completed = protocol.complete_request_for_transport(
+    ///     &request_id,
+    ///     response.clone(),
+    ///     &transport_id
+    /// )?;
+    /// assert!(completed);
+    ///
+    /// // Complete with wrong transport ID - fails
+    /// let wrong_transport = TransportId::new();
+    /// let completed = protocol.complete_request_for_transport(
+    ///     &request_id,
+    ///     response,
+    ///     &wrong_transport
+    /// )?;
+    /// assert!(!completed);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn complete_request_for_transport(
+        &mut self,
+        id: &RequestId,
+        response: JSONRPCResponse,
+        transport_id: &TransportId,
+    ) -> Result<bool> {
+        if let Some(context) = self.pending_requests.get(id) {
+            if &context.transport_id == transport_id {
+                if let Some(context) = self.pending_requests.remove(id) {
+                    let sender = context.sender;
+                    tokio::spawn(async move {
+                        let tx_option = sender.lock().await.take();
+                        if let Some(tx) = tx_option {
+                            let _ = tx.send(response);
+                        }
+                    });
+                    return Ok(true);
+                }
+            }
+        }
+        Ok(false)
     }
 
     /// Cancel a pending request.
@@ -136,8 +325,10 @@ mod tests {
 
         // Complete the request
         let response = JSONRPCResponse::success(id.clone(), serde_json::json!("success"));
-        protocol.complete_request(&id, response).unwrap();
-        assert_eq!(protocol.pending_requests.len(), 0);
+        protocol.complete_request(&id, response.clone()).unwrap();
+
+        // Give the async task time to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
         // Verify the receiver got the response
         let received = rx.try_recv().unwrap();

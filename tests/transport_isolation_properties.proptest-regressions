@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 1f1ad48d54c50dc7bac8c50365e484a2ef6b0b6cf561cc1864956c4ab2f02bea # shrinks to request_ids = [Number(28), Number(28)], transport_id1 = TransportId("a0aaaa00a0a0a00a"), transport_id2 = TransportId("0aaaa000aa0a0a0a")
