@@ -1,7 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use pmcp::utils::FastJsonParser;
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use serde_json::{json, Value};
-use std::hint::black_box as hint_black_box;
+use std::hint::black_box;
 
 fn generate_test_json(size: usize) -> Vec<u8> {
     let mut items = Vec::new();
@@ -40,10 +39,9 @@ fn benchmark_json_parsing(c: &mut Criterion) {
         // Benchmark SIMD-enabled parser
         #[cfg(feature = "simd")]
         group.bench_with_input(BenchmarkId::new("simd", size), &json_data, |b, data| {
-            let parser = FastJsonParser::new();
             b.iter(|| {
-                let result = parser.parse(black_box(data));
-                hint_black_box(result)
+                let result: Result<Value, _> = pmcp::utils::parse_json_fast(black_box(data));
+                black_box(result)
             })
         });
 
@@ -54,7 +52,7 @@ fn benchmark_json_parsing(c: &mut Criterion) {
             |b, data| {
                 b.iter(|| {
                     let result: Result<Value, _> = serde_json::from_slice(black_box(data));
-                    hint_black_box(result)
+                    black_box(result)
                 })
             },
         );
@@ -88,10 +86,12 @@ fn benchmark_batch_parsing(c: &mut Criterion) {
             BenchmarkId::new("simd_batch", batch_size),
             &json_refs,
             |b, data| {
-                let parser = FastJsonParser::new();
                 b.iter(|| {
-                    let results = parser.parse_batch(black_box(data));
-                    hint_black_box(results)
+                    let results: Vec<Result<Value, _>> = data
+                        .iter()
+                        .map(|json| pmcp::utils::parse_json_fast(black_box(json)))
+                        .collect();
+                    black_box(results)
                 })
             },
         );
@@ -106,7 +106,7 @@ fn benchmark_batch_parsing(c: &mut Criterion) {
                         .iter()
                         .map(|json| serde_json::from_slice::<Value>(json))
                         .collect();
-                    hint_black_box(results)
+                    black_box(results)
                 })
             },
         );
@@ -131,7 +131,7 @@ fn benchmark_utf8_validation(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("simd", size), &bytes, |b, data| {
             b.iter(|| {
                 let valid = unsafe { json::validate_utf8_simd(black_box(data)) };
-                hint_black_box(valid)
+                black_box(valid)
             })
         });
 
@@ -139,7 +139,7 @@ fn benchmark_utf8_validation(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("standard", size), &bytes, |b, data| {
             b.iter(|| {
                 let valid = std::str::from_utf8(black_box(data)).is_ok();
-                hint_black_box(valid)
+                black_box(valid)
             })
         });
     }
