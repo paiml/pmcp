@@ -1,0 +1,25 @@
+{
+  "name": "pmcp-typescript-interop-tests",
+  "version": "1.0.0",
+  "description": "Integration tests between PMCP Rust SDK and TypeScript SDK",
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:client && npm run test:server",
+    "test:client": "node --test test-client.js",
+    "test:server": "node --test test-server.js",
+    "test:protocol": "node --test test-protocol.js",
+    "test:all": "npm test && cargo test --test typescript_interop",
+    "setup": "npm install",
+    "clean": "rm -rf node_modules package-lock.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

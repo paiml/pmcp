@@ -81,6 +81,9 @@ pub mod shared;
 pub mod types;
 pub mod utils;
 
+#[cfg(feature = "simd")]
+pub mod simd;
+
 // Re-export commonly used types
 pub use client::{Client, ClientBuilder};
 pub use error::{Error, ErrorCode, Result};

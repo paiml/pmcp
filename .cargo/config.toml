@@ -1,0 +1,27 @@
+# Cargo configuration for PMCP
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-bindgen-test-runner"
+
+# Build optimizations for WASM
+[target.'cfg(target_arch = "wasm32")']
+rustflags = [
+    "-C", "opt-level=z",     # Optimize for size
+    "-C", "lto=fat",          # Enable link-time optimization
+    "-C", "embed-bitcode=yes" # Required for LTO
+]
+
+# Native build optimizations
+[target.'cfg(not(target_arch = "wasm32"))']
+rustflags = [
+    "-C", "target-cpu=native", # Optimize for current CPU
+]
+
+[alias]
+# Convenient aliases for WASM builds
+wasm-build = "build --target wasm32-unknown-unknown --features wasm"
+wasm-test = "test --target wasm32-unknown-unknown --features wasm"
+wasm-check = "check --target wasm32-unknown-unknown --features wasm"
+
+# For building the WASM package
+wasm-pack = "run --package wasm-pack-helper --"

@@ -1,6 +1,6 @@
 [package]
 name = "pmcp"
-version = "0.6.6"
+version = "0.7.0"
 edition = "2021"
 authors = ["PAIML Team"]
 description = "High-quality Rust SDK for Model Context Protocol (MCP) with full TypeScript SDK compatibility"
@@ -17,23 +17,14 @@ rust-version = "1.82.0"
 # Core dependencies
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value", "preserve_order"] }
-tokio = { version = "1.46", features = ["full"] }
+schemars = { version = "0.8", optional = true }
+pmcp-macros = { path = "pmcp-macros", optional = true }
 async-trait = "0.1"
 thiserror = "2.0"
 anyhow = "1.0"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Transport dependencies
-tokio-tungstenite = { version = "0.27", optional = true }
-hyper = { version = "1.6", features = ["full"], optional = true }
-hyper-util = { version = "0.1", features = ["full"], optional = true }
-http-body-util = "0.1"
-bytes = "1.10"
-futures = "0.3"
-pin-project = "1.1"
-
-# Utility dependencies
+# Utility dependencies (needed on all platforms)
 url = "2.5"
 uuid = { version = "1.17", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -42,20 +33,44 @@ lazy_static = "1.5"
 indexmap = { version = "2.10", features = ["serde"] }
 parking_lot = "0.12"
 dashmap = "6.1"
-tokio-util = { version = "0.7", features = ["rt"] }
+bytes = "1.10"
+futures = "0.3"
+pin-project = "1.1"
+http-body-util = "0.1"
 
 # OAuth dependencies
 sha2 = "0.10"
 base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = false }
 
+# Platform-specific dependencies
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.46", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["console", "Window", "Document", "WebSocket", "MessageEvent", "CloseEvent", "ErrorEvent", "BinaryType"] }
+js-sys = "0.3"
+getrandom = { version = "0.2", features = ["js"] }
+
+# Transport dependencies
+tokio-tungstenite = { version = "0.27", optional = true }
+hyper = { version = "1.6", features = ["full"], optional = true }
+hyper-util = { version = "0.1", features = ["full"], optional = true }
+
 # File watching dependencies
 notify = { version = "6.1", optional = true }
-glob-match = "0.2"
+glob-match = { version = "0.2", optional = true }
 
 # Validation
 jsonschema = { version = "0.30", optional = true }
 garde = { version = "0.22", optional = true }
+
+# SIMD support
+rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
 # Testing
@@ -75,12 +90,15 @@ env_logger = "0.11"
 dashmap = "6.1"  # Already in main deps but needed for examples
 
 [features]
-default = ["full"]
-full = ["websocket", "http", "validation", "resource-watcher"]
+default = ["validation", "macros"]
+full = ["websocket", "http", "validation", "resource-watcher", "macros"]
 websocket = ["dep:tokio-tungstenite"]
 http = ["dep:hyper", "dep:hyper-util"]
 validation = ["dep:jsonschema", "dep:garde"]
-resource-watcher = ["dep:notify"]
+resource-watcher = ["dep:notify", "dep:glob-match"]
+macros = ["dep:pmcp-macros", "dep:schemars"]
+wasm = ["getrandom/js", "websocket-wasm"]
+websocket-wasm = []
 
 # Example features
 authentication_example = []
@@ -89,7 +107,10 @@ progress_example = []
 
 # Performance optimizations
 unstable = []
-simd = []
+simd = ["dep:rayon"]
+
+# Testing support
+test-helpers = []
 
 [[bench]]
 name = "simple_test"
@@ -109,6 +130,10 @@ harness = false
 
 [[bench]]
 name = "client_server_operations"
+harness = false
+
+[[bench]]
+name = "simd_performance"
 harness = false
 
 [profile.release]
@@ -204,8 +229,18 @@ required-features = ["resource-watcher"]
 name = "19_elicit_input"
 path = "examples/19_elicit_input.rs"
 
+[[example]]
+name = "20_oidc_discovery"
+path = "examples/20_oidc_discovery.rs"
+
+[[example]]
+name = "21_macro_tools"
+path = "examples/21_macro_tools.rs"
+required-features = ["macros"]
+
 [workspace]
-members = []
+members = ["pmcp-macros"]
+exclude = ["fuzz"]
 
 [package.metadata.docs.rs]
 all-features = true

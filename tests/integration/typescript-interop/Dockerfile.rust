@@ -1,0 +1,29 @@
+# Dockerfile for Rust MCP server
+FROM rust:1.82-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache musl-dev
+
+# Create app directory
+WORKDIR /app
+
+# Copy the entire project
+COPY . .
+
+# Build the project
+RUN cargo build --release --examples
+
+# Runtime stage
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache libgcc
+
+# Copy the built binary
+COPY --from=builder /app/target/release/examples/02_server_basic /usr/local/bin/rust-mcp-server
+
+# Expose port (if using HTTP/WebSocket transport)
+EXPOSE 8081
+
+# Run the server
+CMD ["rust-mcp-server"]

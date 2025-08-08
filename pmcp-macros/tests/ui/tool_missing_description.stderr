@@ -1,0 +1,5 @@
+error: Tool must have a description
+ --> tests/ui/tool_missing_description.rs:5:1
+  |
+5 | #[tool] // Missing description - should fail
+  | ^^^^^^^

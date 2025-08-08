@@ -202,25 +202,27 @@ impl ResourceWatcher {
         event_tx: mpsc::Sender<FileEvent>,
         shutdown_rx: &mut mpsc::Receiver<()>,
     ) -> Result<()> {
-        use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+        #[cfg(feature = "resource-watcher")]
+        {
+            use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
-        let (tx, mut rx) = mpsc::channel(1000);
+            let (tx, mut rx) = mpsc::channel(1000);
 
-        // Create watcher
-        let mut watcher = RecommendedWatcher::new(
-            move |res: std::result::Result<Event, notify::Error>| {
-                if let Ok(event) = res {
-                    let _ = tx.try_send(event);
-                }
-            },
-            Config::default(),
-        )
-        .map_err(|e| {
-            Error::protocol(
-                ErrorCode::INTERNAL_ERROR,
-                format!("Failed to create watcher: {}", e),
+            // Create watcher
+            let mut watcher = RecommendedWatcher::new(
+                move |res: std::result::Result<Event, notify::Error>| {
+                    if let Ok(event) = res {
+                        let _ = tx.try_send(event);
+                    }
+                },
+                Config::default(),
             )
-        })?;
+            .map_err(|e| {
+                Error::protocol(
+                    ErrorCode::INTERNAL_ERROR,
+                    format!("Failed to create watcher: {}", e),
+                )
+            })?;
 
         // Watch base directory
         watcher
@@ -326,9 +328,17 @@ impl ResourceWatcher {
                 }
             }
         }
+        }
+        
+        #[cfg(not(feature = "resource-watcher"))]
+        {
+            warn!("Resource watching is not enabled (requires 'resource-watcher' feature)");
+            Ok(())
+        }
     }
 
     /// Check if a path matches the watch patterns.
+    #[cfg(feature = "resource-watcher")]
     fn matches_patterns(
         path: &Path,
         base_dir: &Path,

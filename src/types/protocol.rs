@@ -844,4 +844,104 @@ mod tests {
         assert_eq!(json["description"], "A test tool");
         assert_eq!(json["inputSchema"]["type"], "object");
     }
+
+    #[test]
+    fn test_all_notification_types() {
+        let progress = ServerNotification::Progress(ProgressNotification {
+            progress_token: ProgressToken::String("token123".to_string()), 
+            progress: 50.0,
+            message: Some("Processing...".to_string()),
+        });
+        let json = serde_json::to_value(&progress).unwrap();
+        assert_eq!(json["method"], "notifications/progress");
+
+        let tools_changed = ServerNotification::ToolsChanged;
+        let json = serde_json::to_value(&tools_changed).unwrap();
+        assert_eq!(json["method"], "notifications/tools/list_changed");
+
+        let prompts_changed = ServerNotification::PromptsChanged;
+        let json = serde_json::to_value(&prompts_changed).unwrap();
+        assert_eq!(json["method"], "notifications/prompts/list_changed");
+
+        let resources_changed = ServerNotification::ResourcesChanged;
+        let json = serde_json::to_value(&resources_changed).unwrap();
+        assert_eq!(json["method"], "notifications/resources/list_changed");
+
+        let roots_changed = ServerNotification::RootsListChanged;
+        let json = serde_json::to_value(&roots_changed).unwrap();
+        assert_eq!(json["method"], "notifications/roots/list_changed");
+
+        let resource_updated = ServerNotification::ResourceUpdated(ResourceUpdatedParams {
+            uri: "file://test.txt".to_string(),
+        });
+        let json = serde_json::to_value(&resource_updated).unwrap();
+        assert_eq!(json["method"], "notifications/resources/updated");
+
+        let log_msg = ServerNotification::LogMessage(LogMessageParams {
+            level: LogLevel::Info,
+            logger: None,
+            message: "Test log message".to_string(),
+            data: Some(json!({"extra": "data"})),
+        });
+        let json = serde_json::to_value(&log_msg).unwrap();
+        assert_eq!(json["method"], "notifications/message");
+    }
+
+    #[test]
+    fn test_resource_types() {
+        let resource = ResourceInfo {
+            uri: "file://test.txt".to_string(),
+            name: "test.txt".to_string(),
+            description: Some("Test file".to_string()),
+            mime_type: Some("text/plain".to_string()),
+        };
+        
+        let json = serde_json::to_value(&resource).unwrap();
+        assert_eq!(json["uri"], "file://test.txt");
+        assert_eq!(json["name"], "test.txt");
+        assert_eq!(json["description"], "Test file");
+        assert_eq!(json["mimeType"], "text/plain");
+    }
+
+    #[test]
+    fn test_prompt_types() {
+        let prompt = PromptInfo {
+            name: "test_prompt".to_string(),
+            description: Some("A test prompt".to_string()),
+            arguments: Some(vec![PromptArgument {
+                name: "arg1".to_string(),
+                description: Some("First argument".to_string()),
+                required: true,
+                completion: None,
+            }]),
+        };
+        
+        let json = serde_json::to_value(&prompt).unwrap();
+        assert_eq!(json["name"], "test_prompt");
+        assert_eq!(json["arguments"][0]["name"], "arg1");
+        assert_eq!(json["arguments"][0]["required"], true);
+
+    }
+
+    #[test]
+    fn test_log_levels() {
+        assert_eq!(serde_json::to_value(&LogLevel::Debug).unwrap(), "debug");
+        assert_eq!(serde_json::to_value(&LogLevel::Info).unwrap(), "info");
+        assert_eq!(serde_json::to_value(&LogLevel::Warning).unwrap(), "warning");
+        assert_eq!(serde_json::to_value(&LogLevel::Error).unwrap(), "error");
+    }
+
+    #[test]
+    fn test_cancelled_notification() {
+        use crate::types::RequestId;
+        
+        let cancelled = CancelledNotification {
+            request_id: RequestId::Number(123),
+            reason: Some("User cancelled".to_string()),
+        };
+        
+        let json = serde_json::to_value(&cancelled).unwrap();
+        assert_eq!(json["requestId"], 123);
+        assert_eq!(json["reason"], "User cancelled");
+    }
 }

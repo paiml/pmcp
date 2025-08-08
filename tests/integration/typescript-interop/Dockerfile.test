@@ -1,0 +1,31 @@
+# Dockerfile for test runner with both Rust and Node.js
+FROM rust:1.82
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
+
+# Install additional dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy the entire project
+COPY . .
+
+# Install Rust dependencies
+RUN cargo fetch
+
+# Install Node dependencies for TypeScript tests
+WORKDIR /app/tests/integration/typescript-interop
+RUN npm install
+
+# Go back to app root
+WORKDIR /app
+
+# Default command runs all tests
+CMD ["sh", "-c", "cargo test --test typescript_interop && cd tests/integration/typescript-interop && npm test"]

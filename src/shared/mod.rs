@@ -12,8 +12,15 @@ pub mod stdio;
 pub mod transport;
 pub mod uri_template;
 
-#[cfg(feature = "websocket")]
+// Cross-platform runtime abstraction
+pub mod runtime;
+
+// Platform-specific WebSocket modules
+#[cfg(all(feature = "websocket", not(target_arch = "wasm32")))]
 pub mod websocket;
+
+#[cfg(all(feature = "websocket", target_arch = "wasm32"))]
+pub mod wasm_websocket;
 
 #[cfg(feature = "http")]
 pub mod http;
@@ -34,8 +41,11 @@ pub use session::{Session, SessionConfig, SessionManager};
 pub use stdio::StdioTransport;
 pub use transport::{Transport, TransportMessage};
 
-#[cfg(feature = "websocket")]
+#[cfg(all(feature = "websocket", not(target_arch = "wasm32")))]
 pub use websocket::{WebSocketConfig, WebSocketTransport};
+
+#[cfg(all(feature = "websocket", target_arch = "wasm32"))]
+pub use wasm_websocket::{WasmWebSocketConfig, WasmWebSocketTransport};
 
 #[cfg(feature = "http")]
 pub use http::{HttpConfig, HttpTransport};

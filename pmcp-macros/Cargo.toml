@@ -1,0 +1,38 @@
+[package]
+name = "pmcp-macros"
+version = "0.1.0"
+edition = "2021"
+authors = ["PAIML Team"]
+description = "Procedural macros for PMCP SDK - Model Context Protocol"
+license = "MIT"
+repository = "https://github.com/paiml/pmcp"
+homepage = "https://github.com/paiml/pmcp"
+documentation = "https://docs.rs/pmcp-macros"
+readme = "README.md"
+keywords = ["mcp", "macros", "codegen", "model-context", "procedural-macros"]
+categories = ["development-tools::procedural-macro-helpers"]
+rust-version = "1.82.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits", "visit-mut"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+darling = "0.20"
+heck = "0.5"
+
+[dev-dependencies]
+pmcp = { path = "..", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = "0.8"
+tokio = { version = "1.46", features = ["full"] }
+trybuild = "1.0"
+pretty_assertions = "1.4"
+insta = { version = "1.43", features = ["json"] }
+
+[features]
+default = []
+debug = []  # Enable debug output in macros

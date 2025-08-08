@@ -4,7 +4,13 @@ pub mod batching;
 pub mod parallel_batch;
 pub mod validation;
 
+#[cfg(feature = "simd")]
+pub mod json_simd;
+
 pub use batching::{BatchingConfig, DebouncingConfig, MessageBatcher, MessageDebouncer};
 pub use parallel_batch::{
     process_batch_parallel, process_batch_parallel_stateful, BatchProcessor, ParallelBatchConfig,
 };
+
+#[cfg(feature = "simd")]
+pub use json_simd::{parse_json_fast, serialize_json_fast, parse_json_batch, pretty_print_fast};

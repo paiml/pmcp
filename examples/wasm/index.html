@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMCP WASM Client Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .connection-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+        
+        .status-disconnected {
+            background: #fee;
+            color: #c00;
+        }
+        
+        .status-connecting {
+            background: #ffeaa7;
+            color: #fdcb6e;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-connected {
+            background: #d1f2eb;
+            color: #00b894;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section h2 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="text"], input[type="number"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tool-button {
+            padding: 10px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .tool-button:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .output {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-time {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .log-level-info { color: #0066cc; }
+        .log-level-success { color: #00b894; }
+        .log-level-error { color: #d63031; }
+        .log-level-warning { color: #fdcb6e; }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 PMCP WASM Client</h1>
+        <p class="subtitle">Browser-based MCP client using WebAssembly</p>
+        
+        <div id="status" class="connection-status status-disconnected">
+            ⚫ Disconnected
+        </div>
+        
+        <div class="section">
+            <h2>Connection</h2>
+            <div class="input-group">
+                <input type="text" id="server-url" placeholder="WebSocket URL" value="ws://localhost:8080">
+                <button id="connect-btn" onclick="connect()">Connect</button>
+                <button id="disconnect-btn" onclick="disconnect()" disabled>Disconnect</button>
+            </div>
+        </div>
+        
+        <div class="section" id="tools-section" style="display: none;">
+            <h2>Available Tools</h2>
+            <div id="tools-grid" class="tools-grid"></div>
+            
+            <h2>Calculator Demo</h2>
+            <div class="input-group">
+                <input type="number" id="calc-a" placeholder="First number" value="10">
+                <input type="number" id="calc-b" placeholder="Second number" value="5">
+            </div>
+            <div class="input-group">
+                <button onclick="callTool('add')">Add</button>
+                <button onclick="callTool('subtract')">Subtract</button>
+                <button onclick="callTool('multiply')">Multiply</button>
+                <button onclick="callTool('divide')">Divide</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Output</h2>
+            <div id="output" class="output">
+                <div class="log-entry">
+                    <span class="log-time">Ready</span> - 
+                    <span class="log-level-info">Waiting for WASM module to load...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Import the WASM module
+        import init, { WasmClient } from './pkg/pmcp_wasm.js';
+        
+        let client = null;
+        let wasmReady = false;
+        
+        // Initialize WASM
+        async function initWasm() {
+            try {
+                await init();
+                wasmReady = true;
+                log('success', 'WASM module loaded successfully');
+                window.wasmClient = WasmClient;
+            } catch (error) {
+                log('error', `Failed to load WASM: ${error}`);
+            }
+        }
+        
+        // Connect to server
+        window.connect = async function() {
+            if (!wasmReady) {
+                log('error', 'WASM not ready yet');
+                return;
+            }
+            
+            const url = document.getElementById('server-url').value;
+            setStatus('connecting');
+            
+            try {
+                client = new WasmClient(url);
+                await client.connect();
+                
+                setStatus('connected');
+                log('success', `Connected to ${url}`);
+                
+                // Enable/disable buttons
+                document.getElementById('connect-btn').disabled = true;
+                document.getElementById('disconnect-btn').disabled = false;
+                document.getElementById('tools-section').style.display = 'block';
+                
+                // List available tools
+                const tools = await client.list_tools();
+                displayTools(tools);
+                
+            } catch (error) {
+                setStatus('disconnected');
+                log('error', `Connection failed: ${error}`);
+            }
+        };
+        
+        // Disconnect from server
+        window.disconnect = async function() {
+            if (client) {
+                await client.disconnect();
+                client = null;
+            }
+            
+            setStatus('disconnected');
+            log('info', 'Disconnected from server');
+            
+            // Enable/disable buttons
+            document.getElementById('connect-btn').disabled = false;
+            document.getElementById('disconnect-btn').disabled = true;
+            document.getElementById('tools-section').style.display = 'none';
+        };
+        
+        // Call a tool
+        window.callTool = async function(toolName) {
+            if (!client) {
+                log('error', 'Not connected to server');
+                return;
+            }
+            
+            const a = parseFloat(document.getElementById('calc-a').value);
+            const b = parseFloat(document.getElementById('calc-b').value);
+            
+            try {
+                log('info', `Calling tool: ${toolName}(${a}, ${b})`);
+                const result = await client.call_tool(toolName, { a, b });
+                log('success', `Result: ${JSON.stringify(result, null, 2)}`);
+            } catch (error) {
+                log('error', `Tool call failed: ${error}`);
+            }
+        };
+        
+        // Display available tools
+        function displayTools(tools) {
+            const grid = document.getElementById('tools-grid');
+            grid.innerHTML = '';
+            
+            tools.forEach(tool => {
+                const button = document.createElement('button');
+                button.className = 'tool-button';
+                button.textContent = tool.name;
+                button.title = tool.description || '';
+                button.onclick = () => log('info', `Tool: ${tool.name} - ${tool.description}`);
+                grid.appendChild(button);
+            });
+            
+            log('info', `Found ${tools.length} available tools`);
+        }
+        
+        // Update connection status
+        function setStatus(status) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `connection-status status-${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    statusEl.innerHTML = '🟢 Connected';
+                    break;
+                case 'connecting':
+                    statusEl.innerHTML = '<div class="spinner"></div> Connecting...';
+                    break;
+                case 'disconnected':
+                    statusEl.innerHTML = '⚫ Disconnected';
+                    break;
+            }
+        }
+        
+        // Log messages to output
+        function log(level, message) {
+            const output = document.getElementById('output');
+            const time = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${time}</span> - 
+                <span class="log-level-${level}">${message}</span>
+            `;
+            
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        // Initialize on page load
+        initWasm();
+    </script>
+</body>
+</html>

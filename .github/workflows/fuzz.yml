@@ -1,0 +1,137 @@
+name: Fuzzing
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'fuzz/**'
+      - '.github/workflows/fuzz.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - protocol_parsing
+          - jsonrpc_handling
+          - transport_layer
+          - auth_flows
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+      
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+      
+      - name: Cache fuzz corpus
+        uses: actions/cache@v3
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            fuzz-corpus-${{ matrix.target }}-
+      
+      - name: Run fuzzing (${{ matrix.target }})
+        run: |
+          cargo fuzz run ${{ matrix.target }} -- \
+            -max_total_time=300 \
+            -print_final_stats=1 \
+            -detect_leaks=0
+        timeout-minutes: 10
+      
+      - name: Minimize corpus
+        if: github.event_name == 'schedule'
+        run: cargo fuzz cmin ${{ matrix.target }}
+      
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-crashes-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+      
+      - name: Upload corpus
+        if: github.event_name == 'schedule'
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-corpus-${{ matrix.target }}
+          path: fuzz/corpus/${{ matrix.target }}/
+
+  fuzz-coverage:
+    name: Fuzzing Coverage
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+      
+      - name: Install tools
+        run: |
+          cargo install cargo-fuzz
+          cargo install rustfilt
+      
+      - name: Generate coverage
+        run: |
+          for target in protocol_parsing jsonrpc_handling transport_layer auth_flows; do
+            cargo fuzz coverage $target
+          done
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-coverage
+          path: fuzz/coverage/
+
+  fuzz-24h:
+    name: 24-Hour Fuzzing
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+      
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+      
+      - name: Run 24-hour fuzzing
+        run: |
+          # Run each target for 6 hours (total 24 hours)
+          for target in protocol_parsing jsonrpc_handling transport_layer auth_flows; do
+            echo "Starting 6-hour fuzz for $target"
+            cargo fuzz run $target -- \
+              -max_total_time=21600 \
+              -print_final_stats=1 \
+              -detect_leaks=0 || true
+          done
+        timeout-minutes: 1440  # 24 hours
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-24h-results
+          path: |
+            fuzz/corpus/
+            fuzz/artifacts/
+            fuzz/*.log
