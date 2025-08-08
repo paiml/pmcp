@@ -91,7 +91,7 @@ mod utils;
 #[proc_macro_attribute]
 pub fn tool(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
-    
+
     tool::expand_tool(args.into(), input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
@@ -126,7 +126,7 @@ pub fn tool(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn tool_router(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemImpl);
-    
+
     tool_router::expand_tool_router(args.into(), input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()

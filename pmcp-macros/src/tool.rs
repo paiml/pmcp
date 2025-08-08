@@ -6,10 +6,8 @@
 use darling::FromMeta;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{
-    parse_quote, FnArg, ItemFn, Pat, PatType, ReturnType, Type, TypePath,
-};
 use syn::parse::Parser;
+use syn::{parse_quote, FnArg, ItemFn, Pat, PatType, ReturnType, Type, TypePath};
 
 /// Tool macro arguments
 #[derive(Debug, FromMeta)]
@@ -17,10 +15,10 @@ struct ToolArgs {
     /// Tool name (defaults to function name)
     #[darling(default)]
     name: Option<String>,
-    
+
     /// Tool description
     description: String,
-    
+
     /// Additional annotations
     #[darling(default)]
     annotations: Option<ToolAnnotations>,
@@ -31,10 +29,10 @@ struct ToolArgs {
 struct ToolAnnotations {
     #[darling(default)]
     category: Option<String>,
-    
+
     #[darling(default)]
     complexity: Option<String>,
-    
+
     #[darling(default)]
     read_only: Option<bool>,
 }
@@ -52,45 +50,45 @@ pub fn expand_tool(args: TokenStream, input: ItemFn) -> syn::Result<TokenStream>
             .map(|p| p.into_iter().collect::<Vec<_>>())
             .unwrap_or_default()
     };
-    
+
     let args = ToolArgs::from_list(&nested_metas)
         .map_err(|e| syn::Error::new_spanned(&input.sig.ident, e.to_string()))?;
-    
+
     let fn_name = &input.sig.ident;
     let tool_name = args.name.unwrap_or_else(|| fn_name.to_string());
     let description = args.description;
-    
+
     // Extract function parameters
     let params = extract_parameters(&input)?;
-    
+
     // Extract return type
     let return_type = extract_return_type(&input)?;
-    
+
     // Generate the wrapper struct and implementation
     let wrapper_name = Ident::new(
         &format!("{}ToolHandler", to_pascal_case(&fn_name.to_string())),
         fn_name.span(),
     );
-    
+
     // Check if function is async
     let is_async = input.sig.asyncness.is_some();
     let await_token = if is_async { quote!(.await) } else { quote!() };
-    
+
     // Generate parameter extraction code
     let param_extraction = generate_param_extraction(&params)?;
     let param_names: Vec<_> = params.iter().map(|p| &p.name).collect();
-    
+
     // Generate result conversion
     let result_conversion = generate_result_conversion(&return_type)?;
-    
+
     // Build the handler implementation
     let expanded = quote! {
         #input
-        
+
         /// Auto-generated tool handler for #tool_name
         #[derive(Debug, Clone)]
         pub struct #wrapper_name;
-        
+
         #[async_trait::async_trait]
         impl pmcp::ToolHandler for #wrapper_name {
             async fn handle(
@@ -100,15 +98,15 @@ pub fn expand_tool(args: TokenStream, input: ItemFn) -> syn::Result<TokenStream>
             ) -> pmcp::Result<serde_json::Value> {
                 // Extract parameters from JSON
                 #param_extraction
-                
+
                 // Call the original function
                 let result = #fn_name(#(#param_names),*)#await_token;
-                
+
                 // Convert result to JSON
                 #result_conversion
             }
         }
-        
+
         impl #wrapper_name {
             /// Get tool definition
             pub fn definition() -> pmcp::types::Tool {
@@ -118,7 +116,7 @@ pub fn expand_tool(args: TokenStream, input: ItemFn) -> syn::Result<TokenStream>
                     input_schema: Some(Self::input_schema()),
                 }
             }
-            
+
             /// Generate input schema
             fn input_schema() -> serde_json::Value {
                 // Schema generation requires schemars feature
@@ -131,7 +129,7 @@ pub fn expand_tool(args: TokenStream, input: ItemFn) -> syn::Result<TokenStream>
             }
         }
     };
-    
+
     Ok(expanded)
 }
 
@@ -145,29 +143,25 @@ struct ParamInfo {
 /// Extract parameters from function signature
 fn extract_parameters(func: &ItemFn) -> syn::Result<Vec<ParamInfo>> {
     let mut params = Vec::new();
-    
+
     for arg in &func.sig.inputs {
         match arg {
             FnArg::Receiver(_) => {
                 // Skip self parameter
                 continue;
-            }
+            },
             FnArg::Typed(PatType { pat, ty, .. }) => {
                 if let Pat::Ident(pat_ident) = pat.as_ref() {
                     let name = pat_ident.ident.clone();
                     let ty = ty.as_ref().clone();
                     let optional = is_option_type(&ty);
-                    
-                    params.push(ParamInfo {
-                        name,
-                        ty,
-                        optional,
-                    });
+
+                    params.push(ParamInfo { name, ty, optional });
                 }
-            }
+            },
         }
     }
-    
+
     Ok(params)
 }
 
@@ -182,12 +176,12 @@ fn extract_return_type(func: &ItemFn) -> syn::Result<Type> {
 /// Generate parameter extraction code from JSON
 fn generate_param_extraction(params: &[ParamInfo]) -> syn::Result<TokenStream> {
     let mut extractions = Vec::new();
-    
+
     for param in params {
         let name = &param.name;
         let name_str = name.to_string();
         let ty = &param.ty;
-        
+
         if param.optional {
             extractions.push(quote! {
                 let #name: #ty = args.get(#name_str)
@@ -204,7 +198,7 @@ fn generate_param_extraction(params: &[ParamInfo]) -> syn::Result<TokenStream> {
             });
         }
     }
-    
+
     Ok(quote! {
         #(#extractions)*
     })
@@ -269,28 +263,28 @@ fn to_pascal_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_to_pascal_case() {
         assert_eq!(to_pascal_case("hello_world"), "HelloWorld");
         assert_eq!(to_pascal_case("add_numbers"), "AddNumbers");
         assert_eq!(to_pascal_case("simple"), "Simple");
     }
-    
+
     #[test]
     fn test_is_option_type() {
         let opt_type: Type = parse_quote!(Option<String>);
         assert!(is_option_type(&opt_type));
-        
+
         let non_opt_type: Type = parse_quote!(String);
         assert!(!is_option_type(&non_opt_type));
     }
-    
+
     #[test]
     fn test_is_result_type() {
         let result_type: Type = parse_quote!(Result<String, Error>);
         assert!(is_result_type(&result_type));
-        
+
         let non_result_type: Type = parse_quote!(String);
         assert!(!is_result_type(&non_result_type));
     }

@@ -47,9 +47,12 @@ pub fn extract_result_types(ty: &Type) -> Option<(&Type, &Type)> {
 pub fn generate_unique_ident(prefix: &str) -> Ident {
     use std::sync::atomic::{AtomicUsize, Ordering};
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
-    
+
     let count = COUNTER.fetch_add(1, Ordering::SeqCst);
-    Ident::new(&format!("{}_{}", prefix, count), proc_macro2::Span::call_site())
+    Ident::new(
+        &format!("{}_{}", prefix, count),
+        proc_macro2::Span::call_site(),
+    )
 }
 
 /// Convert snake_case to PascalCase
@@ -69,7 +72,7 @@ pub fn to_pascal_case(s: &str) -> String {
 pub fn to_snake_case(s: &str) -> String {
     let mut result = String::new();
     let mut prev_is_uppercase = false;
-    
+
     for (i, ch) in s.chars().enumerate() {
         if ch.is_uppercase() {
             if i > 0 && !prev_is_uppercase {
@@ -82,7 +85,7 @@ pub fn to_snake_case(s: &str) -> String {
             prev_is_uppercase = false;
         }
     }
-    
+
     result
 }
 
@@ -138,7 +141,7 @@ pub fn add_async_trait_bounds(mut generics: Generics) -> Generics {
 /// Parse a doc comment from attributes
 pub fn extract_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
     let mut doc_lines = Vec::new();
-    
+
     for attr in attrs {
         if attr.path().is_ident("doc") {
             // Simple extraction from doc comments
@@ -158,7 +161,7 @@ pub fn extract_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
             }
         }
     }
-    
+
     if doc_lines.is_empty() {
         None
     } else {
@@ -180,8 +183,9 @@ pub fn generate_error_conversion(error_type: &Type) -> TokenStream {
 fn is_pmcp_error(ty: &Type) -> bool {
     if let Type::Path(TypePath { path, .. }) = ty {
         if let Some(segment) = path.segments.last() {
-            return segment.ident == "Error" && path.segments.len() >= 2 && 
-                   path.segments.iter().any(|s| s.ident == "pmcp");
+            return segment.ident == "Error"
+                && path.segments.len() >= 2
+                && path.segments.iter().any(|s| s.ident == "pmcp");
         }
     }
     false
@@ -191,7 +195,7 @@ fn is_pmcp_error(ty: &Type) -> bool {
 mod tests {
     use super::*;
     use syn::parse_quote;
-    
+
     #[test]
     fn test_to_pascal_case() {
         assert_eq!(to_pascal_case("hello_world"), "HelloWorld");
@@ -199,7 +203,7 @@ mod tests {
         assert_eq!(to_pascal_case("simple"), "Simple");
         assert_eq!(to_pascal_case(""), "");
     }
-    
+
     #[test]
     fn test_to_snake_case() {
         assert_eq!(to_snake_case("HelloWorld"), "hello_world");
@@ -207,30 +211,30 @@ mod tests {
         assert_eq!(to_snake_case("Simple"), "simple");
         assert_eq!(to_snake_case("XMLParser"), "xmlparser");
     }
-    
+
     #[test]
     fn test_extract_option_inner() {
         let opt_type: Type = parse_quote!(Option<String>);
         assert!(extract_option_inner(&opt_type).is_some());
-        
+
         let non_opt_type: Type = parse_quote!(String);
         assert!(extract_option_inner(&non_opt_type).is_none());
-        
+
         let nested_opt: Type = parse_quote!(Option<Option<i32>>);
         assert!(extract_option_inner(&nested_opt).is_some());
     }
-    
+
     #[test]
     fn test_extract_result_types() {
         let result_type: Type = parse_quote!(Result<String, std::io::Error>);
         let (ok_type, err_type) = extract_result_types(&result_type).unwrap();
         assert!(matches!(ok_type, Type::Path(_)));
         assert!(matches!(err_type, Type::Path(_)));
-        
+
         let non_result: Type = parse_quote!(String);
         assert!(extract_result_types(&non_result).is_none());
     }
-    
+
     #[test]
     fn test_generate_unique_ident() {
         let id1 = generate_unique_ident("test");

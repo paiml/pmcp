@@ -8,25 +8,25 @@
 //! cargo run --example 21_macro_tools --features macros
 //! ```
 
+use async_trait::async_trait;
 use pmcp::{
-    Error, Result, Server, ServerBuilder, ServerCapabilities, StdioTransport,
-    RequestHandlerExtra, ToolHandler,
+    Error, RequestHandlerExtra, Result, Server, ServerBuilder, ServerCapabilities, StdioTransport,
+    ToolHandler,
 };
 use pmcp_macros::{tool, tool_router};
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::Value;
-use async_trait::async_trait;
 
 /// Parameters for math operations
 #[derive(Debug, Deserialize, JsonSchema)]
 struct MathParams {
     #[schemars(description = "First number")]
     a: f64,
-    
+
     #[schemars(description = "Second number")]
     b: f64,
 }
@@ -36,7 +36,7 @@ struct MathParams {
 struct MathResult {
     #[schemars(description = "The computed result")]
     result: f64,
-    
+
     #[schemars(description = "The operation performed")]
     operation: String,
 }
@@ -46,10 +46,10 @@ struct MathResult {
 struct StringParams {
     #[schemars(description = "The text to process")]
     text: String,
-    
+
     #[schemars(description = "Optional prefix to add")]
     prefix: Option<String>,
-    
+
     #[schemars(description = "Optional suffix to add")]
     suffix: Option<String>,
 }
@@ -67,7 +67,7 @@ impl CalculatorServer {
             history: Arc::new(RwLock::new(Vec::new())),
         }
     }
-    
+
     /// Record an operation in history
     async fn record_operation(&self, op: String) {
         let mut history = self.history.write().await;
@@ -86,90 +86,96 @@ impl CalculatorServer {
     #[tool(description = "Add two numbers")]
     async fn add(&self, params: MathParams) -> Result<MathResult> {
         let result = params.a + params.b;
-        self.record_operation(format!("{} + {} = {}", params.a, params.b, result)).await;
-        
+        self.record_operation(format!("{} + {} = {}", params.a, params.b, result))
+            .await;
+
         Ok(MathResult {
             result,
             operation: "addition".to_string(),
         })
     }
-    
+
     /// Subtract second number from first
     #[tool(description = "Subtract b from a")]
     async fn subtract(&self, params: MathParams) -> Result<MathResult> {
         let result = params.a - params.b;
-        self.record_operation(format!("{} - {} = {}", params.a, params.b, result)).await;
-        
+        self.record_operation(format!("{} - {} = {}", params.a, params.b, result))
+            .await;
+
         Ok(MathResult {
             result,
             operation: "subtraction".to_string(),
         })
     }
-    
+
     /// Multiply two numbers
     #[tool(description = "Multiply two numbers")]
     async fn multiply(&self, params: MathParams) -> Result<MathResult> {
         let result = params.a * params.b;
-        self.record_operation(format!("{} × {} = {}", params.a, params.b, result)).await;
-        
+        self.record_operation(format!("{} × {} = {}", params.a, params.b, result))
+            .await;
+
         Ok(MathResult {
             result,
             operation: "multiplication".to_string(),
         })
     }
-    
+
     /// Divide first number by second
     #[tool(name = "divide", description = "Divide a by b (b must not be zero)")]
     async fn div(&self, params: MathParams) -> Result<MathResult> {
         if params.b == 0.0 {
             return Err(Error::InvalidParams("Division by zero".to_string()));
         }
-        
+
         let result = params.a / params.b;
-        self.record_operation(format!("{} ÷ {} = {}", params.a, params.b, result)).await;
-        
+        self.record_operation(format!("{} ÷ {} = {}", params.a, params.b, result))
+            .await;
+
         Ok(MathResult {
             result,
             operation: "division".to_string(),
         })
     }
-    
+
     /// Calculate power (a^b)
     #[tool(description = "Calculate a raised to the power of b")]
     async fn power(&self, params: MathParams) -> Result<MathResult> {
         let result = params.a.powf(params.b);
-        self.record_operation(format!("{} ^ {} = {}", params.a, params.b, result)).await;
-        
+        self.record_operation(format!("{} ^ {} = {}", params.a, params.b, result))
+            .await;
+
         Ok(MathResult {
             result,
             operation: "exponentiation".to_string(),
         })
     }
-    
+
     /// Process a string with optional prefix and suffix
     #[tool(description = "Process text with optional prefix and suffix")]
     async fn process_string(&self, params: StringParams) -> Result<String> {
         let mut result = params.text;
-        
+
         if let Some(prefix) = params.prefix {
             result = format!("{}{}", prefix, result);
         }
-        
+
         if let Some(suffix) = params.suffix {
             result = format!("{}{}", result, suffix);
         }
-        
-        self.record_operation(format!("Processed string: {}", result)).await;
+
+        self.record_operation(format!("Processed string: {}", result))
+            .await;
         Ok(result)
     }
-    
+
     /// Get calculation history
     #[tool(description = "Get the history of calculations")]
     async fn get_history(&self) -> Result<Vec<String>> {
         let history = self.history.read().await;
         Ok(history.clone())
     }
-    
+
     /// Clear calculation history
     #[tool(description = "Clear the calculation history")]
     async fn clear_history(&self) -> Result<String> {
@@ -201,9 +207,9 @@ impl ToolHandler for CalculatorToolHandler {
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    
+
     println!("🧮 Calculator Server with Macro-based Tools");
-    println!("=" .repeat(50));
+    println!("=".repeat(50));
     println!();
     println!("This example demonstrates the new procedural macro system");
     println!("for defining MCP tools with automatic schema generation.");
@@ -225,13 +231,13 @@ async fn main() -> Result<()> {
     println!("  • get_history    - Get calculation history");
     println!("  • clear_history  - Clear calculation history");
     println!();
-    
+
     // Create the calculator server
     let calc_server = CalculatorServer::new();
     let handler = CalculatorToolHandler {
         server: calc_server.clone(),
     };
-    
+
     // Build the MCP server
     let server = ServerBuilder::new("calculator-macro-server", "1.0.0")
         .capabilities(ServerCapabilities {
@@ -339,13 +345,13 @@ async fn main() -> Result<()> {
             handler.clone(),
         )?
         .build()?;
-    
+
     println!("Starting server on stdio transport...");
     println!("Connect with an MCP client to use the calculator.");
     println!();
-    
+
     // Run the server
     server.run_stdio().await?;
-    
+
     Ok(())
 }

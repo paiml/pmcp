@@ -34,7 +34,7 @@ pub async fn sleep(duration: Duration) {
     {
         tokio_sleep(duration).await;
     }
-    
+
     #[cfg(target_arch = "wasm32")]
     {
         let millis = duration.as_millis() as i32;
@@ -78,7 +78,7 @@ where
     {
         tokio::spawn(future);
     }
-    
+
     #[cfg(target_arch = "wasm32")]
     {
         wasm_bindgen_futures::spawn_local(future);
@@ -99,7 +99,7 @@ where
         let handle = tokio::task::spawn_blocking(f);
         JoinHandle::Native(handle)
     }
-    
+
     #[cfg(target_arch = "wasm32")]
     {
         // WASM doesn't have blocking threads, execute immediately
@@ -121,17 +121,19 @@ pub enum JoinHandle<T> {
 
 impl<T> Future for JoinHandle<T> {
     type Output = Result<T, JoinError>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match &mut *self {
             #[cfg(not(target_arch = "wasm32"))]
-            Self::Native(handle) => {
-                Pin::new(handle).poll(cx).map_err(|e| JoinError(e.to_string()))
-            }
+            Self::Native(handle) => Pin::new(handle)
+                .poll(cx)
+                .map_err(|e| JoinError(e.to_string())),
             #[cfg(target_arch = "wasm32")]
-            Self::Wasm(result) => {
-                Poll::Ready(result.take().ok_or_else(|| JoinError("Already consumed".to_string())))
-            }
+            Self::Wasm(result) => Poll::Ready(
+                result
+                    .take()
+                    .ok_or_else(|| JoinError("Already consumed".to_string())),
+            ),
         }
     }
 }
@@ -167,7 +169,7 @@ pub fn timestamp_millis() -> u64 {
             .expect("Time went backwards")
             .as_millis() as u64
     }
-    
+
     #[cfg(target_arch = "wasm32")]
     {
         js_sys::Date::now() as u64
@@ -202,7 +204,7 @@ pub mod channel {
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
     use std::task::Waker;
-    
+
     /// Simple channel implementation for WASM
     pub fn channel<T>(buffer: usize) -> (Sender<T>, Receiver<T>) {
         let shared = Arc::new(Mutex::new(ChannelState {
@@ -210,23 +212,25 @@ pub mod channel {
             closed: false,
             waker: None,
         }));
-        
+
         (
-            Sender { shared: shared.clone() },
+            Sender {
+                shared: shared.clone(),
+            },
             Receiver { shared },
         )
     }
-    
+
     struct ChannelState<T> {
         queue: VecDeque<T>,
         closed: bool,
         waker: Option<Waker>,
     }
-    
+
     pub struct Sender<T> {
         shared: Arc<Mutex<ChannelState<T>>>,
     }
-    
+
     impl<T> Sender<T> {
         pub async fn send(&self, value: T) -> Result<(), SendError<T>> {
             let mut state = self.shared.lock().unwrap();
@@ -240,11 +244,11 @@ pub mod channel {
             Ok(())
         }
     }
-    
+
     pub struct Receiver<T> {
         shared: Arc<Mutex<ChannelState<T>>>,
     }
-    
+
     impl<T> Receiver<T> {
         pub async fn recv(&mut self) -> Option<T> {
             // Simplified implementation - would need proper async polling
@@ -252,14 +256,14 @@ pub mod channel {
             state.queue.pop_front()
         }
     }
-    
+
     pub struct SendError<T>(pub T);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[cfg(not(target_arch = "wasm32"))]
     #[tokio::test]
     async fn test_sleep() {
@@ -268,7 +272,7 @@ mod tests {
         let elapsed = timestamp_millis() - start;
         assert!((100..200).contains(&elapsed));
     }
-    
+
     #[cfg(not(target_arch = "wasm32"))]
     #[tokio::test]
     async fn test_spawn() {
@@ -278,7 +282,7 @@ mod tests {
         });
         assert_eq!(rx.recv().await, Some(42));
     }
-    
+
     #[test]
     fn test_timestamp() {
         let ts1 = timestamp_millis();

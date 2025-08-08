@@ -3,15 +3,15 @@
 //! These tests ensure that PMCP Rust SDK can communicate correctly with
 //! the official TypeScript SDK implementation.
 
+use async_trait::async_trait;
 use pmcp::{
-    Client, ClientCapabilities, Error, Result, ServerBuilder, ServerCapabilities,
-    StdioTransport, ToolHandler, PromptHandler, ResourceHandler,
+    Client, ClientCapabilities, Error, PromptHandler, ResourceHandler, Result, ServerBuilder,
+    ServerCapabilities, StdioTransport, ToolHandler,
 };
 use serde_json::{json, Value};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 use tokio::process::Command as TokioCommand;
-use async_trait::async_trait;
 
 /// Test tool handler for integration tests
 #[derive(Clone)]
@@ -25,11 +25,11 @@ impl ToolHandler for TestToolHandler {
                 let a = args.get("a").and_then(|v| v.as_i64()).unwrap_or(0);
                 let b = args.get("b").and_then(|v| v.as_i64()).unwrap_or(0);
                 Ok(json!({ "result": a + b }))
-            }
+            },
             Some("echo") => {
                 let message = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
                 Ok(json!({ "message": message }))
-            }
+            },
             _ => Err(Error::invalid_params("Unknown operation")),
         }
     }
@@ -86,7 +86,7 @@ impl PromptHandler for TestPromptHandler {
         _extra: pmcp::RequestHandlerExtra,
     ) -> Result<pmcp::types::GetPromptResult> {
         let name = args.get("name").map_or("User", |s| s.as_str());
-        
+
         Ok(pmcp::types::GetPromptResult {
             description: Some(format!("Greeting for {}", name)),
             messages: vec![pmcp::types::PromptMessage {
@@ -156,7 +156,9 @@ async fn test_rust_client_typescript_server() -> Result<()> {
     assert_eq!(resources.resources[0].uri, "test://example.txt");
 
     // Test resource reading
-    let resource = client.read_resource("test://example.txt".to_string()).await?;
+    let resource = client
+        .read_resource("test://example.txt".to_string())
+        .await?;
     assert_eq!(resource.contents.len(), 1);
     if let pmcp::types::Content::Text { text } = &resource.contents[0] {
         assert_eq!(text, "Hello from TypeScript server!");
@@ -173,8 +175,7 @@ async fn test_rust_client_typescript_server() -> Result<()> {
     let prompt = client
         .get_prompt(
             "greeting".to_string(),
-            std::iter::once(("name".to_string(), "Alice".to_string()))
-                .collect(),
+            std::iter::once(("name".to_string(), "Alice".to_string())).collect(),
         )
         .await?;
     assert_eq!(prompt.messages.len(), 1);
@@ -221,9 +222,7 @@ async fn test_typescript_client_rust_server() -> Result<()> {
         .build()?;
 
     // Run server in background
-    let server_handle = tokio::spawn(async move {
-        server.run_stdio().await
-    });
+    let server_handle = tokio::spawn(async move { server.run_stdio().await });
 
     // Give server time to start
     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -258,10 +257,10 @@ async fn test_protocol_compatibility() -> Result<()> {
 
     // Test protocol version negotiation
     let versions = vec!["2024-11-05", "2025-03-26", "2025-06-18"];
-    
+
     for version in versions {
         println!("Testing protocol version: {}", version);
-        
+
         // Protocol version testing would require server-side support
         // Currently testing with default protocol version
     }
@@ -278,7 +277,7 @@ async fn test_error_handling_interop() -> Result<()> {
     }
 
     // Test that errors are properly propagated between implementations
-    
+
     // Error handling tests require setting up specific error scenarios
     // in both TypeScript and Rust servers - deferred to integration tests
 
@@ -294,7 +293,7 @@ async fn test_concurrent_operations() -> Result<()> {
     }
 
     // Test multiple concurrent operations between Rust and TypeScript
-    
+
     // Concurrent operation tests implemented in stress testing suite
 
     Ok(())
@@ -335,7 +334,8 @@ fn start_typescript_server() -> Result<tokio::process::Child> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    cmd.spawn().map_err(|e| Error::internal(format!("Failed to start TypeScript server: {}", e)))
+    cmd.spawn()
+        .map_err(|e| Error::internal(format!("Failed to start TypeScript server: {}", e)))
 }
 
 #[allow(dead_code)]

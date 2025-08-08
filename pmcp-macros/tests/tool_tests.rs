@@ -4,8 +4,8 @@
 //! tool handlers with proper schema generation and type safety.
 
 use pmcp_macros::tool;
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct AddParams {
@@ -26,7 +26,7 @@ fn test_simple_tool_macro() {
             sum: params.a + params.b,
         }
     }
-    
+
     // The macro should generate AddToolHandler
     // We can't easily test the generated code directly in integration tests,
     // but we can verify it compiles
@@ -61,7 +61,7 @@ fn test_tool_with_optional_params() {
         name: String,
         title: Option<String>,
     }
-    
+
     #[tool(description = "Greet a person")]
     fn greet(params: GreetParams) -> String {
         match params.title {
@@ -87,18 +87,18 @@ fn test_tool_with_complex_types() {
         metadata: std::collections::HashMap<String, serde_json::Value>,
         nested: NestedStruct,
     }
-    
+
     #[derive(Debug, Deserialize, JsonSchema)]
     struct NestedStruct {
         field: String,
     }
-    
+
     #[derive(Debug, Serialize, JsonSchema)]
     struct ComplexOutput {
         processed: Vec<String>,
         count: usize,
     }
-    
+
     #[tool(description = "Process complex data")]
     fn process_complex(input: ComplexInput) -> ComplexOutput {
         ComplexOutput {
@@ -113,7 +113,7 @@ fn test_tool_with_complex_types() {
 mod property_tests {
     use super::*;
     use proptest::prelude::*;
-    
+
     proptest! {
         #[test]
         fn test_tool_with_arbitrary_inputs(a in any::<i32>(), b in any::<i32>()) {
@@ -121,7 +121,7 @@ mod property_tests {
             fn add_prop(x: i32, y: i32) -> i64 {
                 x as i64 + y as i64
             }
-            
+
             // Test would verify the generated handler works with arbitrary inputs
             prop_assert!(true); // Placeholder
         }

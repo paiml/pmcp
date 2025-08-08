@@ -3,14 +3,12 @@
 //! This module implements the `#[tool_router]` attribute macro that collects
 //! all tool methods from an impl block and generates routing code.
 
-use darling::FromMeta;
 use darling::ast::NestedMeta;
+use darling::FromMeta;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{
-    parse_quote, Attribute, ImplItem, ImplItemFn, ItemImpl, Visibility,
-};
 use syn::parse::Parser;
+use syn::{parse_quote, Attribute, ImplItem, ImplItemFn, ItemImpl, Visibility};
 
 /// Tool router macro arguments
 #[derive(Debug, Default, FromMeta)]
@@ -18,7 +16,7 @@ struct ToolRouterArgs {
     /// Name of the generated router field (defaults to "tool_router")
     #[darling(default = "default_router_name")]
     router: String,
-    
+
     /// Visibility of the generated methods (defaults to pub)
     #[darling(default)]
     vis: Option<String>,
@@ -49,64 +47,64 @@ pub fn expand_tool_router(args: TokenStream, mut input: ItemImpl) -> syn::Result
             .map(|p| p.into_iter().collect::<Vec<_>>())
             .unwrap_or_default()
     };
-    
+
     let args = ToolRouterArgs::from_list(&nested_metas).unwrap_or_default();
-    
+
     // Find all methods marked with #[tool]
     let tool_methods = collect_tool_methods(&input)?;
-    
+
     if tool_methods.is_empty() {
         return Err(syn::Error::new_spanned(
             &input,
             "No methods marked with #[tool] found in impl block",
         ));
     }
-    
+
     // Generate router field name
     let router_field = Ident::new(&args.router, proc_macro2::Span::call_site());
-    
+
     // Generate visibility
     let vis = parse_visibility(&args.vis)?;
-    
+
     // Generate tool definitions method
     let tools_method = generate_tools_method(&tool_methods, &vis);
-    
+
     // Generate handle_tool method
     let handle_tool_method = generate_handle_tool_method(&tool_methods, &vis);
-    
+
     // Generate router initialization method
     let router_init = generate_router_init(&router_field, &vis);
-    
+
     // Add generated methods to the impl block
     input.items.push(ImplItem::Fn(tools_method));
     input.items.push(ImplItem::Fn(handle_tool_method));
     input.items.push(ImplItem::Fn(router_init));
-    
+
     // Add router field to the struct (this would need to be done separately)
     // For now, we'll document that the user needs to add it manually
-    
+
     let expanded = quote! {
         #input
-        
+
         impl ToolRouterInfo for Self {
             const ROUTER_FIELD: &'static str = stringify!(#router_field);
         }
     };
-    
+
     Ok(expanded)
 }
 
 /// Collect all methods marked with #[tool] from the impl block
 fn collect_tool_methods(impl_block: &ItemImpl) -> syn::Result<Vec<ToolMethod>> {
     let mut methods = Vec::new();
-    
+
     for item in &impl_block.items {
         if let ImplItem::Fn(method) = item {
             if let Some(tool_attr) = find_tool_attribute(&method.attrs) {
                 let tool_info = parse_tool_attribute(tool_attr)?;
                 let method_name = method.sig.ident.clone();
                 let tool_name = tool_info.name.unwrap_or_else(|| method_name.to_string());
-                
+
                 methods.push(ToolMethod {
                     name: method_name,
                     tool_name,
@@ -116,7 +114,7 @@ fn collect_tool_methods(impl_block: &ItemImpl) -> syn::Result<Vec<ToolMethod>> {
             }
         }
     }
-    
+
     Ok(methods)
 }
 
@@ -135,10 +133,10 @@ fn find_tool_attribute(attrs: &[Attribute]) -> Option<&Attribute> {
 fn parse_tool_attribute(attr: &Attribute) -> syn::Result<ToolInfo> {
     // For simple parsing, we'll just look for key=value pairs in the meta
     let args_str = quote!(#attr).to_string();
-    
+
     let mut name = None;
     let mut description = None;
-    
+
     // Basic parsing - this is simplified but works for our use case
     if args_str.contains("description") {
         // Extract description value
@@ -149,7 +147,7 @@ fn parse_tool_attribute(attr: &Attribute) -> syn::Result<ToolInfo> {
             }
         }
     }
-    
+
     if args_str.contains("name") && args_str.contains("name = \"") {
         // Extract name value
         if let Some(name_start) = args_str.find("name = \"") {
@@ -159,12 +157,11 @@ fn parse_tool_attribute(attr: &Attribute) -> syn::Result<ToolInfo> {
             }
         }
     }
-    
+
     Ok(ToolInfo {
         name,
-        description: description.ok_or_else(|| {
-            syn::Error::new_spanned(attr, "Tool must have a description")
-        })?,
+        description: description
+            .ok_or_else(|| syn::Error::new_spanned(attr, "Tool must have a description"))?,
     })
 }
 
@@ -188,7 +185,7 @@ fn generate_tools_method(methods: &[ToolMethod], vis: &Visibility) -> ImplItemFn
             }
         })
         .collect();
-    
+
     parse_quote! {
         #vis fn tools(&self) -> Vec<pmcp::types::Tool> {
             vec![
@@ -210,7 +207,7 @@ fn generate_handle_tool_method(methods: &[ToolMethod], vis: &Visibility) -> Impl
             } else {
                 quote!()
             };
-            
+
             quote! {
                 #tool_name => {
                     let result = self.#method_name(args.clone())#await_token;
@@ -222,7 +219,7 @@ fn generate_handle_tool_method(methods: &[ToolMethod], vis: &Visibility) -> Impl
             }
         })
         .collect();
-    
+
     parse_quote! {
         #vis async fn handle_tool(
             &self,
@@ -272,7 +269,7 @@ trait ToolRouterInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parse_visibility() {
         assert!(parse_visibility(&None).is_ok());

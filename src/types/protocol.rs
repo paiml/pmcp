@@ -848,7 +848,7 @@ mod tests {
     #[test]
     fn test_all_notification_types() {
         let progress = ServerNotification::Progress(ProgressNotification {
-            progress_token: ProgressToken::String("token123".to_string()), 
+            progress_token: ProgressToken::String("token123".to_string()),
             progress: 50.0,
             message: Some("Processing...".to_string()),
         });
@@ -895,7 +895,7 @@ mod tests {
             description: Some("Test file".to_string()),
             mime_type: Some("text/plain".to_string()),
         };
-        
+
         let json = serde_json::to_value(&resource).unwrap();
         assert_eq!(json["uri"], "file://test.txt");
         assert_eq!(json["name"], "test.txt");
@@ -915,12 +915,11 @@ mod tests {
                 completion: None,
             }]),
         };
-        
+
         let json = serde_json::to_value(&prompt).unwrap();
         assert_eq!(json["name"], "test_prompt");
         assert_eq!(json["arguments"][0]["name"], "arg1");
         assert_eq!(json["arguments"][0]["required"], true);
-
     }
 
     #[test]
@@ -934,12 +933,12 @@ mod tests {
     #[test]
     fn test_cancelled_notification() {
         use crate::types::RequestId;
-        
+
         let cancelled = CancelledNotification {
             request_id: RequestId::Number(123),
             reason: Some("User cancelled".to_string()),
         };
-        
+
         let json = serde_json::to_value(&cancelled).unwrap();
         assert_eq!(json["requestId"], 123);
         assert_eq!(json["reason"], "User cancelled");

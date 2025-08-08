@@ -4,8 +4,8 @@
 //! tool methods and generates routing code.
 
 use pmcp_macros::{tool, tool_router};
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 struct Calculator {
@@ -33,21 +33,21 @@ fn test_tool_router_with_multiple_tools() {
                 result: params.a + params.b,
             })
         }
-        
+
         #[tool(description = "Subtract two numbers")]
         async fn subtract(&self, params: MathParams) -> Result<MathResult, String> {
             Ok(MathResult {
                 result: params.a - params.b,
             })
         }
-        
+
         #[tool(description = "Multiply two numbers")]
         async fn multiply(&self, params: MathParams) -> Result<MathResult, String> {
             Ok(MathResult {
                 result: params.a * params.b,
             })
         }
-        
+
         #[tool(name = "div", description = "Divide two numbers")]
         async fn divide(&self, params: MathParams) -> Result<MathResult, String> {
             if params.b == 0.0 {
@@ -58,7 +58,7 @@ fn test_tool_router_with_multiple_tools() {
                 })
             }
         }
-        
+
         // Non-tool method (should be ignored)
         fn helper(&self) -> usize {
             self.precision
@@ -77,12 +77,12 @@ fn test_tool_router_with_sync_methods() {
         fn to_upper(&self, text: String) -> String {
             text.to_uppercase()
         }
-        
+
         #[tool(description = "Convert to lowercase")]
         fn to_lower(&self, text: String) -> String {
             text.to_lowercase()
         }
-        
+
         #[tool(description = "Reverse a string")]
         fn reverse(&self, text: String) -> String {
             text.chars().rev().collect()
@@ -105,13 +105,13 @@ fn test_tool_router_with_state() {
             state.push(item);
             Ok(state.len())
         }
-        
+
         #[tool(description = "Get all items")]
         async fn get_items(&self) -> Result<Vec<String>, String> {
             let state = self.state.lock().map_err(|e| e.to_string())?;
             Ok(state.clone())
         }
-        
+
         #[tool(description = "Clear all items")]
         async fn clear(&self) -> Result<(), String> {
             let mut state = self.state.lock().map_err(|e| e.to_string())?;
@@ -127,7 +127,7 @@ fn test_tool_router_with_generics() {
     struct GenericProcessor<T: Clone + Send + Sync> {
         _phantom: std::marker::PhantomData<T>,
     }
-    
+
     #[tool_router]
     impl<T: Clone + Send + Sync + 'static> GenericProcessor<T> {
         #[tool(description = "Echo input")]
@@ -144,7 +144,7 @@ fn test_tool_router_with_custom_options() {
     struct CustomServer {
         tool_router: Vec<String>, // Would be the actual router type
     }
-    
+
     #[tool_router(router = "my_router", vis = "pub(crate)")]
     impl CustomServer {
         #[tool(description = "Custom tool")]
@@ -159,10 +159,10 @@ fn test_tool_router_with_custom_options() {
 mod property_tests {
     use super::*;
     use proptest::prelude::*;
-    
+
     #[derive(Debug, Clone)]
     struct PropTestServer;
-    
+
     proptest! {
         #[test]
         fn test_router_handles_arbitrary_tool_names(name in "[a-z_]+") {
@@ -173,7 +173,7 @@ mod property_tests {
                     "test".to_string()
                 }
             }
-            
+
             // Verify the router compiles with arbitrary tool names
             prop_assert!(true);
         }

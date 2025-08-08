@@ -13,4 +13,4 @@ pub use parallel_batch::{
 };
 
 #[cfg(feature = "simd")]
-pub use json_simd::{parse_json_fast, serialize_json_fast, parse_json_batch, pretty_print_fast};
+pub use json_simd::{parse_json_batch, parse_json_fast, pretty_print_fast, serialize_json_fast};

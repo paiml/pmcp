@@ -282,54 +282,54 @@ impl ResourceWatcher {
                 )
             })?;
 
-        // Watch base directory
-        watcher
-            .watch(&base_dir, RecursiveMode::Recursive)
-            .map_err(|e| {
-                Error::protocol(
-                    ErrorCode::INTERNAL_ERROR,
-                    format!("Failed to watch directory: {}", e),
-                )
-            })?;
+            // Watch base directory
+            watcher
+                .watch(&base_dir, RecursiveMode::Recursive)
+                .map_err(|e| {
+                    Error::protocol(
+                        ErrorCode::INTERNAL_ERROR,
+                        format!("Failed to watch directory: {}", e),
+                    )
+                })?;
 
-        loop {
-            tokio::select! {
-                _ = shutdown_rx.recv() => {
-                    info!("File watcher shutting down");
-                    break;
-                }
-                Some(event) = rx.recv() => {
-                    // Process notify event
-                    let kind = match event.kind {
-                        EventKind::Create(_) => FileEventKind::Created,
-                        EventKind::Modify(_) => FileEventKind::Modified,
-                        EventKind::Remove(_) => FileEventKind::Deleted,
-                        _ => continue,
-                    };
-
-                    for path in event.paths {
-                        // Check if path matches patterns
-                        if !Self::matches_patterns(&path, &base_dir, &patterns, &ignore_patterns) {
-                            continue;
-                        }
-
-                        let file_event = FileEvent {
-                            path,
-                            timestamp: Instant::now(),
-                            kind,
+            loop {
+                tokio::select! {
+                    _ = shutdown_rx.recv() => {
+                        info!("File watcher shutting down");
+                        break;
+                    }
+                    Some(event) = rx.recv() => {
+                        // Process notify event
+                        let kind = match event.kind {
+                            EventKind::Create(_) => FileEventKind::Created,
+                            EventKind::Modify(_) => FileEventKind::Modified,
+                            EventKind::Remove(_) => FileEventKind::Deleted,
+                            _ => continue,
                         };
 
-                        if let Err(e) = event_tx.send(file_event).await {
-                            error!("Failed to send file event: {}", e);
+                        for path in event.paths {
+                            // Check if path matches patterns
+                            if !Self::matches_patterns(&path, &base_dir, &patterns, &ignore_patterns) {
+                                continue;
+                            }
+
+                            let file_event = FileEvent {
+                                path,
+                                timestamp: Instant::now(),
+                                kind,
+                            };
+
+                            if let Err(e) = event_tx.send(file_event).await {
+                                error!("Failed to send file event: {}", e);
+                            }
                         }
                     }
                 }
             }
+
+            Ok(())
         }
-        
-        Ok(())
-        }
-        
+
         #[cfg(not(feature = "resource-watcher"))]
         {
             warn!("Resource watching is not enabled (requires 'resource-watcher' feature)");

@@ -58,14 +58,14 @@ impl WasmWebSocketTransport {
     pub async fn connect(url: &str) -> Result<Self> {
         let ws = WebSocket::new(url)
             .map_err(|e| Error::TransportError(format!("Failed to create WebSocket: {:?}", e)))?;
-        
+
         // Set binary type to arraybuffer for efficiency
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
-        
+
         // Create channel for receiving messages
         let (tx, rx) = mpsc::unbounded();
         let tx_clone = tx.clone();
-        
+
         // Setup message handler
         let on_message = {
             let tx = tx.clone();
@@ -81,12 +81,12 @@ impl WasmWebSocketTransport {
                 }
             }) as Box<dyn FnMut(MessageEvent)>)
         };
-        
+
         // Setup error handler
         let on_error = Closure::wrap(Box::new(move |e: ErrorEvent| {
             web_sys::console::error_1(&format!("WebSocket error: {:?}", e).into());
         }) as Box<dyn FnMut(ErrorEvent)>);
-        
+
         // Setup close handler
         let on_close = {
             let tx = tx_clone;
@@ -95,15 +95,15 @@ impl WasmWebSocketTransport {
                 // Could send a close notification through the channel
             }) as Box<dyn FnMut()>)
         };
-        
+
         // Register event handlers
         ws.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
         ws.set_onerror(Some(on_error.as_ref().unchecked_ref()));
         ws.set_onclose(Some(on_close.as_ref().unchecked_ref()));
-        
+
         // Wait for connection to open
         wait_for_open(&ws).await?;
-        
+
         Ok(Self {
             ws,
             rx,
@@ -113,7 +113,7 @@ impl WasmWebSocketTransport {
             _on_close: on_close,
         })
     }
-    
+
     /// Check if the WebSocket is connected.
     pub fn is_connected(&self) -> bool {
         self.ws.ready_state() == WebSocket::OPEN
@@ -124,29 +124,33 @@ impl WasmWebSocketTransport {
 impl Transport for WasmWebSocketTransport {
     async fn send(&mut self, message: TransportMessage) -> Result<()> {
         if !self.is_connected() {
-            return Err(Error::TransportError("WebSocket is not connected".to_string()));
+            return Err(Error::TransportError(
+                "WebSocket is not connected".to_string(),
+            ));
         }
-        
+
         let json = serialize_transport_message(message)?;
         let text = serde_json::to_string(&json)?;
-        
+
         self.ws
             .send_with_str(&text)
             .map_err(|e| Error::TransportError(format!("Failed to send message: {:?}", e)))?;
-        
+
         Ok(())
     }
-    
+
     async fn receive(&mut self) -> Result<Option<TransportMessage>> {
-        self.rx.next().await.map(Some).ok_or_else(|| {
-            Error::TransportError("Channel closed".to_string())
-        })
+        self.rx
+            .next()
+            .await
+            .map(Some)
+            .ok_or_else(|| Error::TransportError("Channel closed".to_string()))
     }
-    
+
     async fn close(&mut self) -> Result<()> {
-        self.ws.close().map_err(|e| {
-            Error::TransportError(format!("Failed to close WebSocket: {:?}", e))
-        })?;
+        self.ws
+            .close()
+            .map_err(|e| Error::TransportError(format!("Failed to close WebSocket: {:?}", e)))?;
         Ok(())
     }
 }
@@ -155,21 +159,25 @@ impl Transport for WasmWebSocketTransport {
 async fn wait_for_open(ws: &WebSocket) -> Result<()> {
     let mut attempts = 0;
     const MAX_ATTEMPTS: u32 = 100; // 10 seconds with 100ms intervals
-    
+
     while ws.ready_state() == WebSocket::CONNECTING {
         if attempts >= MAX_ATTEMPTS {
-            return Err(Error::TransportError("WebSocket connection timeout".to_string()));
+            return Err(Error::TransportError(
+                "WebSocket connection timeout".to_string(),
+            ));
         }
-        
+
         // Sleep for 100ms
         crate::shared::runtime::sleep(std::time::Duration::from_millis(100)).await;
         attempts += 1;
     }
-    
+
     if ws.ready_state() != WebSocket::OPEN {
-        return Err(Error::TransportError("WebSocket failed to connect".to_string()));
+        return Err(Error::TransportError(
+            "WebSocket failed to connect".to_string(),
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -202,13 +210,9 @@ fn serialize_transport_message(message: TransportMessage) -> Result<Value> {
             let mut value = serde_json::to_value(request)?;
             value["id"] = serde_json::to_value(id)?;
             Ok(value)
-        }
-        TransportMessage::Response(response) => {
-            Ok(serde_json::to_value(response)?)
-        }
-        TransportMessage::Notification(notification) => {
-            Ok(serde_json::to_value(notification)?)
-        }
+        },
+        TransportMessage::Response(response) => Ok(serde_json::to_value(response)?),
+        TransportMessage::Notification(notification) => Ok(serde_json::to_value(notification)?),
     }
 }
 
@@ -240,9 +244,9 @@ impl Default for WasmWebSocketConfig {
 mod tests {
     use super::*;
     use wasm_bindgen_test::*;
-    
+
     wasm_bindgen_test_configure!(run_in_browser);
-    
+
     #[wasm_bindgen_test]
     fn test_config_default() {
         let config = WasmWebSocketConfig::default();
