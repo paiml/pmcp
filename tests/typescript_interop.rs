@@ -100,6 +100,7 @@ impl PromptHandler for TestPromptHandler {
 }
 
 #[tokio::test]
+#[ignore = "Requires TypeScript SDK setup"]
 async fn test_rust_client_typescript_server() -> Result<()> {
     // Skip if Node.js is not available
     if !is_node_available() {
@@ -185,6 +186,7 @@ async fn test_rust_client_typescript_server() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires TypeScript SDK setup"]
 async fn test_typescript_client_rust_server() -> Result<()> {
     // Skip if Node.js is not available
     if !is_node_available() {
