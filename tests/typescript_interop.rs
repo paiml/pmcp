@@ -85,7 +85,7 @@ impl PromptHandler for TestPromptHandler {
         args: std::collections::HashMap<String, String>,
         _extra: pmcp::RequestHandlerExtra,
     ) -> Result<pmcp::types::GetPromptResult> {
-        let name = args.get("name").map(|s| s.as_str()).unwrap_or("User");
+        let name = args.get("name").map_or("User", |s| s.as_str());
         
         Ok(pmcp::types::GetPromptResult {
             description: Some(format!("Greeting for {}", name)),
@@ -151,7 +151,7 @@ async fn test_rust_client_typescript_server() -> Result<()> {
 
     // Test resource listing
     let resources = client.list_resources(None).await?;
-    assert!(resources.resources.len() >= 1);
+    assert!(!resources.resources.is_empty());
     assert_eq!(resources.resources[0].uri, "test://example.txt");
 
     // Test resource reading
@@ -165,15 +165,14 @@ async fn test_rust_client_typescript_server() -> Result<()> {
 
     // Test prompt listing
     let prompts = client.list_prompts(None).await?;
-    assert!(prompts.prompts.len() >= 1);
+    assert!(!prompts.prompts.is_empty());
     assert_eq!(prompts.prompts[0].name, "greeting");
 
     // Test prompt getting
     let prompt = client
         .get_prompt(
             "greeting".to_string(),
-            [("name".to_string(), "Alice".to_string())]
-                .into_iter()
+            std::iter::once(("name".to_string(), "Alice".to_string()))
                 .collect(),
         )
         .await?;
@@ -229,7 +228,7 @@ async fn test_typescript_client_rust_server() -> Result<()> {
 
     // Run TypeScript client tests
     let output = Command::new("npm")
-        .args(&["test", "--", "test-client.js"])
+        .args(["test", "--", "test-client.js"])
         .current_dir("tests/integration/typescript-interop")
         .output()
         .map_err(|e| Error::internal(format!("Failed to run npm test: {}", e)))?;
@@ -338,7 +337,7 @@ fn start_typescript_server() -> Result<tokio::process::Child> {
 }
 
 #[allow(dead_code)]
-fn start_typescript_client() -> Result<TokioCommand> {
+fn start_typescript_client() -> TokioCommand {
     let mut cmd = TokioCommand::new("node");
     cmd.arg("test-client.js")
         .current_dir("tests/integration/typescript-interop")
@@ -346,5 +345,5 @@ fn start_typescript_client() -> Result<TokioCommand> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    Ok(cmd)
+    cmd
 }

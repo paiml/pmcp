@@ -125,11 +125,11 @@ impl<T> Future for JoinHandle<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match &mut *self {
             #[cfg(not(target_arch = "wasm32"))]
-            JoinHandle::Native(handle) => {
+            Self::Native(handle) => {
                 Pin::new(handle).poll(cx).map_err(|e| JoinError(e.to_string()))
             }
             #[cfg(target_arch = "wasm32")]
-            JoinHandle::Wasm(result) => {
+            Self::Wasm(result) => {
                 Poll::Ready(result.take().ok_or_else(|| JoinError("Already consumed".to_string())))
             }
         }
@@ -176,7 +176,7 @@ pub fn timestamp_millis() -> u64 {
 
 /// Cross-platform mutex
 ///
-/// Uses tokio::sync::Mutex on native, and std::sync::Mutex on WASM
+/// Uses `tokio::sync::Mutex` on native, and `std::sync::Mutex` on WASM
 /// (since WASM is single-threaded).
 #[cfg(not(target_arch = "wasm32"))]
 pub use tokio::sync::Mutex;
@@ -184,7 +184,7 @@ pub use tokio::sync::Mutex;
 #[cfg(target_arch = "wasm32")]
 pub use std::sync::Mutex;
 
-/// Cross-platform RwLock
+/// Cross-platform `RwLock`
 #[cfg(not(target_arch = "wasm32"))]
 pub use tokio::sync::RwLock;
 
