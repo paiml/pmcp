@@ -363,4 +363,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Model Context Protocol](https://modelcontextprotocol.io) specification
 - [TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) for reference implementation
-- [PAIML MCP Agent Toolkit](https://github.com/paiml/paiml-mcp-agent-toolkit) for quality standards 
+- [PAIML MCP Agent Toolkit](https://github.com/paiml/paiml-mcp-agent-toolkit) for quality standards
+- [Alternative implementation - official rust sdk](https://github.com/modelcontextprotocol/rust-sdk/) - created before I knew this existed.
