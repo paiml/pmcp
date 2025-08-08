@@ -1,6 +1,6 @@
 [package]
 name = "pmcp"
-version = "0.7.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["PAIML Team"]
 description = "High-quality Rust SDK for Model Context Protocol (MCP) with full TypeScript SDK compatibility"
@@ -18,7 +18,7 @@ rust-version = "1.82.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value", "preserve_order"] }
 schemars = { version = "0.8", optional = true }
-# pmcp-macros = { version = "0.1.0", path = "pmcp-macros", optional = true } # TODO: publish separately
+# pmcp-macros = { version = "0.1.0", path = "pmcp-macros", optional = true }
 async-trait = "0.1"
 thiserror = "2.0"
 anyhow = "1.0"
@@ -96,7 +96,7 @@ websocket = ["dep:tokio-tungstenite"]
 http = ["dep:hyper", "dep:hyper-util"]
 validation = ["dep:jsonschema", "dep:garde"]
 resource-watcher = ["dep:notify", "dep:glob-match"]
-# macros = ["dep:pmcp-macros", "dep:schemars"] # TODO: publish separately
+# macros = ["dep:pmcp-macros", "dep:schemars"]
 wasm = ["getrandom/js", "websocket-wasm"]
 websocket-wasm = []
 

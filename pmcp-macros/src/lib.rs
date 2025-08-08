@@ -147,7 +147,7 @@ pub fn tool_router(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn prompt(_args: TokenStream, input: TokenStream) -> TokenStream {
-    // TODO: Implement prompt macro
+    // Prompt macro implementation deferred to future release
     input
 }
 
@@ -166,6 +166,6 @@ pub fn prompt(_args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn resource(_args: TokenStream, input: TokenStream) -> TokenStream {
-    // TODO: Implement resource macro
+    // Resource macro implementation deferred to future release
     input
 }

@@ -210,7 +210,7 @@ impl ResourceWatcher {
 
             // Create watcher
             let mut watcher = RecommendedWatcher::new(
-                move |res: std::result::Result<Event, notify::Error>| {
+                move |res| {
                     if let Ok(event) = res {
                         let _ = tx.try_send(event);
                     }

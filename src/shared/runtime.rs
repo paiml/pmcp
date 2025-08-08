@@ -9,7 +9,7 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 #[cfg(not(target_arch = "wasm32"))]
-use tokio::time::{sleep as tokio_sleep, Sleep as TokioSleep};
+use tokio::time::sleep as tokio_sleep;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;

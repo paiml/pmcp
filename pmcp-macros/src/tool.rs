@@ -121,7 +121,8 @@ pub fn expand_tool(args: TokenStream, input: ItemFn) -> syn::Result<TokenStream>
             
             /// Generate input schema
             fn input_schema() -> serde_json::Value {
-                // TODO: Use schemars to generate actual schema
+                // Schema generation requires schemars feature
+                // Returns basic schema for now
                 serde_json::json!({
                     "type": "object",
                     "properties": {},

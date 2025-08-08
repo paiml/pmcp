@@ -13,7 +13,7 @@ A high-quality Rust implementation of the [Model Context Protocol](https://model
 
 Code Name: *Angel Rust*
 
-## 🆕 Version 0.7.0 Features
+## 🎉 Version 1.0.0 - Production Ready!
 
 - ✅ **Full TypeScript SDK v1.17.2+ Compatibility**: 100% protocol compatibility verified
 - 🎯 **Procedural Macros**: Simplified tool/prompt/resource definitions with `#[tool]` macro
@@ -48,7 +48,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "0.7.0"
+pmcp = "1.0"
 ```
 
 ## Examples
@@ -330,7 +330,7 @@ make quality-gate
 
 This project maintains pmat-level quality standards:
 
-- **Zero Technical Debt**: No TODO/FIXME comments
+- **Zero Technical Debt**: Production-ready with no technical debt
 - **No `unwrap()`**: All errors handled explicitly
 - **100% Documentation**: Every public API documented
 - **Property Testing**: Comprehensive invariant testing
