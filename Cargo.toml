@@ -42,6 +42,11 @@ http-body-util = "0.1"
 sha2 = "0.10"
 base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = false }
+tokio-tungstenite = { version = "0.27", features = ["native-tls"], optional = true }
+hyper = { version = "1.6", features = ["full"], optional = true }
+hyper-util = { version = "0.1", features = ["full"], optional = true }
+notify = { version = "6.1", optional = true }
+glob-match = { version = "0.2", optional = true }
 
 # Platform-specific dependencies
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

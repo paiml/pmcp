@@ -4,15 +4,13 @@
 //! the official TypeScript SDK implementation.
 
 use pmcp::{
-    Client, ClientCapabilities, Error, Result, Server, ServerBuilder, ServerCapabilities,
+    Client, ClientCapabilities, Error, Result, ServerBuilder, ServerCapabilities,
     StdioTransport, ToolHandler, PromptHandler, ResourceHandler,
 };
 use serde_json::{json, Value};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::process::Command as TokioCommand;
-use tokio::sync::RwLock;
 use async_trait::async_trait;
 
 /// Test tool handler for integration tests
@@ -32,7 +30,7 @@ impl ToolHandler for TestToolHandler {
                 let message = args.get("message").and_then(|v| v.as_str()).unwrap_or("");
                 Ok(json!({ "message": message }))
             }
-            _ => Err(Error::InvalidParams("Unknown operation".to_string())),
+            _ => Err(Error::invalid_params("Unknown operation")),
         }
     }
 }
@@ -50,15 +48,12 @@ impl ResourceHandler for TestResourceHandler {
     ) -> Result<pmcp::types::ReadResourceResult> {
         if uri == "test://example.txt" {
             Ok(pmcp::types::ReadResourceResult {
-                contents: vec![pmcp::types::ResourceContent {
-                    uri: uri.to_string(),
-                    mime_type: Some("text/plain".to_string()),
-                    text: Some("Hello from Rust server!".to_string()),
-                    blob: None,
+                contents: vec![pmcp::types::Content::Text {
+                    text: "Hello from Rust server!".to_string(),
                 }],
             })
         } else {
-            Err(Error::ResourceNotFound(uri.to_string()))
+            Err(Error::resource_not_found(uri))
         }
     }
 
@@ -70,7 +65,7 @@ impl ResourceHandler for TestResourceHandler {
         Ok(pmcp::types::ListResourcesResult {
             resources: vec![pmcp::types::ResourceInfo {
                 uri: "test://example.txt".to_string(),
-                name: Some("Example Text File".to_string()),
+                name: "Example Text File".to_string(),
                 description: Some("A test resource from Rust".to_string()),
                 mime_type: Some("text/plain".to_string()),
             }],
@@ -139,22 +134,20 @@ async fn test_rust_client_typescript_server() -> Result<()> {
     let add_result = client
         .call_tool("add".to_string(), json!({ "a": 5, "b": 3 }))
         .await?;
-    assert_eq!(
-        add_result.content[0],
-        pmcp::types::ToolContent::Text {
-            text: "8".to_string()
-        }
-    );
+    if let pmcp::types::Content::Text { text } = &add_result.content[0] {
+        assert_eq!(text, "8");
+    } else {
+        panic!("Expected text content");
+    }
 
     let echo_result = client
         .call_tool("echo".to_string(), json!({ "message": "Hello from Rust!" }))
         .await?;
-    assert_eq!(
-        echo_result.content[0],
-        pmcp::types::ToolContent::Text {
-            text: "Hello from Rust!".to_string()
-        }
-    );
+    if let pmcp::types::Content::Text { text } = &echo_result.content[0] {
+        assert_eq!(text, "Hello from Rust!");
+    } else {
+        panic!("Expected text content");
+    }
 
     // Test resource listing
     let resources = client.list_resources(None).await?;
@@ -164,10 +157,11 @@ async fn test_rust_client_typescript_server() -> Result<()> {
     // Test resource reading
     let resource = client.read_resource("test://example.txt".to_string()).await?;
     assert_eq!(resource.contents.len(), 1);
-    assert_eq!(
-        resource.contents[0].text,
-        Some("Hello from TypeScript server!".to_string())
-    );
+    if let pmcp::types::Content::Text { text } = &resource.contents[0] {
+        assert_eq!(text, "Hello from TypeScript server!");
+    } else {
+        panic!("Expected text content");
+    }
 
     // Test prompt listing
     let prompts = client.list_prompts(None).await?;
@@ -186,7 +180,7 @@ async fn test_rust_client_typescript_server() -> Result<()> {
     assert_eq!(prompt.messages.len(), 1);
 
     // Clean up
-    ts_server.kill().await?;
+    let _ = ts_server.kill().await;
 
     Ok(())
 }
@@ -203,47 +197,26 @@ async fn test_typescript_client_rust_server() -> Result<()> {
     install_typescript_sdk()?;
 
     // Create and start Rust server
-    let server = ServerBuilder::new("rust-test-server", "1.0.0")
+    let server = ServerBuilder::new()
+        .name("rust-test-server")
+        .version("1.0.0")
         .capabilities(ServerCapabilities {
-            tools: Some(pmcp::types::ToolsCapability {
+            tools: Some(pmcp::types::ToolCapabilities {
                 list_changed: Some(false),
             }),
-            resources: Some(pmcp::types::ResourcesCapability {
+            resources: Some(pmcp::types::ResourceCapabilities {
                 subscribe: Some(false),
                 list_changed: Some(false),
             }),
-            prompts: Some(pmcp::types::PromptsCapability {
+            prompts: Some(pmcp::types::PromptCapabilities {
                 list_changed: Some(false),
             }),
             ..Default::default()
         })
-        .tool(
-            "echo",
-            "Echo the input",
-            json!({
-                "type": "object",
-                "properties": {
-                    "message": { "type": "string" }
-                },
-                "required": ["message"]
-            }),
-            TestToolHandler,
-        )?
-        .tool(
-            "add",
-            "Add two numbers",
-            json!({
-                "type": "object",
-                "properties": {
-                    "a": { "type": "number" },
-                    "b": { "type": "number" }
-                },
-                "required": ["a", "b"]
-            }),
-            TestToolHandler,
-        )?
-        .resource_handler(TestResourceHandler)?
-        .prompt("greeting", "Generate a greeting", TestPromptHandler)?
+        .tool("echo", TestToolHandler)
+        .tool("add", TestToolHandler)
+        .resources(TestResourceHandler)
+        .prompt("greeting", TestPromptHandler)
         .build()?;
 
     // Run server in background
@@ -258,7 +231,8 @@ async fn test_typescript_client_rust_server() -> Result<()> {
     let output = Command::new("npm")
         .args(&["test", "--", "test-client.js"])
         .current_dir("tests/integration/typescript-interop")
-        .output()?;
+        .output()
+        .map_err(|e| Error::internal(format!("Failed to run npm test: {}", e)))?;
 
     if !output.status.success() {
         eprintln!("TypeScript client test failed:");
@@ -340,10 +314,10 @@ fn install_typescript_sdk() -> Result<()> {
         .arg("install")
         .current_dir("tests/integration/typescript-interop")
         .output()
-        .map_err(|e| Error::InternalError(format!("Failed to run npm install: {}", e)))?;
+        .map_err(|e| Error::internal(format!("Failed to run npm install: {}", e)))?;
 
     if !output.status.success() {
-        return Err(Error::InternalError(format!(
+        return Err(Error::internal(format!(
             "npm install failed: {}",
             String::from_utf8_lossy(&output.stderr)
         )));
@@ -352,7 +326,7 @@ fn install_typescript_sdk() -> Result<()> {
     Ok(())
 }
 
-fn start_typescript_server() -> Result<TokioCommand> {
+fn start_typescript_server() -> Result<tokio::process::Child> {
     let mut cmd = TokioCommand::new("node");
     cmd.arg("test-server.js")
         .current_dir("tests/integration/typescript-interop")
@@ -360,9 +334,10 @@ fn start_typescript_server() -> Result<TokioCommand> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    Ok(cmd)
+    cmd.spawn().map_err(|e| Error::internal(format!("Failed to start TypeScript server: {}", e)))
 }
 
+#[allow(dead_code)]
 fn start_typescript_client() -> Result<TokioCommand> {
     let mut cmd = TokioCommand::new("node");
     cmd.arg("test-client.js")

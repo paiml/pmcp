@@ -109,9 +109,12 @@ where
 }
 
 /// Cross-platform join handle
+#[derive(Debug)]
 pub enum JoinHandle<T> {
+    /// Native tokio join handle
     #[cfg(not(target_arch = "wasm32"))]
     Native(tokio::task::JoinHandle<T>),
+    /// WASM placeholder handle
     #[cfg(target_arch = "wasm32")]
     Wasm(Option<T>),
 }
@@ -263,7 +266,7 @@ mod tests {
         let start = timestamp_millis();
         sleep(Duration::from_millis(100)).await;
         let elapsed = timestamp_millis() - start;
-        assert!(elapsed >= 100 && elapsed < 200);
+        assert!((100..200).contains(&elapsed));
     }
     
     #[cfg(not(target_arch = "wasm32"))]

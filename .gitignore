@@ -40,3 +40,4 @@ proptest-regressions/
 
 # Mutation testing
 **/mutants.out*/
+tests/integration/typescript-interop/node_modules/

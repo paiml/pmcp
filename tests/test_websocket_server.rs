@@ -1,9 +1,14 @@
 //! Tests for WebSocket server transport.
 
+#[cfg(feature = "websocket")]
 use pmcp::server::transport::websocket::WebSocketServerBuilder;
+#[cfg(feature = "websocket")]
 use pmcp::shared::{Transport, TransportMessage};
+#[cfg(feature = "websocket")]
 use pmcp::types::{ClientNotification, Notification, ProgressNotification};
+#[cfg(feature = "websocket")]
 use std::time::Duration;
+#[cfg(feature = "websocket")]
 use tokio::time::timeout;
 
 #[cfg(feature = "websocket")]

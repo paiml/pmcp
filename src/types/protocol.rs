@@ -925,10 +925,10 @@ mod tests {
 
     #[test]
     fn test_log_levels() {
-        assert_eq!(serde_json::to_value(&LogLevel::Debug).unwrap(), "debug");
-        assert_eq!(serde_json::to_value(&LogLevel::Info).unwrap(), "info");
-        assert_eq!(serde_json::to_value(&LogLevel::Warning).unwrap(), "warning");
-        assert_eq!(serde_json::to_value(&LogLevel::Error).unwrap(), "error");
+        assert_eq!(serde_json::to_value(LogLevel::Debug).unwrap(), "debug");
+        assert_eq!(serde_json::to_value(LogLevel::Info).unwrap(), "info");
+        assert_eq!(serde_json::to_value(LogLevel::Warning).unwrap(), "warning");
+        assert_eq!(serde_json::to_value(LogLevel::Error).unwrap(), "error");
     }
 
     #[test]

@@ -87,6 +87,64 @@ impl std::fmt::Debug for ResourceWatcher {
     }
 }
 
+/// Process file events with debouncing (helper function).
+async fn process_events(
+    resources: Arc<RwLock<HashMap<String, ResourceInfo>>>,
+    pending_events: Arc<RwLock<HashMap<PathBuf, FileEvent>>>,
+    notification_tx: mpsc::Sender<ServerNotification>,
+    debounce: Duration,
+    event_rx: Arc<RwLock<Option<mpsc::Receiver<FileEvent>>>>,
+) {
+    let mut timer = interval(Duration::from_millis(100));
+
+    loop {
+        timer.tick().await;
+
+        // Check for new events
+        if let Some(rx) = &mut *event_rx.write().await {
+            while let Ok(event) = rx.try_recv() {
+                let mut pending = pending_events.write().await;
+                pending.insert(event.path.clone(), event);
+            }
+        }
+
+        // Process debounced events
+        let now = Instant::now();
+        let mut events_to_process = Vec::new();
+
+        {
+            let mut pending = pending_events.write().await;
+            pending.retain(|path, event| {
+                if now.duration_since(event.timestamp) >= debounce {
+                    events_to_process.push((path.clone(), event.kind));
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+
+        // Send notifications for processed events
+        for (path, kind) in events_to_process {
+            let uri = format!("file://{}", path.display());
+
+            let resources = resources.read().await;
+            if resources.contains_key(&uri) {
+                debug!("Resource {:?} changed: {}", kind, uri);
+
+                // Send resource update notification
+                let notification = ServerNotification::ResourceUpdated(
+                    crate::types::protocol::ResourceUpdatedParams { uri: uri.clone() },
+                );
+
+                if let Err(e) = notification_tx.send(notification).await {
+                    error!("Failed to send resource update notification: {}", e);
+                }
+            }
+        }
+    }
+}
+
 impl ResourceWatcher {
     /// Create a new resource watcher.
     pub fn new(
@@ -146,7 +204,7 @@ impl ResourceWatcher {
         let event_rx = self.event_rx.clone();
 
         tokio::spawn(async move {
-            Self::process_events(
+            process_events(
                 resources,
                 pending_events,
                 notification_tx,
@@ -204,7 +262,7 @@ impl ResourceWatcher {
     ) -> Result<()> {
         #[cfg(feature = "resource-watcher")]
         {
-            use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+            use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
             let (tx, mut rx) = mpsc::channel(1000);
 
@@ -268,66 +326,8 @@ impl ResourceWatcher {
                 }
             }
         }
-
+        
         Ok(())
-    }
-
-    /// Process file events with debouncing.
-    async fn process_events(
-        resources: Arc<RwLock<HashMap<String, ResourceInfo>>>,
-        pending_events: Arc<RwLock<HashMap<PathBuf, FileEvent>>>,
-        notification_tx: mpsc::Sender<ServerNotification>,
-        debounce: Duration,
-        event_rx: Arc<RwLock<Option<mpsc::Receiver<FileEvent>>>>,
-    ) {
-        let mut interval = interval(Duration::from_millis(100));
-
-        loop {
-            interval.tick().await;
-
-            // Receive new events
-            if let Some(rx) = &mut *event_rx.write().await {
-                while let Ok(event) = rx.try_recv() {
-                    let mut pending = pending_events.write().await;
-                    pending.insert(event.path.clone(), event);
-                }
-            }
-
-            // Process debounced events
-            let now = Instant::now();
-            let mut events_to_process = Vec::new();
-
-            {
-                let mut pending = pending_events.write().await;
-                pending.retain(|path, event| {
-                    if now.duration_since(event.timestamp) >= debounce {
-                        events_to_process.push((path.clone(), event.kind));
-                        false
-                    } else {
-                        true
-                    }
-                });
-            }
-
-            // Send notifications for processed events
-            for (path, kind) in events_to_process {
-                let uri = format!("file://{}", path.display());
-
-                let resources = resources.read().await;
-                if resources.contains_key(&uri) {
-                    debug!("Resource {:?} changed: {}", kind, uri);
-
-                    // Send resource update notification
-                    let notification = ServerNotification::ResourceUpdated(
-                        crate::types::protocol::ResourceUpdatedParams { uri: uri.clone() },
-                    );
-
-                    if let Err(e) = notification_tx.send(notification).await {
-                        error!("Failed to send resource update notification: {}", e);
-                    }
-                }
-            }
-        }
         }
         
         #[cfg(not(feature = "resource-watcher"))]
