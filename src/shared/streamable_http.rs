@@ -1,6 +1,7 @@
 use crate::error::{Error, Result, TransportError};
+use crate::shared::http_constants::*;
 use crate::shared::reconnect::{ReconnectConfig, ReconnectManager};
-use crate::shared::sse::SseParser;
+use crate::shared::sse::{SseEvent, SseParser};
 use crate::shared::{Transport, TransportMessage};
 use async_trait::async_trait;
 use parking_lot::RwLock;
@@ -12,29 +13,49 @@ use tokio::sync::Mutex;
 use url::Url;
 
 /// Configuration for the StreamableHttpTransport.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct StreamableHttpTransportConfig {
-    /// The URL of the MCP server.
     pub url: Url,
-    /// Optional extra headers to add to each request.
-    pub extra_headers: Option<Vec<(String, String)>>,
-    /// An optional `AuthProvider` to use for authentication.
+    pub extra_headers: Vec<(String, String)>,
     pub auth_provider: Option<Arc<dyn AuthProvider>>,
-    /// An optional session ID to use for the connection.
-    pub session_id: Option<String>,
-    /// An optional `ReconnectConfig` to use for reconnection.
     pub reconnect_config: Option<ReconnectConfig>,
+    pub on_resumption_token: Option<Arc<dyn Fn(String) + Send + Sync>>,
+}
+
+impl Debug for StreamableHttpTransportConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamableHttpTransportConfig")
+            .field("url", &self.url)
+            .field("extra_headers", &self.extra_headers)
+            .field("auth_provider", &self.auth_provider.is_some())
+            .field("reconnect_config", &self.reconnect_config)
+            .field("on_resumption_token", &self.on_resumption_token.is_some())
+            .finish()
+    }
 }
 
 /// A streamable HTTP transport for MCP.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct StreamableHttpTransport {
-    config: StreamableHttpTransportConfig,
+    config: Arc<StreamableHttpTransportConfig>,
     client: Client,
     receiver: Arc<Mutex<Receiver<TransportMessage>>>,
     sender: Sender<TransportMessage>,
     is_connected: Arc<RwLock<bool>>,
     reconnect_manager: Option<Arc<ReconnectManager>>,
+    session_id: Arc<RwLock<Option<String>>>,
+    protocol_version: Arc<RwLock<Option<String>>>,
+}
+
+impl Debug for StreamableHttpTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamableHttpTransport")
+            .field("config", &self.config)
+            .field("is_connected", &self.is_connected)
+            .field("session_id", &self.session_id)
+            .field("protocol_version", &self.protocol_version)
+            .finish()
+    }
 }
 
 impl StreamableHttpTransport {
@@ -46,12 +67,14 @@ impl StreamableHttpTransport {
             .clone()
             .map(|c| Arc::new(ReconnectManager::new(c)));
         Self {
-            config,
+            config: Arc::new(config),
             client: Client::new(),
             receiver: Arc::new(Mutex::new(receiver)),
             sender,
             is_connected: Arc::new(RwLock::new(false)),
             reconnect_manager,
+            session_id: Arc::new(RwLock::new(None)),
+            protocol_version: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -80,18 +103,28 @@ impl StreamableHttpTransport {
 
     async fn build_request(&self, method: reqwest::Method, url: Url) -> Result<RequestBuilder> {
         let mut builder = self.client.request(method, url);
-        if let Some(headers) = &self.config.extra_headers {
-            for (key, value) in headers {
-                builder = builder.header(key, value);
-            }
+
+        // Add extra headers from config
+        for (key, value) in &self.config.extra_headers {
+            builder = builder.header(key, value);
         }
+
+        // Add auth header if provider is present
         if let Some(auth_provider) = &self.config.auth_provider {
             let token = auth_provider.get_access_token().await?;
             builder = builder.bearer_auth(token);
         }
-        if let Some(session_id) = &self.config.session_id {
-            builder = builder.header("mcp-session-id", session_id);
+
+        // Add session ID header if we have one
+        if let Some(session_id) = self.session_id.read().as_ref() {
+            builder = builder.header(MCP_SESSION_ID, session_id);
         }
+
+        // Add protocol version header if we have one
+        if let Some(protocol_version) = self.protocol_version.read().as_ref() {
+            builder = builder.header(MCP_PROTOCOL_VERSION, protocol_version);
+        }
+
         Ok(builder)
     }
 }
@@ -107,11 +140,26 @@ impl Transport for StreamableHttpTransport {
             .await?;
 
         let mut response = builder
-            .header("Content-Type", "application/json")
+            .header(CONTENT_TYPE, APPLICATION_JSON)
+            .header(ACCEPT, ACCEPT_STREAMABLE)
             .body(body)
             .send()
             .await
             .map_err(|e| Error::Transport(TransportError::Request(e.to_string())))?;
+
+        // Update session ID from response header
+        if let Some(session_id) = response.headers().get(MCP_SESSION_ID) {
+            if let Ok(session_id_str) = session_id.to_str() {
+                *self.session_id.write() = Some(session_id_str.to_string());
+            }
+        }
+
+        // Update protocol version from response header
+        if let Some(protocol_version) = response.headers().get(MCP_PROTOCOL_VERSION) {
+            if let Ok(protocol_version_str) = protocol_version.to_str() {
+                *self.protocol_version.write() = Some(protocol_version_str.to_string());
+            }
+        }
 
         if !response.status().is_success() {
             return Err(Error::Transport(TransportError::Request(format!(

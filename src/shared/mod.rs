@@ -25,6 +25,7 @@ pub mod wasm_websocket;
 
 #[cfg(feature = "http")]
 pub mod http;
+pub mod http_constants;
 
 #[cfg(feature = "streamable-http")]
 /// Streamable HTTP transport implementation for MCP.
