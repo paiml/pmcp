@@ -265,6 +265,22 @@ pub enum TransportError {
     #[error("Invalid message format: {0}")]
     InvalidMessage(String),
 
+    /// Serialization error
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+
+    /// Deserialization error
+    #[error("Deserialization error: {0}")]
+    Deserialization(String),
+
+    /// Request error
+    #[error("Request error: {0}")]
+    Request(String),
+
+    /// Send error
+    #[error("Send error: {0}")]
+    Send(String),
+
     /// WebSocket error (when feature enabled)
     #[cfg(feature = "websocket")]
     #[error("WebSocket error: {0}")]

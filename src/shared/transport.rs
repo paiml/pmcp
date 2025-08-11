@@ -5,6 +5,7 @@
 
 use crate::error::Result;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 /// A message that can be sent/received over a transport.
@@ -60,7 +61,8 @@ use std::fmt::Debug;
 ///     }
 /// }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum TransportMessage {
     /// Request message with ID
     Request {

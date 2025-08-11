@@ -9,6 +9,7 @@ pub mod protocol_helpers;
 pub mod reconnect;
 pub mod session;
 pub mod stdio;
+pub mod sse;
 pub mod transport;
 pub mod uri_template;
 
@@ -24,6 +25,10 @@ pub mod wasm_websocket;
 
 #[cfg(feature = "http")]
 pub mod http;
+
+#[cfg(feature = "streamable-http")]
+/// Streamable HTTP transport implementation for MCP.
+pub mod streamable_http;
 
 // Re-export commonly used types
 pub use batch::{BatchRequest, BatchResponse};
@@ -49,3 +54,6 @@ pub use wasm_websocket::{WasmWebSocketConfig, WasmWebSocketTransport};
 
 #[cfg(feature = "http")]
 pub use http::{HttpConfig, HttpTransport};
+
+#[cfg(feature = "streamable-http")]
+pub use streamable_http::{StreamableHttpTransport, StreamableHttpTransportConfig};
