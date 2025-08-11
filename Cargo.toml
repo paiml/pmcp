@@ -97,7 +97,7 @@ dashmap = "6.1"  # Already in main deps but needed for examples
 
 [features]
 default = ["validation"]
-full = ["websocket", "http", "validation", "resource-watcher"]
+full = ["websocket", "http", "validation", "resource-watcher", "rayon"]
 websocket = ["dep:tokio-tungstenite"]
 http = ["dep:hyper", "dep:hyper-util"]
 validation = ["dep:jsonschema", "dep:garde"]
@@ -113,7 +113,8 @@ progress_example = []
 
 # Performance optimizations
 unstable = []
-simd = ["dep:rayon"]
+simd = []
+rayon = ["dep:rayon"]
 
 # Testing support
 test-helpers = []

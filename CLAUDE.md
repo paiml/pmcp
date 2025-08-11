@@ -1,0 +1,1 @@
+- we have ZERO tolerance for defects.  your "clippy warnings wont.." is a P0 problem

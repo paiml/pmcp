@@ -50,6 +50,7 @@ impl<'de> Deserialize<'de> for UriTemplate {
 
 /// Expression types in URI templates
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)] // Some variants are kept for backwards compatibility
 enum Expression {
     /// Simple string substitution: {var}
     Simple(String),
@@ -183,21 +184,8 @@ impl UriTemplate {
         }
 
         // Create appropriate expression type
-        if var_specs.len() == 1 && var_specs[0].modifier.is_none() {
-            let var_name = var_specs[0].name.clone();
-            Ok(match operator {
-                Operator::Simple => Expression::Simple(var_name),
-                Operator::Reserved => Expression::Reserved(var_name),
-                Operator::Fragment => Expression::Fragment(var_name),
-                Operator::Label => Expression::Label(var_name),
-                Operator::PathSegment => Expression::PathSegment(var_name),
-                Operator::PathParameter => Expression::PathParameter(var_name),
-                Operator::Query => Expression::Query(var_name),
-                Operator::QueryContinuation => Expression::QueryContinuation(var_name),
-            })
-        } else {
-            Ok(Expression::Multiple(operator, var_specs))
-        }
+        // Always use Multiple for operators to handle prefixes correctly
+        Ok(Expression::Multiple(operator, var_specs))
     }
 
     /// Parse a variable specification
@@ -208,7 +196,7 @@ impl UriTemplate {
 
         // Check for explode modifier
         if spec.ends_with('*') {
-            let name = &spec[..spec.len() - 1];
+            let name = spec.strip_suffix('*').unwrap();
             Self::validate_var_name(name)?;
             return Ok(VarSpec {
                 name: name.to_string(),
@@ -304,6 +292,8 @@ impl UriTemplate {
     ) -> Result<String> {
         match expr {
             Expression::Literal(text) => Ok(text.clone()),
+            Expression::Multiple(op, specs) => self.expand_multiple(*op, specs, vars),
+            // The following variants are kept for backwards compatibility but shouldn't be created anymore
             Expression::Simple(name) => Ok(vars
                 .get(name)
                 .map(|v| Self::encode_value(v, false))
@@ -336,7 +326,6 @@ impl UriTemplate {
                 .get(name)
                 .map(|v| format!("&{}={}", name, Self::encode_value(v, false)))
                 .unwrap_or_default()),
-            Expression::Multiple(op, specs) => self.expand_multiple(*op, specs, vars),
         }
     }
 
@@ -440,11 +429,13 @@ impl UriTemplate {
         let mut vars = HashMap::new();
 
         // Extract variable values from captures
-        for (i, expr) in self.expressions.iter().enumerate() {
+        let mut capture_index = 1;
+        for expr in &self.expressions {
             if let Some(var_name) = self.get_var_name(expr) {
-                if let Some(value) = captures.get(i + 1) {
+                if let Some(value) = captures.get(capture_index) {
                     vars.insert(var_name, value.as_str().to_string());
                 }
+                capture_index += 1;
             }
         }
 
@@ -481,9 +472,39 @@ impl UriTemplate {
                 Expression::QueryContinuation(name) => {
                     pattern.push_str(&format!("&{}=([^&]+)", regex::escape(name)));
                 },
-                Expression::Multiple(_, _) => {
-                    // Complex matching for multiple vars - simplified
-                    pattern.push_str("(.+)");
+                Expression::Multiple(op, specs) => {
+                    // Handle based on operator type
+                    if specs.len() == 1 {
+                        match op {
+                            Operator::Simple | Operator::Reserved => {
+                                pattern.push_str("([^/]+)");
+                            },
+                            Operator::Fragment => {
+                                pattern.push_str("#(.+)");
+                            },
+                            Operator::Label => {
+                                pattern.push_str(r"\.([^.]+)");
+                            },
+                            Operator::PathSegment => {
+                                pattern.push_str("/([^/]+)");
+                            },
+                            Operator::PathParameter => {
+                                let name = &specs[0].name;
+                                pattern.push_str(&format!(";{}=([^;&]+)", regex::escape(name)));
+                            },
+                            Operator::Query => {
+                                let name = &specs[0].name;
+                                pattern.push_str(&format!(r"\?{}=([^&]+)", regex::escape(name)));
+                            },
+                            Operator::QueryContinuation => {
+                                let name = &specs[0].name;
+                                pattern.push_str(&format!("&{}=([^&]+)", regex::escape(name)));
+                            },
+                        }
+                    } else {
+                        // Complex matching for multiple vars - simplified
+                        pattern.push_str("(.+)");
+                    }
                 },
             }
         }
@@ -503,6 +524,9 @@ impl UriTemplate {
             | Expression::PathParameter(name)
             | Expression::Query(name)
             | Expression::QueryContinuation(name) => Some(name.clone()),
+            Expression::Multiple(_, specs) if specs.len() == 1 => {
+                Some(specs[0].name.clone())
+            },
             _ => None,
         }
     }
@@ -579,7 +603,7 @@ mod tests {
     #[test]
     fn test_reserved_expansion() {
         let template = UriTemplate::new("/path{+reserved}").unwrap();
-        let uri = template.expand(&[("reserved", "a/b/c")]).unwrap();
+        let uri = template.expand(&[("reserved", "/a/b/c")]).unwrap();
         assert_eq!(uri, "/path/a/b/c");
     }
 

@@ -72,6 +72,7 @@ impl fmt::Display for SseEvent {
 }
 
 /// SSE parser state machine.
+#[derive(Debug)]
 pub struct SseParser {
     buffer: String,
     current_event: EventBuilder,
@@ -127,11 +128,7 @@ impl SseParser {
             let field = &line[..colon_pos];
             let value = &line[colon_pos + 1..];
             // Remove leading space from value if present
-            let value = if value.starts_with(' ') {
-                &value[1..]
-            } else {
-                value
-            };
+            let value = value.strip_prefix(' ').unwrap_or(value);
             (field, value)
         } else {
             // Field without value
@@ -232,6 +229,7 @@ impl EventBuilder {
 }
 
 /// SSE stream builder for creating SSE responses.
+#[derive(Debug)]
 pub struct SseStream {
     events: Vec<SseEvent>,
 }

@@ -9,9 +9,12 @@ use std::mem;
 /// SIMD-accelerated JSON parsing utilities
 pub mod json {
     use super::*;
-    use serde_json::{Error, Value};
+
 
     /// Fast SIMD-based whitespace detection
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn find_whitespace_simd(input: &[u8]) -> Vec<usize> {
@@ -57,8 +60,8 @@ pub mod json {
         }
 
         // Process remaining bytes
-        for i in (chunks * 32)..len {
-            match input[i] {
+        for (i, &byte) in input.iter().enumerate().skip(chunks * 32) {
+            match byte {
                 b' ' | b'\t' | b'\n' | b'\r' => positions.push(i),
                 _ => {},
             }
@@ -68,6 +71,9 @@ pub mod json {
     }
 
     /// SIMD-accelerated string validation (UTF-8)
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn validate_utf8_simd(input: &[u8]) -> bool {
@@ -100,7 +106,7 @@ pub mod json {
                 }
 
                 // Multi-byte UTF-8 validation
-                let mut k = i + j;
+                let k = i + j;
                 if byte < 0xC0 {
                     return false; // Invalid continuation byte
                 } else if byte < 0xE0 {
@@ -108,13 +114,11 @@ pub mod json {
                     if k + 1 >= len || input[k + 1] & 0xC0 != 0x80 {
                         return false;
                     }
-                    k += 1;
                 } else if byte < 0xF0 {
                     // 3-byte sequence
                     if k + 2 >= len || input[k + 1] & 0xC0 != 0x80 || input[k + 2] & 0xC0 != 0x80 {
                         return false;
                     }
-                    // k += 2; // Not needed as we continue in outer loop
                 } else if byte < 0xF8 {
                     // 4-byte sequence
                     if k + 3 >= len
@@ -124,7 +128,6 @@ pub mod json {
                     {
                         return false;
                     }
-                    // k += 3; // Not needed as we continue in outer loop
                 } else {
                     return false; // Invalid UTF-8
                 }
@@ -168,6 +171,9 @@ pub mod json {
     }
 
     /// SIMD-accelerated JSON string escape detection
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn find_escapes_simd(input: &[u8]) -> Vec<usize> {
@@ -200,8 +206,8 @@ pub mod json {
         }
 
         // Process remaining bytes
-        for i in (chunks * 32)..len {
-            if input[i] == b'\\' || input[i] == b'"' {
+        for (i, &byte) in input.iter().enumerate().skip(chunks * 32) {
+            if byte == b'\\' || byte == b'"' {
                 positions.push(i);
             }
         }
@@ -213,9 +219,12 @@ pub mod json {
 /// SIMD-accelerated message serialization
 pub mod serialization {
     use super::*;
-    use bytes::{BufMut, BytesMut};
+
 
     /// Fast memory copy using SIMD
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn copy_simd(src: &[u8], dst: &mut [u8]) {
@@ -231,12 +240,13 @@ pub mod serialization {
         }
 
         // Copy remaining bytes
-        for i in (chunks * 32)..len {
-            dst[i] = src[i];
-        }
+        dst[(chunks * 32)..len].copy_from_slice(&src[(chunks * 32)..len]);
     }
 
     /// SIMD-accelerated base64 encoding
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn base64_encode_simd(input: &[u8], output: &mut Vec<u8>) {
@@ -246,7 +256,7 @@ pub mod serialization {
         let len = input.len();
         let full_chunks = len / 3;
 
-        output.reserve(((len + 2) / 3) * 4);
+        output.reserve(len.div_ceil(3) * 4);
 
         for i in 0..full_chunks {
             let idx = i * 3;
@@ -279,6 +289,9 @@ pub mod serialization {
     }
 
     /// SIMD-accelerated XOR for masking (WebSocket)
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn xor_mask_simd(data: &mut [u8], mask: [u8; 4]) {
@@ -314,6 +327,9 @@ pub mod compression {
     use super::*;
 
     /// Fast run-length encoding using SIMD
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn rle_encode_simd(input: &[u8], output: &mut Vec<u8>) {
@@ -348,6 +364,9 @@ pub mod compression {
     }
 
     /// Fast pattern matching for compression
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn find_pattern_simd(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -373,10 +392,8 @@ pub mod compression {
                 while m != 0 {
                     if m & 1 != 0 {
                         let pos = offset + bit_pos;
-                        if pos + needle.len() <= haystack.len() {
-                            if &haystack[pos..pos + needle.len()] == needle {
-                                return Some(pos);
-                            }
+                        if pos + needle.len() <= haystack.len() && &haystack[pos..pos + needle.len()] == needle {
+                            return Some(pos);
                         }
                     }
                     m >>= 1;
@@ -386,13 +403,8 @@ pub mod compression {
         }
 
         // Check remaining positions
-        for i in (chunks * 32)..(haystack.len() - needle.len() + 1) {
-            if &haystack[i..i + needle.len()] == needle {
-                return Some(i);
-            }
-        }
-
-        None
+        ((chunks * 32)..(haystack.len() - needle.len() + 1))
+            .find(|&i| &haystack[i..i + needle.len()] == needle)
     }
 }
 
@@ -401,6 +413,9 @@ pub mod batch {
     use super::*;
 
     /// Process multiple messages in parallel
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn batch_validate_lengths(lengths: &[u32], max_length: u32) -> Vec<bool> {
@@ -422,14 +437,17 @@ pub mod batch {
         }
 
         // Process remaining elements
-        for i in (chunks * 8)..lengths.len() {
-            results.push(lengths[i] <= max_length);
+        for &length in &lengths[(chunks * 8)..] {
+            results.push(length <= max_length);
         }
 
         results
     }
 
     /// Compute checksums for multiple buffers
+    ///
+    /// # Safety
+    /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
     #[target_feature(enable = "avx2")]
     pub unsafe fn batch_checksum_simd(buffers: &[&[u8]]) -> Vec<u32> {
@@ -505,7 +523,7 @@ mod tests {
         let input = b"hello world\ttab\nnewline\rcarriage  spaces";
         let positions = unsafe { json::find_whitespace_simd(input) };
 
-        let expected = vec![5, 11, 15, 24, 33, 34];
+        let expected = vec![5, 11, 15, 23, 32, 33];
         assert_eq!(positions, expected);
     }
 

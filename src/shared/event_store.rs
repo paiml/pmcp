@@ -97,6 +97,7 @@ pub struct ResumptionState {
 }
 
 /// In-memory event store implementation.
+#[derive(Debug)]
 pub struct InMemoryEventStore {
     events: Arc<RwLock<VecDeque<StoredEvent>>>,
     tokens: Arc<RwLock<HashMap<String, ResumptionState>>>,
@@ -224,6 +225,15 @@ pub struct ResumptionManager {
     event_store: Arc<dyn EventStore>,
     session_id: String,
     sequence_counter: Arc<RwLock<u64>>,
+}
+
+impl std::fmt::Debug for ResumptionManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResumptionManager")
+            .field("session_id", &self.session_id)
+            .field("sequence_counter", &self.sequence_counter)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ResumptionManager {
@@ -355,7 +365,7 @@ mod tests {
                 id: RequestId::String("req-1".to_string()),
                 request: crate::types::Request::Client(Box::new(
                     crate::types::ClientRequest::Initialize(crate::types::InitializeParams {
-                        protocol_version: crate::types::ProtocolVersion::default(),
+                        protocol_version: crate::DEFAULT_PROTOCOL_VERSION.to_string(),
                         capabilities: crate::types::ClientCapabilities::default(),
                         client_info: crate::types::Implementation {
                             name: "test".to_string(),
@@ -394,7 +404,7 @@ mod tests {
             id: RequestId::String("req-1".to_string()),
             request: crate::types::Request::Client(Box::new(
                 crate::types::ClientRequest::Initialize(crate::types::InitializeParams {
-                    protocol_version: crate::types::ProtocolVersion::V2024_11_05,
+                    protocol_version: "2024-11-05".to_string(),
                     capabilities: crate::types::ClientCapabilities::default(),
                     client_info: crate::types::Implementation {
                         name: "test".to_string(),
