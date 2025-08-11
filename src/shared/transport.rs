@@ -60,7 +60,7 @@ use std::fmt::Debug;
 ///     }
 /// }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum TransportMessage {
     /// Request message with ID
     Request {

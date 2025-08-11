@@ -1,6 +1,8 @@
 // High-performance JSON parsing with SIMD acceleration
 // Falls back to standard serde_json when SIMD is not available
 
+#![allow(unsafe_code)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Error as JsonError, Value};
 

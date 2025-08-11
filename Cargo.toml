@@ -30,6 +30,7 @@ uuid = { version = "1.17", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.11"
 lazy_static = "1.5"
+urlencoding = "2.1"
 indexmap = { version = "2.10", features = ["serde"] }
 parking_lot = "0.12"
 dashmap = "6.1"

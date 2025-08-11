@@ -93,6 +93,7 @@ pub use server::{
 };
 pub use shared::{
     batch::{BatchRequest, BatchResponse},
+    uri_template::UriTemplate,
     AuthMiddleware, LoggingMiddleware, Middleware, MiddlewareChain, RetryMiddleware,
     StdioTransport, Transport,
 };
