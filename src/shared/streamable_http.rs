@@ -12,30 +12,18 @@ use tokio::sync::Mutex;
 use url::Url;
 
 /// Configuration for the StreamableHttpTransport.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StreamableHttpTransportConfig {
     /// The URL of the MCP server.
     pub url: Url,
-    /// An optional `reqwest::Request` to use as a template for all requests.
-    pub request_init: Option<reqwest::Request>,
+    /// Optional extra headers to add to each request.
+    pub extra_headers: Option<Vec<(String, String)>>,
     /// An optional `AuthProvider` to use for authentication.
     pub auth_provider: Option<Arc<dyn AuthProvider>>,
     /// An optional session ID to use for the connection.
     pub session_id: Option<String>,
     /// An optional `ReconnectConfig` to use for reconnection.
     pub reconnect_config: Option<ReconnectConfig>,
-}
-
-impl Clone for StreamableHttpTransportConfig {
-    fn clone(&self) -> Self {
-        Self {
-            url: self.url.clone(),
-            request_init: None, // reqwest::Request is not cloneable
-            auth_provider: self.auth_provider.clone(),
-            session_id: self.session_id.clone(),
-            reconnect_config: self.reconnect_config.clone(),
-        }
-    }
 }
 
 /// A streamable HTTP transport for MCP.
@@ -92,6 +80,11 @@ impl StreamableHttpTransport {
 
     async fn build_request(&self, method: reqwest::Method, url: Url) -> Result<RequestBuilder> {
         let mut builder = self.client.request(method, url);
+        if let Some(headers) = &self.config.extra_headers {
+            for (key, value) in headers {
+                builder = builder.header(key, value);
+            }
+        }
         if let Some(auth_provider) = &self.config.auth_provider {
             let token = auth_provider.get_access_token().await?;
             builder = builder.bearer_auth(token);
@@ -142,11 +135,15 @@ impl Transport for StreamableHttpTransport {
                 while let Some(chunk) = response.chunk().await.map_err(|e| {
                     Error::Transport(TransportError::Request(e.to_string()))
                 })? {
-                    let messages = sse_parser.parse(&chunk)?;
-                    for msg in messages {
-                        sender.send(msg).await.map_err(|e| {
-                            Error::Transport(TransportError::Send(e.to_string()))
-                        })?;
+                    let events = sse_parser.parse(&chunk);
+                    for event in events {
+                        if event.event == "message" {
+                            let msg: TransportMessage = serde_json::from_str(&event.data)
+                                .map_err(|e| Error::Transport(TransportError::Deserialization(e.to_string())))?;
+                            sender.send(msg).await.map_err(|e| {
+                                Error::Transport(TransportError::Send(e.to_string()))
+                            })?;
+                        }
                     }
                 }
                 *is_connected.write() = false;

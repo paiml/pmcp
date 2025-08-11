@@ -28,7 +28,7 @@ async fn test_streamable_http_transport_send_receive() -> Result<()> {
     let client_config = StreamableHttpTransportConfig {
         url: Url::parse(&format!("http://{}", server_addr))
             .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
-        request_init: None,
+        extra_headers: None,
         auth_provider: None,
         session_id: None,
         reconnect_config: None,
