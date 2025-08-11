@@ -26,6 +26,8 @@ pub mod resource_watcher;
 pub mod roots;
 pub mod subscriptions;
 pub mod transport;
+#[cfg(feature = "streamable-http")]
+pub mod streamable_http_server;
 
 /// Handler for tool execution.
 #[async_trait]

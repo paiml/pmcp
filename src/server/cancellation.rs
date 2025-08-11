@@ -7,11 +7,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 
-/// Manages request cancellations for the server.
+/// Manages cancellation tokens for requests.
 pub struct CancellationManager {
-    /// Active cancellation tokens by request ID
     tokens: Arc<RwLock<HashMap<String, CancellationToken>>>,
-    /// Notification sender for cancelled notifications
     notification_sender: Option<Arc<dyn Fn(Notification) + Send + Sync>>,
 }
 

@@ -1,45 +1,60 @@
+use pmcp::server::streamable_http_server::StreamableHttpServer;
+use pmcp::server::Server;
 use pmcp::shared::streamable_http::{StreamableHttpTransport, StreamableHttpTransportConfig};
 use pmcp::shared::{Transport, TransportMessage};
+use pmcp::types::{ClientRequest, Request};
 use pmcp::Result;
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::time::timeout;
 use url::Url;
 
 #[tokio::test]
 async fn test_streamable_http_transport_send_receive() -> Result<()> {
-    let mut server = mockito::Server::new_async().await;
-    let mock = server
-        .mock("POST", "/")
-        .with_status(200)
-        .with_header("content-type", "application/json")
-        .with_body(r#"{"jsonrpc":"2.0","id":1,"result":{}}"#)
-        .create_async()
-        .await;
+    // Setup the server
+    let server = Arc::new(Mutex::new(
+        Server::builder()
+            .name("test-server")
+            .version("1.0.0")
+            .build()?,
+    ));
+    let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
+    let http_server = StreamableHttpServer::new(addr, server);
+    let (server_addr, server_task) = http_server.start().await?;
 
-    let config = StreamableHttpTransportConfig {
-        url: Url::parse(&server.url()).map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+    // Setup the client transport
+    let client_config = StreamableHttpTransportConfig {
+        url: Url::parse(&format!("http://{}", server_addr))
+            .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
         request_init: None,
         auth_provider: None,
         session_id: None,
         reconnect_config: None,
     };
-    let mut transport = StreamableHttpTransport::new(config);
+    let mut client_transport = StreamableHttpTransport::new(client_config);
 
+    // Create a Ping request
     let message = TransportMessage::Request {
         id: 1i64.into(),
-        request: pmcp::types::Request::Client(Box::new(pmcp::types::ClientRequest::Ping)),
+        request: Request::Client(Box::new(ClientRequest::Ping)),
     };
 
-    timeout(Duration::from_secs(5), transport.send(message))
+    // Send the request and wait for the response
+    timeout(Duration::from_secs(5), client_transport.send(message))
         .await
         .expect("send should not time out")?;
 
-    let received = timeout(Duration::from_secs(5), transport.receive())
+    let received = timeout(Duration::from_secs(5), client_transport.receive())
         .await
         .expect("receive should not time out")?;
 
-    mock.assert_async().await;
+    // Verify the response
     assert!(matches!(received, TransportMessage::Response(_)));
+
+    // Shutdown the server
+    server_task.abort();
 
     Ok(())
 }

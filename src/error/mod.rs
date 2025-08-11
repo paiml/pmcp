@@ -298,6 +298,12 @@ impl From<std::io::Error> for TransportError {
     }
 }
 
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Self::Transport(TransportError::Io(err.to_string()))
+    }
+}
+
 impl Error {
     /// Create a protocol error with the given code and message.
     ///
