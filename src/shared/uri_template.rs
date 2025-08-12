@@ -7,15 +7,14 @@ use crate::error::{Error, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Write};
+use std::sync::LazyLock;
 
-lazy_static::lazy_static! {
-    /// Regex for parsing URI template expressions
-    static ref TEMPLATE_EXPR: Regex = Regex::new(r"\{([^}]+)\}").unwrap();
+/// Regex for parsing URI template expressions
+static TEMPLATE_EXPR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{([^}]+)\}").unwrap());
 
-    /// Regex for validating variable names
-    static ref VAR_NAME: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
-}
+/// Regex for validating variable names
+static VAR_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap());
 
 /// RFC 6570 URI Template for dynamic resource URIs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,7 +43,7 @@ impl<'de> Deserialize<'de> for UriTemplate {
         D: serde::Deserializer<'de>,
     {
         let template = String::deserialize(deserializer)?;
-        UriTemplate::new(template).map_err(serde::de::Error::custom)
+        Self::new(template).map_err(serde::de::Error::custom)
     }
 }
 
@@ -278,7 +277,7 @@ impl UriTemplate {
         let mut result = String::new();
 
         for expr in &self.expressions {
-            result.push_str(&self.expand_expression(expr, vars)?);
+            result.push_str(&Self::expand_expression(expr, vars));
         }
 
         Ok(result)
@@ -286,56 +285,54 @@ impl UriTemplate {
 
     /// Expand a single expression
     fn expand_expression(
-        &self,
         expr: &Expression,
         vars: &HashMap<String, String>,
-    ) -> Result<String> {
+    ) -> String {
         match expr {
-            Expression::Literal(text) => Ok(text.clone()),
-            Expression::Multiple(op, specs) => self.expand_multiple(*op, specs, vars),
+            Expression::Literal(text) => text.clone(),
+            Expression::Multiple(op, specs) => Self::expand_multiple(*op, specs, vars),
             // The following variants are kept for backwards compatibility but shouldn't be created anymore
-            Expression::Simple(name) => Ok(vars
+            Expression::Simple(name) => vars
                 .get(name)
                 .map(|v| Self::encode_value(v, false))
-                .unwrap_or_default()),
-            Expression::Reserved(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::Reserved(name) => vars
                 .get(name)
                 .map(|v| Self::encode_value(v, true))
-                .unwrap_or_default()),
-            Expression::Fragment(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::Fragment(name) => vars
                 .get(name)
                 .map(|v| format!("#{}", Self::encode_value(v, true)))
-                .unwrap_or_default()),
-            Expression::Label(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::Label(name) => vars
                 .get(name)
                 .map(|v| format!(".{}", Self::encode_value(v, false)))
-                .unwrap_or_default()),
-            Expression::PathSegment(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::PathSegment(name) => vars
                 .get(name)
                 .map(|v| format!("/{}", Self::encode_value(v, false)))
-                .unwrap_or_default()),
-            Expression::PathParameter(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::PathParameter(name) => vars
                 .get(name)
                 .map(|v| format!(";{}={}", name, Self::encode_value(v, false)))
-                .unwrap_or_default()),
-            Expression::Query(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::Query(name) => vars
                 .get(name)
                 .map(|v| format!("?{}={}", name, Self::encode_value(v, false)))
-                .unwrap_or_default()),
-            Expression::QueryContinuation(name) => Ok(vars
+                .unwrap_or_default(),
+            Expression::QueryContinuation(name) => vars
                 .get(name)
                 .map(|v| format!("&{}={}", name, Self::encode_value(v, false)))
-                .unwrap_or_default()),
+                .unwrap_or_default(),
         }
     }
 
     /// Expand multiple variables with an operator
     fn expand_multiple(
-        &self,
         op: Operator,
         specs: &[VarSpec],
         vars: &HashMap<String, String>,
-    ) -> Result<String> {
+    ) -> String {
         let mut parts = Vec::new();
 
         for spec in specs {
@@ -373,7 +370,7 @@ impl UriTemplate {
         }
 
         if parts.is_empty() {
-            return Ok(String::new());
+            return String::new();
         }
 
         let separator = match op {
@@ -395,7 +392,7 @@ impl UriTemplate {
             _ => "",
         };
 
-        Ok(format!("{}{}", prefix, parts.join(separator)))
+        format!("{}{}", prefix, parts.join(separator))
     }
 
     /// Encode a value for URI inclusion
@@ -422,7 +419,7 @@ impl UriTemplate {
     /// ```
     pub fn match_uri(&self, uri: &str) -> Option<HashMap<String, String>> {
         // Convert template to regex pattern
-        let pattern = self.to_regex_pattern()?;
+        let pattern = self.to_regex_pattern();
         let regex = Regex::new(&pattern).ok()?;
 
         let captures = regex.captures(uri)?;
@@ -431,7 +428,7 @@ impl UriTemplate {
         // Extract variable values from captures
         let mut capture_index = 1;
         for expr in &self.expressions {
-            if let Some(var_name) = self.get_var_name(expr) {
+            if let Some(var_name) = Self::get_var_name(expr) {
                 if let Some(value) = captures.get(capture_index) {
                     vars.insert(var_name, value.as_str().to_string());
                 }
@@ -443,7 +440,7 @@ impl UriTemplate {
     }
 
     /// Convert template to regex pattern for matching
-    fn to_regex_pattern(&self) -> Option<String> {
+    fn to_regex_pattern(&self) -> String {
         let mut pattern = String::from("^");
 
         for expr in &self.expressions {
@@ -464,13 +461,13 @@ impl UriTemplate {
                     pattern.push_str("/([^/]+)");
                 },
                 Expression::PathParameter(name) => {
-                    pattern.push_str(&format!(";{}=([^;&]+)", regex::escape(name)));
+                    write!(pattern, ";{}=([^;&]+)", regex::escape(name)).unwrap();
                 },
                 Expression::Query(name) => {
-                    pattern.push_str(&format!(r"\?{}=([^&]+)", regex::escape(name)));
+                    write!(pattern, r"\?{}=([^&]+)", regex::escape(name)).unwrap();
                 },
                 Expression::QueryContinuation(name) => {
-                    pattern.push_str(&format!("&{}=([^&]+)", regex::escape(name)));
+                    write!(pattern, "&{}=([^&]+)", regex::escape(name)).unwrap();
                 },
                 Expression::Multiple(op, specs) => {
                     // Handle based on operator type
@@ -490,15 +487,15 @@ impl UriTemplate {
                             },
                             Operator::PathParameter => {
                                 let name = &specs[0].name;
-                                pattern.push_str(&format!(";{}=([^;&]+)", regex::escape(name)));
+                                write!(pattern, ";{}=([^;&]+)", regex::escape(name)).unwrap();
                             },
                             Operator::Query => {
                                 let name = &specs[0].name;
-                                pattern.push_str(&format!(r"\?{}=([^&]+)", regex::escape(name)));
+                                write!(pattern, r"\?{}=([^&]+)", regex::escape(name)).unwrap();
                             },
                             Operator::QueryContinuation => {
                                 let name = &specs[0].name;
-                                pattern.push_str(&format!("&{}=([^&]+)", regex::escape(name)));
+                                write!(pattern, "&{}=([^&]+)", regex::escape(name)).unwrap();
                             },
                         }
                     } else {
@@ -510,11 +507,11 @@ impl UriTemplate {
         }
 
         pattern.push('$');
-        Some(pattern)
+        pattern
     }
 
     /// Get variable name from expression
-    fn get_var_name(&self, expr: &Expression) -> Option<String> {
+    fn get_var_name(expr: &Expression) -> Option<String> {
         match expr {
             Expression::Simple(name)
             | Expression::Reserved(name)

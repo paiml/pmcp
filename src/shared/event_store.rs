@@ -116,7 +116,7 @@ impl InMemoryEventStore {
         }
     }
 
-    /// Clean up old events based on max_events and max_age.
+    /// Clean up old events based on `max_events` and `max_age`.
     fn cleanup(&self) {
         let mut events = self.events.write();
 
@@ -159,8 +159,7 @@ impl EventStore for InMemoryEventStore {
         let start_idx = events
             .iter()
             .position(|e| e.id == event_id)
-            .map(|idx| idx + 1)
-            .unwrap_or(0);
+            .map_or(0, |idx| idx + 1);
 
         let limit = limit.unwrap_or(usize::MAX);
 

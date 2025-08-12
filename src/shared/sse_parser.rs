@@ -1,7 +1,7 @@
 //! Server-Sent Events (SSE) parser for MCP HTTP transport.
 //!
 //! This module provides a robust SSE parser compatible with the
-//! EventSource specification, similar to eventsource-parser in TypeScript.
+//! `EventSource` specification, similar to eventsource-parser in TypeScript.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -268,8 +268,7 @@ impl SseStream {
         self.events
             .into_iter()
             .map(|e| e.to_string())
-            .collect::<Vec<_>>()
-            .join("")
+            .collect::<String>()
     }
 }
 
