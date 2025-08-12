@@ -10,7 +10,6 @@ use std::mem;
 pub mod json {
     use super::*;
 
-
     /// Fast SIMD-based whitespace detection
     ///
     /// # Safety
@@ -220,7 +219,6 @@ pub mod json {
 pub mod serialization {
     use super::*;
 
-
     /// Fast memory copy using SIMD
     ///
     /// # Safety
@@ -392,7 +390,9 @@ pub mod compression {
                 while m != 0 {
                     if m & 1 != 0 {
                         let pos = offset + bit_pos;
-                        if pos + needle.len() <= haystack.len() && &haystack[pos..pos + needle.len()] == needle {
+                        if pos + needle.len() <= haystack.len()
+                            && &haystack[pos..pos + needle.len()] == needle
+                        {
                             return Some(pos);
                         }
                     }

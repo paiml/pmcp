@@ -14,7 +14,8 @@ use std::sync::LazyLock;
 static TEMPLATE_EXPR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{([^}]+)\}").unwrap());
 
 /// Regex for validating variable names
-static VAR_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap());
+static VAR_NAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap());
 
 /// RFC 6570 URI Template for dynamic resource URIs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -284,10 +285,7 @@ impl UriTemplate {
     }
 
     /// Expand a single expression
-    fn expand_expression(
-        expr: &Expression,
-        vars: &HashMap<String, String>,
-    ) -> String {
+    fn expand_expression(expr: &Expression, vars: &HashMap<String, String>) -> String {
         match expr {
             Expression::Literal(text) => text.clone(),
             Expression::Multiple(op, specs) => Self::expand_multiple(*op, specs, vars),
@@ -328,11 +326,7 @@ impl UriTemplate {
     }
 
     /// Expand multiple variables with an operator
-    fn expand_multiple(
-        op: Operator,
-        specs: &[VarSpec],
-        vars: &HashMap<String, String>,
-    ) -> String {
+    fn expand_multiple(op: Operator, specs: &[VarSpec], vars: &HashMap<String, String>) -> String {
         let mut parts = Vec::new();
 
         for spec in specs {
@@ -521,9 +515,7 @@ impl UriTemplate {
             | Expression::PathParameter(name)
             | Expression::Query(name)
             | Expression::QueryContinuation(name) => Some(name.clone()),
-            Expression::Multiple(_, specs) if specs.len() == 1 => {
-                Some(specs[0].name.clone())
-            },
+            Expression::Multiple(_, specs) if specs.len() == 1 => Some(specs[0].name.clone()),
             _ => None,
         }
     }
