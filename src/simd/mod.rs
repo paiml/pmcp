@@ -489,7 +489,9 @@ pub mod batch {
 
 // Fallback implementations for non-x86_64 or when SIMD is not available
 #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+/// Fallback implementations for SIMD operations when hardware SIMD is not available.
 pub mod fallback {
+    /// Find all whitespace positions in the input buffer.
     pub fn find_whitespace(input: &[u8]) -> Vec<usize> {
         input
             .iter()
@@ -499,10 +501,12 @@ pub mod fallback {
             .collect()
     }
 
+    /// Validate that the input is valid UTF-8.
     pub fn validate_utf8(input: &[u8]) -> bool {
         std::str::from_utf8(input).is_ok()
     }
 
+    /// Find all escape character positions in the input buffer.
     pub fn find_escapes(input: &[u8]) -> Vec<usize> {
         input
             .iter()

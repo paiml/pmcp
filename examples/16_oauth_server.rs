@@ -1,7 +1,6 @@
 //! Example OAuth 2.0 server implementation using PMCP.
 
 use async_trait::async_trait;
-use pmcp::error::Result;
 use pmcp::server::auth::{
     AuthMiddleware, BearerTokenMiddleware, GrantType, InMemoryOAuthProvider, OAuthClient,
     OAuthProvider, ResponseType, ScopeMiddleware,
@@ -19,7 +18,11 @@ struct GetTimeTool;
 
 #[async_trait]
 impl ToolHandler for GetTimeTool {
-    async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+    async fn handle(
+        &self,
+        _args: Value,
+        _extra: RequestHandlerExtra,
+    ) -> pmcp::error::Result<Value> {
         Ok(json!({
             "time": chrono::Utc::now().to_rfc3339()
         }))
@@ -33,7 +36,7 @@ struct ReadDataTool {
 
 #[async_trait]
 impl ToolHandler for ReadDataTool {
-    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> pmcp::error::Result<Value> {
         // Authenticate request
         let auth_ctx = self
             .auth_middleware
@@ -61,7 +64,7 @@ struct WriteDataTool {
 
 #[async_trait]
 impl ToolHandler for WriteDataTool {
-    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> pmcp::error::Result<Value> {
         // Authenticate request
         let auth_ctx = self
             .auth_middleware
@@ -93,7 +96,7 @@ struct AdminOperationTool {
 
 #[async_trait]
 impl ToolHandler for AdminOperationTool {
-    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, extra: RequestHandlerExtra) -> pmcp::error::Result<Value> {
         // Authenticate request
         let auth_ctx = self
             .auth_middleware
@@ -119,7 +122,7 @@ impl ToolHandler for AdminOperationTool {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)

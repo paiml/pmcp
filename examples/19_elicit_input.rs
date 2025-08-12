@@ -1,7 +1,7 @@
 //! Example showing user input elicitation in tools.
 
 use async_trait::async_trait;
-use pmcp::error::Result;
+use pmcp::error::Result as PmcpResult;
 use pmcp::server::elicitation::{ElicitInput, ElicitationContext, ElicitationManager};
 use pmcp::server::{Server, ToolHandler};
 use pmcp::types::capabilities::ServerCapabilities;
@@ -20,7 +20,7 @@ struct InteractiveConfigTool {
 
 #[async_trait]
 impl ToolHandler for InteractiveConfigTool {
-    async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
         info!("Starting interactive configuration...");
 
         // Elicit project name
@@ -158,7 +158,7 @@ struct SensitiveDataTool {
 
 #[async_trait]
 impl ToolHandler for SensitiveDataTool {
-    async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
         let operation = args
             .get("operation")
             .and_then(|v| v.as_str())
@@ -228,7 +228,7 @@ impl ToolHandler for SensitiveDataTool {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)

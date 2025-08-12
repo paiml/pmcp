@@ -168,7 +168,7 @@ fn benchmark_websocket_masking(c: &mut Criterion) {
             b.iter(|| {
                 let mut buffer = data.clone();
                 unsafe { serialization::xor_mask_simd(&mut buffer, mask) };
-                hint_black_box(buffer)
+                black_box(buffer)
             })
         });
 
@@ -179,7 +179,7 @@ fn benchmark_websocket_masking(c: &mut Criterion) {
                 for (i, byte) in buffer.iter_mut().enumerate() {
                     *byte ^= mask[i % 4];
                 }
-                hint_black_box(buffer)
+                black_box(buffer)
             })
         });
     }
