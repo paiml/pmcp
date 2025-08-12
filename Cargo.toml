@@ -240,10 +240,10 @@ path = "examples/19_elicit_input.rs"
 name = "20_oidc_discovery"
 path = "examples/20_oidc_discovery.rs"
 
-[[example]]
-name = "21_macro_tools"
-path = "examples/21_macro_tools.rs"
-required-features = ["macros"]
+# [[example]]
+# name = "21_macro_tools"
+# path = "examples/21_macro_tools.rs"
+# required-features = ["macros"]
 
 [workspace]
 members = ["pmcp-macros"]
