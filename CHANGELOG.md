@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-08-12
+
+### Added
+- **Event Store**: Complete event persistence and resumability support for connection recovery
+- **SSE Parser**: Full Server-Sent Events parser implementation for streaming responses
+- **Enhanced URI Templates**: Complete RFC 6570 URI Template implementation with all operators
+- **TypeScript SDK Feature Parity**: Additional features for full compatibility with TypeScript SDK
+- **Development Documentation**: Added CLAUDE.md with AI-assisted development instructions
+
+### Changed
+- Replaced `lazy_static` with `std::sync::LazyLock` for modern Rust patterns
+- Improved code quality with stricter clippy pedantic and nursery lints
+- Optimized URI template expansion for better performance
+- Enhanced SIMD implementations with proper safety documentation
+
+### Fixed
+- All clippy warnings with zero-tolerance policy
+- URI template RFC 6570 compliance issues
+- SIMD test expectations and implementations
+- Rayon feature flag compilation issues
+- Event store test compilation errors
+- Disabled incomplete macro_tools example
+
+### Performance
+- Optimized JSON batch parsing
+- Improved SSE parsing efficiency
+- Better memory usage in event store
+
 ## [1.0.0] - 2025-08-08
 
 ### 🎉 First Stable Release!
