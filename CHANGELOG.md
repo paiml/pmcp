@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-14
+
+### Added
+- **Comprehensive Documentation**: Added extensive doctests across all major modules
+  - OAuth/OIDC authentication helpers with discovery and token exchange examples
+  - Error recovery strategies with circuit breaker, retry, and fallback patterns
+  - Dynamic server management for runtime tool/resource configuration
+  - Resource watcher for file system monitoring with debouncing
+  - Structured logging configuration with custom fields and formats
+  - Standard I/O transport with length-prefixed framing
+  - SIMD-accelerated operations for JSON parsing and UTF-8 validation
+- **Enhanced Test Coverage**: Comprehensive property and integration tests
+  - Property-based tests for HTTP transport with SSE parsing invariants
+  - Integration tests for streamable HTTP functionality
+  - Unit tests for HTTP and WebSocket transports
+  - Improved overall test coverage to 71.54% (significant improvement from baseline)
+- **Quality Improvements**: Implemented systematic quality fixes following Toyota Way
+  - Zero tolerance for defects with comprehensive clippy error resolution
+  - Fixed large Result type warnings across all test files and examples
+  - Quality gate integration for continuous improvement
+  - All doctests validated and passing (164 tests)
+
+### Changed
+- **Test Infrastructure**: Modernized test error handling patterns
+  - Replaced large pmcp::Result types with boxed errors in tests
+  - Improved test compilation reliability across all targets
+  - Better error propagation patterns for maintainability
+- **Code Quality**: Enhanced code documentation and examples
+  - All major public APIs now have comprehensive usage examples
+  - Improved docstring quality with practical use cases
+  - Better type system utilization and safety patterns
+
+### Fixed
+- Resolved clippy warnings for large enum variants in test files
+- Fixed compilation errors in streamable HTTP test suite
+- Corrected import paths and type annotations in doctests
+- Fixed double error boxing issues in test helper functions
+- Resolved unused import warnings across test modules
+
+### Performance
+- Enhanced SIMD implementations with comprehensive documentation
+- Optimized test execution with proper error handling
+- Improved compilation times through better dependency management
+
 ## [1.1.1] - 2025-08-14
 
 ### Fixed
