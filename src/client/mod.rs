@@ -1863,7 +1863,7 @@ mod tests {
         // Read resource
         let result = client.read_resource("test://test".to_string()).await;
         if let Err(e) = &result {
-            eprintln!("Read resource error: {:?}", e);
+            tracing::error!("Read resource error: {:?}", e);
         }
         assert!(result.is_ok());
         let contents = result.unwrap();

@@ -53,7 +53,7 @@ glob-match = { version = "0.2", optional = true }
 # Platform-specific dependencies
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.46", features = ["full"] }
-tokio-stream = "0.1.15"
+tokio-stream = { version = "0.1.15", optional = true }
 tokio-util = { version = "0.7", features = ["rt"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
@@ -103,7 +103,7 @@ default = ["validation"]
 full = ["websocket", "http", "streamable-http", "validation", "resource-watcher"]
 websocket = ["dep:tokio-tungstenite"]
 http = ["dep:hyper", "dep:hyper-util"]
-streamable-http = ["dep:hyper", "dep:hyper-util", "dep:futures-util", "dep:bytes", "dep:axum"]
+streamable-http = ["dep:hyper", "dep:hyper-util", "dep:futures-util", "dep:bytes", "dep:axum", "dep:tokio-stream"]
 validation = ["dep:jsonschema", "dep:garde"]
 resource-watcher = ["dep:notify", "dep:glob-match"]
 # macros = ["dep:pmcp-macros", "dep:schemars"]

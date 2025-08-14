@@ -190,6 +190,68 @@ Demonstrates:
 - Transport isolation with unique IDs
 - Concurrent transport operations
 
+### 21. Macro-based Tool Generation
+```bash
+cargo run --example 21_macro_tools
+```
+Demonstrates:
+- Using procedural macros for tool generation
+- Automatic schema derivation from Rust types
+- Simplified tool implementation
+
+### 22. Stateful Streamable HTTP Server
+```bash
+cargo run --example 22_streamable_http_server_stateful --features streamable-http
+```
+Demonstrates:
+- Running MCP server over HTTP with session management
+- Session ID generation and tracking
+- Multiple concurrent client support with isolated sessions
+- Session validation and re-initialization prevention
+- Best for long-running connections and complex workflows
+
+### 23. Stateless Streamable HTTP Server
+```bash
+cargo run --example 23_streamable_http_server_stateless --features streamable-http
+```
+Demonstrates:
+- Running MCP server over HTTP without session management
+- Simplified stateless operation
+- No session overhead - each request is independent
+- Perfect for serverless deployments (AWS Lambda, Azure Functions)
+- Horizontal scaling friendly
+
+### 24. Streamable HTTP Client
+```bash
+# Connect to stateful server (port 8080)
+cargo run --example 24_streamable_http_client --features streamable-http
+
+# Connect to stateless server (port 8081)
+cargo run --example 24_streamable_http_client --features streamable-http -- stateless
+```
+Demonstrates:
+- Connecting to MCP servers over HTTP transport
+- Working with both stateful and stateless servers
+- Session handling for stateful connections
+- Tool discovery and invocation over HTTP
+- Error handling and retry logic
+
+### Running the Streamable HTTP Demo
+```bash
+# Run comparison demo (both servers)
+./examples/streamable_http_demo.sh
+
+# Run specific server type
+./examples/streamable_http_demo.sh stateful
+./examples/streamable_http_demo.sh stateless
+
+# Interactive mode (keeps servers running)
+./examples/streamable_http_demo.sh interactive
+```
+
+The demo script showcases the differences between stateful and stateless operation modes,
+helping you choose the right approach for your use case.
+
 ## Dependencies
 
 All examples use the same dependencies as the main PMCP library. Some examples may demonstrate optional features like WebSocket or HTTP transports (when implemented).

@@ -24,10 +24,10 @@ pub mod notification_debouncer;
 #[cfg(feature = "resource-watcher")]
 pub mod resource_watcher;
 pub mod roots;
-pub mod subscriptions;
-pub mod transport;
 #[cfg(feature = "streamable-http")]
 pub mod streamable_http_server;
+pub mod subscriptions;
+pub mod transport;
 
 /// Handler for tool execution.
 #[async_trait]

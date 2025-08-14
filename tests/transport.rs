@@ -2,7 +2,7 @@ use pmcp::server::streamable_http_server::StreamableHttpServer;
 use pmcp::server::Server;
 use pmcp::shared::streamable_http::{StreamableHttpTransport, StreamableHttpTransportConfig};
 use pmcp::shared::{Transport, TransportMessage};
-use pmcp::types::{ClientRequest, Request};
+use pmcp::types::{ClientCapabilities, ClientRequest, Implementation, InitializeParams, Request};
 use pmcp::Result;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -30,28 +30,53 @@ async fn test_streamable_http_transport_send_receive() -> Result<()> {
             .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
         extra_headers: vec![],
         auth_provider: None,
-        reconnect_config: None,
+        session_id: None,
+        enable_json_response: false,
         on_resumption_token: None,
     };
     let mut client_transport = StreamableHttpTransport::new(client_config);
 
-    // Create a Ping request
-    let message = TransportMessage::Request {
+    // Create an Initialize request first (to get session ID)
+    let init_message = TransportMessage::Request {
         id: 1i64.into(),
-        request: Request::Client(Box::new(ClientRequest::Ping)),
+        request: Request::Client(Box::new(ClientRequest::Initialize(InitializeParams {
+            protocol_version: pmcp::LATEST_PROTOCOL_VERSION.to_string(),
+            capabilities: ClientCapabilities::default(),
+            client_info: Implementation {
+                name: "test-client".to_string(),
+                version: "1.0.0".to_string(),
+            },
+        }))),
     };
 
-    // Send the request and wait for the response
-    timeout(Duration::from_secs(5), client_transport.send(message))
+    // Send the initialization request
+    timeout(Duration::from_secs(5), client_transport.send(init_message))
         .await
         .expect("send should not time out")?;
 
-    let received = timeout(Duration::from_secs(5), client_transport.receive())
+    let init_response = timeout(Duration::from_secs(5), client_transport.receive())
         .await
         .expect("receive should not time out")?;
 
-    // Verify the response
-    assert!(matches!(received, TransportMessage::Response(_)));
+    // Verify the initialization response
+    assert!(matches!(init_response, TransportMessage::Response(_)));
+
+    // Now test a regular request (session should be established)
+    let ping_message = TransportMessage::Request {
+        id: 2i64.into(),
+        request: Request::Client(Box::new(ClientRequest::Ping)),
+    };
+
+    timeout(Duration::from_secs(5), client_transport.send(ping_message))
+        .await
+        .expect("send should not time out")?;
+
+    let ping_response = timeout(Duration::from_secs(5), client_transport.receive())
+        .await
+        .expect("receive should not time out")?;
+
+    // Verify the ping response
+    assert!(matches!(ping_response, TransportMessage::Response(_)));
 
     // Shutdown the server
     server_task.abort();

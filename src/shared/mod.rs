@@ -8,8 +8,8 @@ pub mod protocol;
 pub mod protocol_helpers;
 pub mod reconnect;
 pub mod session;
-pub mod stdio;
 pub mod sse;
+pub mod stdio;
 pub mod transport;
 pub mod uri_template;
 
