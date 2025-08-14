@@ -172,10 +172,10 @@ impl StreamableHttpTransport {
 
         let handle = tokio::spawn(async move {
             let mut sse_parser = SseParser::new();
-            let body = response.bytes().await.unwrap_or_default();
+            let body = response.text().await.unwrap_or_default();
 
             // For now, parse the whole body - later we can stream with hyper Body
-            let events = sse_parser.parse(&body);
+            let events = sse_parser.feed(&body);
             for event in events {
                 // Update last event ID and notify callback
                 if let Some(id) = &event.id {
@@ -185,8 +185,8 @@ impl StreamableHttpTransport {
                     }
                 }
 
-                // Only process "message" events or empty event type
-                if event.event == "message" || event.event.is_empty() {
+                // Only process "message" events or no event type
+                if event.event.as_deref() == Some("message") || event.event.is_none() {
                     if let Ok(msg) = serde_json::from_str::<TransportMessage>(&event.data) {
                         let _ = sender.send(msg);
                     }
@@ -335,10 +335,10 @@ impl StreamableHttpTransport {
 
             tokio::spawn(async move {
                 let mut sse_parser = SseParser::new();
-                let body = response.bytes().await.unwrap_or_default();
+                let body = response.text().await.unwrap_or_default();
 
                 // Parse the SSE body
-                let events = sse_parser.parse(&body);
+                let events = sse_parser.feed(&body);
                 for event in events {
                     // Update last event ID and notify callback
                     if let Some(id) = &event.id {
@@ -349,7 +349,7 @@ impl StreamableHttpTransport {
                     }
 
                     // Only process "message" events
-                    if event.event == "message" || event.event.is_empty() {
+                    if event.event.as_deref() == Some("message") || event.event.is_none() {
                         if let Ok(msg) = serde_json::from_str::<TransportMessage>(&event.data) {
                             let _ = sender.send(msg);
                         }
