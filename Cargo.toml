@@ -250,6 +250,21 @@ path = "examples/20_oidc_discovery.rs"
 # path = "examples/21_macro_tools.rs"
 # required-features = ["macros"]
 
+[[example]]
+name = "22_streamable_http_server_stateful"
+path = "examples/22_streamable_http_server_stateful.rs"
+required-features = ["streamable-http"]
+
+[[example]]
+name = "23_streamable_http_server_stateless"
+path = "examples/23_streamable_http_server_stateless.rs"
+required-features = ["streamable-http"]
+
+[[example]]
+name = "24_streamable_http_client"
+path = "examples/24_streamable_http_client.rs"
+required-features = ["streamable-http"]
+
 [workspace]
 members = ["pmcp-macros"]
 exclude = ["fuzz"]
