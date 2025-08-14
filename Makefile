@@ -181,6 +181,27 @@ quality-gate:
 	@echo "$(GREEN)        ✓ ALL QUALITY CHECKS PASSED                    $(NC)"
 	@echo "$(GREEN)═══════════════════════════════════════════════════════$(NC)"
 
+# Toyota Way pre-commit quality gate (fast checks only)
+.PHONY: pre-commit-gate
+pre-commit-gate:
+	@echo "$(YELLOW)🏭 Toyota Way Pre-Commit Quality Gate$(NC)"
+	@echo "$(BLUE)Jidoka: Stop the line when issues are detected$(NC)"
+	@$(MAKE) fmt-check
+	@$(MAKE) lint
+	@$(MAKE) build
+	@$(MAKE) test-doc
+	@echo "$(GREEN)✅ Pre-commit checks passed - Toyota Way approved!$(NC)"
+
+# Continuous improvement check (Kaizen)
+.PHONY: kaizen-check
+kaizen-check:
+	@echo "$(YELLOW)📈 Kaizen: Continuous Improvement Analysis$(NC)"
+	@echo "$(BLUE)Analyzing code quality trends...$(NC)"
+	@$(MAKE) coverage-ci
+	@echo "$(GREEN)✓ Code coverage analyzed$(NC)"
+	@$(MAKE) mutants || echo "$(YELLOW)⚠ Mutation testing indicates opportunities for improvement$(NC)"
+	@echo "$(GREEN)🔄 Kaizen analysis complete$(NC)"
+
 # Zero tolerance checks
 .PHONY: check-todos
 check-todos:
@@ -352,6 +373,8 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Quality Checks:$(NC)"
 	@echo "  quality-gate    - Run all quality checks (default)"
+	@echo "  pre-commit-gate - Fast Toyota Way pre-commit checks"
+	@echo "  kaizen-check    - Continuous improvement analysis"
 	@echo "  fmt             - Format code"
 	@echo "  lint            - Run clippy lints"
 	@echo "  audit           - Check security vulnerabilities"
