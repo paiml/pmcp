@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-08-14
+
+### Fixed
+- Fixed getrandom v0.3 compatibility by changing feature from 'js' to 'std'
+- Updated wasm target feature configuration for getrandom
+
+### Changed
+- Updated dependencies to latest versions:
+  - getrandom: 0.2 → 0.3
+  - rstest: 0.25 → 0.26
+  - schemars: 0.8 → 1.0
+  - darling: 0.20 → 0.21
+  - jsonschema: 0.30 → 0.32
+  - notify: 6.1 → 8.2
+
 ## [1.1.0] - 2025-08-12
 
 ### Added
