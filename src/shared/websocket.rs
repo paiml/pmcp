@@ -325,7 +325,9 @@ mod tests {
 
     #[test]
     fn test_websocket_transport_with_url() {
-        let transport = WebSocketTransport::with_url("ws://test.example.com:3000".parse::<Url>().unwrap()).unwrap();
+        let transport =
+            WebSocketTransport::with_url("ws://test.example.com:3000".parse::<Url>().unwrap())
+                .unwrap();
         assert!(!transport.is_connected());
         assert_eq!(transport.config.url.as_str(), "ws://test.example.com:3000/");
     }
@@ -352,31 +354,31 @@ mod tests {
     #[test]
     fn test_connection_state_transitions() {
         let state = Arc::new(RwLock::new(ConnectionState::Disconnected));
-        
+
         // Initial state
         assert!(matches!(&*state.read(), ConnectionState::Disconnected));
-        
+
         // Transition to connecting
         {
             let mut s = state.write();
             *s = ConnectionState::Connecting;
         }
         assert!(matches!(&*state.read(), ConnectionState::Connecting));
-        
+
         // Transition to connected
         {
             let mut s = state.write();
             *s = ConnectionState::Connected;
         }
         assert!(matches!(&*state.read(), ConnectionState::Connected));
-        
+
         // Transition to closing
         {
             let mut s = state.write();
             *s = ConnectionState::Closing;
         }
         assert!(matches!(&*state.read(), ConnectionState::Closing));
-        
+
         // Back to disconnected
         {
             let mut s = state.write();
@@ -389,32 +391,35 @@ mod tests {
     async fn test_websocket_close() {
         let config = WebSocketConfig::default();
         let mut transport = WebSocketTransport::new(config);
-        
+
         // Set to connected state
         {
             let mut state = transport.state.write();
             *state = ConnectionState::Connected;
         }
         assert!(transport.is_connected());
-        
+
         // Close should transition through states
         transport.close().await.unwrap();
         assert!(!transport.is_connected());
-        assert!(matches!(&*transport.state.read(), ConnectionState::Disconnected));
+        assert!(matches!(
+            &*transport.state.read(),
+            ConnectionState::Disconnected
+        ));
     }
 
     #[tokio::test]
     async fn test_send_when_not_connected() {
         use crate::types::{ClientRequest, Request, RequestId};
-        
+
         let config = WebSocketConfig::default();
         let mut transport = WebSocketTransport::new(config);
-        
+
         let message = TransportMessage::Request {
             id: RequestId::from(1i64),
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
-        
+
         // Should fail when not connected
         let result = transport.send(message).await;
         assert!(result.is_err());
@@ -426,21 +431,21 @@ mod tests {
     #[tokio::test]
     async fn test_send_when_connected() {
         use crate::types::{ClientRequest, Request, RequestId};
-        
+
         let config = WebSocketConfig::default();
         let mut transport = WebSocketTransport::new(config);
-        
+
         // Set to connected state
         {
             let mut state = transport.state.write();
             *state = ConnectionState::Connected;
         }
-        
+
         let message = TransportMessage::Request {
             id: RequestId::from(1i64),
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
-        
+
         // Should succeed when connected (though simplified implementation just returns Ok)
         let result = transport.send(message).await;
         assert!(result.is_ok());
@@ -450,7 +455,7 @@ mod tests {
     async fn test_receive_when_channel_closed() {
         let config = WebSocketConfig::default();
         let transport = WebSocketTransport::new(config);
-        
+
         // Create a new receiver that's already closed
         let (_, rx) = mpsc::channel::<TransportMessage>(1);
         let mut transport = WebSocketTransport {
@@ -459,7 +464,7 @@ mod tests {
             message_tx: transport.message_tx,
             message_rx: Arc::new(AsyncMutex::new(rx)),
         };
-        
+
         // Receive should error with ConnectionClosed
         let result = transport.receive().await;
         assert!(result.is_err());

@@ -24,13 +24,17 @@ async fn test_streamable_http_transport_send_receive() -> Result<()> {
     ));
     let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
     let http_server = StreamableHttpServer::new(addr, server);
-    let (server_addr, server_task) = http_server.start().await
+    let (server_addr, server_task) = http_server
+        .start()
+        .await
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
     // Setup the client transport
     let client_config = StreamableHttpTransportConfig {
-        url: Url::parse(&format!("http://{}", server_addr))
-            .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+        url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+            Box::new(pmcp::Error::Internal(e.to_string()))
+                as Box<dyn std::error::Error + Send + Sync>
+        })?,
         extra_headers: vec![],
         auth_provider: None,
         session_id: None,

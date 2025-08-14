@@ -8,7 +8,7 @@ mod session_validation_tests {
         ClientCapabilities, ClientRequest, Implementation, InitializeParams, Request,
     };
     // Use boxed error for tests to satisfy clippy
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+    type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
     use std::net::{Ipv4Addr, SocketAddr};
     use std::sync::Arc;
     use tokio::sync::Mutex;
@@ -19,11 +19,15 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
+                .build()
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        http_server
+            .start()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
 
     #[tokio::test]
@@ -32,8 +36,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Setup first client and initialize successfully
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -55,16 +61,24 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             }))),
         };
 
-        client1.send(init_message.clone()).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _response1 = client1.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client1
+            .send(init_message.clone())
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _response1 = client1
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
         let session_id = client1
             .session_id()
             .expect("Session should be set after first init");
 
         // Setup second client with same session ID and attempt re-initialization
         let client_config2 = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: Some(session_id),
@@ -87,8 +101,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Setup client with invalid session ID
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: Some("invalid-session-id".to_string()),
@@ -116,8 +132,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Setup client without session ID
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -145,8 +163,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Setup client transport
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -168,8 +188,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             }))),
         };
 
-        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _init_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(init_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _init_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         let session_id = client
             .session_id()
@@ -181,8 +207,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _ping_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(ping_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _ping_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Session ID should be preserved
         assert_eq!(client.session_id().unwrap(), session_id);
@@ -238,8 +270,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Setup client and initialize
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -261,8 +295,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             }))),
         };
 
-        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _init_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(init_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _init_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Verify protocol version is set
         assert!(
@@ -283,8 +323,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _ping_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(ping_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _ping_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Protocol version should remain the same
         assert_eq!(
@@ -303,8 +349,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Setup client
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -326,8 +374,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             }))),
         };
 
-        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _init_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(init_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _init_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
         let negotiated_version = client
             .protocol_version()
             .expect("Protocol version should be set");
@@ -338,8 +392,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _ping_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(ping_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _ping_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Protocol version should be preserved
         assert_eq!(
@@ -398,8 +458,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
         // Test 3: Missing session ID for non-init request
         // First initialize to establish that we're in stateful mode
         let init_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -420,13 +482,21 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             }))),
         };
 
-        init_client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _init_response = init_client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        init_client
+            .send(init_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _init_response = init_client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Now try a non-init request without session ID - should fail with JSON error
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None, // No session ID
@@ -446,8 +516,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // Test 4: Unknown session ID - should return JSON error with 404
         let client_config2 = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: Some("non-existent-session".to_string()),
@@ -474,8 +546,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // 1. Initialize - should succeed and return session ID
         let client_config = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -496,8 +570,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             }))),
         };
 
-        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _init_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(init_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _init_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
         let session_id = client
             .session_id()
             .expect("Session should be set after init");
@@ -508,8 +588,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
-        let _ping_response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        client
+            .send(ping_message)
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _ping_response = client
+            .receive()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Session ID should be preserved
         assert_eq!(client.session_id().unwrap(), session_id);
@@ -528,8 +614,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
         // 4. Try to use deleted session - should fail
         let client_config2 = StreamableHttpTransportConfig {
-            url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
+            url: Url::parse(&format!("http://{}", server_addr)).map_err(|e| {
+                Box::new(pmcp::Error::Internal(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
+            })?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: Some(session_id),

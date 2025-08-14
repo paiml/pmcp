@@ -301,7 +301,8 @@ mod tests {
 
     #[test]
     fn test_http_transport_with_url() {
-        let transport = HttpTransport::with_url("http://localhost:9000".parse::<Url>().unwrap()).unwrap();
+        let transport =
+            HttpTransport::with_url("http://localhost:9000".parse::<Url>().unwrap()).unwrap();
         assert!(!transport.is_connected());
         assert_eq!(transport.config.base_url.as_str(), "http://localhost:9000/");
     }
@@ -320,11 +321,11 @@ mod tests {
     async fn test_http_transport_close() {
         let config = HttpConfig::default();
         let mut transport = HttpTransport::new(config);
-        
+
         // Mark as connected first
         *transport.connected.write() = true;
         assert!(transport.is_connected());
-        
+
         // Close should mark as disconnected
         transport.close().await.unwrap();
         assert!(!transport.is_connected());
@@ -338,7 +339,7 @@ mod tests {
             ..Default::default()
         };
         let transport = HttpTransport::new(config);
-        
+
         // Should mark as connected even without SSE endpoint
         transport.connect_sse().await.unwrap();
         assert!(transport.is_connected());
@@ -348,12 +349,12 @@ mod tests {
     async fn test_send_request_not_connected() {
         let config = HttpConfig::default();
         let mut transport = HttpTransport::new(config);
-        
+
         let message = TransportMessage::Request {
             id: RequestId::from(1i64),
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
-        
+
         // This will fail since we're not connected to a real server
         let result = transport.send(message).await;
         assert!(result.is_err());
@@ -387,7 +388,7 @@ mod tests {
     async fn test_message_queue_receive_closed() {
         let config = HttpConfig::default();
         let transport = HttpTransport::new(config);
-        
+
         // Create a new receiver that's already closed
         let (_, rx) = mpsc::channel::<TransportMessage>(1);
         let mut transport = HttpTransport {
@@ -397,7 +398,7 @@ mod tests {
             message_tx: transport.message_tx,
             connected: transport.connected,
         };
-        
+
         // Receive should error with ConnectionClosed
         let result = transport.receive().await;
         assert!(result.is_err());

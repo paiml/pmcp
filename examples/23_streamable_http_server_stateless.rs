@@ -188,7 +188,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let http_server = StreamableHttpServer::with_config(addr, server, config);
 
     // Start the server
-    let (bound_addr, server_handle) = http_server.start().await
+    let (bound_addr, server_handle) = http_server
+        .start()
+        .await
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     println!("╔════════════════════════════════════════════════════════════╗");
@@ -223,9 +225,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("Press Ctrl+C to stop the server");
 
     // Keep the server running
-    server_handle
-        .await
-        .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error>)?;
+    server_handle.await.map_err(|e| {
+        Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error>
+    })?;
 
     Ok(())
 }

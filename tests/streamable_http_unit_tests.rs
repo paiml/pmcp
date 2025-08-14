@@ -203,7 +203,7 @@ async fn test_streamable_http_transport_close() {
     };
 
     let mut transport = StreamableHttpTransport::new(config);
-    
+
     // Close should succeed even without a real connection
     let result = transport.close().await;
     assert!(result.is_ok());
@@ -223,12 +223,12 @@ async fn test_streamable_http_send_with_auth_provider() {
     };
 
     let mut transport = StreamableHttpTransport::new(config);
-    
+
     let message = pmcp::shared::TransportMessage::Request {
         id: RequestId::from(1i64),
         request: Request::Client(Box::new(ClientRequest::Ping)),
     };
-    
+
     // This will fail because we're not connected to a real server,
     // but it will exercise the auth provider code path
     let _ = transport.send(message).await;
@@ -240,7 +240,7 @@ fn test_send_options_clone() {
         related_request_id: Some("req-123".to_string()),
         resumption_token: Some("token-456".to_string()),
     };
-    
+
     let cloned = opts.clone();
     assert_eq!(opts.related_request_id, cloned.related_request_id);
     assert_eq!(opts.resumption_token, cloned.resumption_token);
@@ -252,7 +252,7 @@ fn test_send_options_debug() {
         related_request_id: Some("req-123".to_string()),
         resumption_token: Some("token-456".to_string()),
     };
-    
+
     let debug_str = format!("{:?}", opts);
     assert!(debug_str.contains("SendOptions"));
     assert!(debug_str.contains("related_request_id"));

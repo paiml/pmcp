@@ -67,7 +67,7 @@ impl DynamicServerManager {
     ///
     /// ```rust,no_run
     /// use pmcp::server::dynamic::DynamicServerManager;
-/// use pmcp::server::Server;
+    /// use pmcp::server::Server;
     /// use std::sync::Arc;
     ///
     /// # async fn example() -> pmcp::Result<()> {

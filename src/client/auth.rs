@@ -121,11 +121,11 @@ impl OidcDiscoveryClient {
     ///
     /// # async fn example() -> pmcp::Result<()> {
     /// let client = OidcDiscoveryClient::new();
-    /// 
+    ///
     /// // Discover from various providers
     /// let google = client.discover("https://accounts.google.com").await?;
     /// let microsoft = client.discover("https://login.microsoftonline.com/common/v2.0").await?;
-    /// 
+    ///
     /// // URL normalization - trailing slashes are handled
     /// let metadata1 = client.discover("https://auth.example.com").await?;
     /// let metadata2 = client.discover("https://auth.example.com/").await?;

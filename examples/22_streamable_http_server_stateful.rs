@@ -136,7 +136,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .tool("echo", EchoTool)
         .tool("calculate", CalculatorTool)
         .tool("session_info", SessionInfoTool)
-        .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+        .build()
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     // Wrap server in Arc<Mutex<>> for sharing
     let server = Arc::new(Mutex::new(server));
@@ -154,7 +155,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let http_server = StreamableHttpServer::new(addr, server);
 
     // Start the server
-    let (bound_addr, server_handle) = http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+    let (bound_addr, server_handle) = http_server
+        .start()
+        .await
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     println!("╔════════════════════════════════════════════════════════════╗");
     println!("║        STATEFUL STREAMABLE HTTP SERVER RUNNING            ║");

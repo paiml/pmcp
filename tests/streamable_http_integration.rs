@@ -11,8 +11,8 @@ use pmcp::shared::{Transport, TransportMessage};
 use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::types::protocol::ProtocolVersion;
 use pmcp::types::{
-    ClientNotification, ClientRequest, Implementation, InitializeParams,
-    Notification, Request, RequestId,
+    ClientNotification, ClientRequest, Implementation, InitializeParams, Notification, Request,
+    RequestId,
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -79,7 +79,7 @@ async fn test_streamable_http_stateless_mode() {
     match response {
         TransportMessage::Response(json_response) => {
             assert_eq!(json_response.id, RequestId::from(1i64));
-        }
+        },
         _ => panic!("Expected response"),
     }
 
@@ -99,7 +99,9 @@ async fn test_streamable_http_stateful_mode() {
     let closed_clone = session_closed.clone();
 
     let config = StreamableHttpServerConfig {
-        session_id_generator: Some(Box::new(|| format!("test-session-{}", uuid::Uuid::new_v4()))),
+        session_id_generator: Some(Box::new(|| {
+            format!("test-session-{}", uuid::Uuid::new_v4())
+        })),
         enable_json_response: false,
         event_store: Some(Arc::new(InMemoryEventStore::default())),
         on_session_initialized: Some(Box::new(move |_session_id| {
@@ -155,7 +157,7 @@ async fn test_streamable_http_stateful_mode() {
             assert_eq!(json_response.id, RequestId::from(1i64));
             // Check that we got a session ID
             assert!(transport.session_id().is_some());
-        }
+        },
         _ => panic!("Expected response"),
     }
 
@@ -250,7 +252,7 @@ async fn test_transport_send_receive_multiple() {
         match response {
             TransportMessage::Response(json_response) => {
                 assert_eq!(json_response.id, RequestId::from(i as i64));
-            }
+            },
             _ => panic!("Expected response"),
         }
     }
@@ -267,21 +269,13 @@ async fn test_event_store_persistence() {
     let store = InMemoryEventStore::default();
 
     // Store some events
-    let msg1 = TransportMessage::Notification(Notification::Client(
-        ClientNotification::Initialized,
-    ));
-    let msg2 = TransportMessage::Notification(Notification::Client(
-        ClientNotification::RootsListChanged,
-    ));
+    let msg1 =
+        TransportMessage::Notification(Notification::Client(ClientNotification::Initialized));
+    let msg2 =
+        TransportMessage::Notification(Notification::Client(ClientNotification::RootsListChanged));
 
-    store
-        .store_event("stream1", "event1", &msg1)
-        .await
-        .unwrap();
-    store
-        .store_event("stream1", "event2", &msg2)
-        .await
-        .unwrap();
+    store.store_event("stream1", "event1", &msg1).await.unwrap();
+    store.store_event("stream1", "event2", &msg2).await.unwrap();
 
     // Replay events
     let replayed = store.replay_events_after("event1").await.unwrap();

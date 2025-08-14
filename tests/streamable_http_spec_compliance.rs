@@ -12,10 +12,10 @@ mod spec_compliance_tests {
     use std::sync::Arc;
     use tokio::sync::Mutex;
     use url::Url;
-    
+
     // Use boxed error for tests to satisfy clippy's large_enum_variant warning
     type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-    
+
     // Helper to convert pmcp::Error to boxed error
     fn box_err(e: pmcp::Error) -> Box<dyn std::error::Error + Send + Sync> {
         Box::new(e)
@@ -30,7 +30,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
@@ -86,7 +87,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
@@ -143,7 +145,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
@@ -152,7 +155,8 @@ mod spec_compliance_tests {
         // First initialize to establish a session (in stateful mode)
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -221,7 +225,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
@@ -230,7 +235,8 @@ mod spec_compliance_tests {
         // First initialize to establish we're testing non-init requests
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -296,7 +302,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
@@ -305,7 +312,8 @@ mod spec_compliance_tests {
         // Initialize first
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -386,7 +394,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         // Explicitly use stateful mode (default)
@@ -395,7 +404,8 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None, // No session ID initially
@@ -435,7 +445,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
@@ -444,7 +455,8 @@ mod spec_compliance_tests {
         // Initialize to get session
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -509,7 +521,8 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build().map_err(box_err)?,
+                .build()
+                .map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let config = StreamableHttpServerConfig {
@@ -529,7 +542,8 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -569,7 +583,8 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -622,7 +637,8 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None, // No session ID
@@ -652,7 +668,8 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string()))
+                .map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: Some("arbitrary-session-id".to_string()), // Arbitrary session ID

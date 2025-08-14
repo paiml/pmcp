@@ -147,7 +147,7 @@ impl SseParser {
     /// use pmcp::shared::sse_parser::SseParser;
     ///
     /// let mut parser = SseParser::new();
-    /// 
+    ///
     /// // Simple event
     /// let events = parser.feed("data: Hello\n\n");
     /// assert_eq!(events.len(), 1);
