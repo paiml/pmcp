@@ -105,6 +105,12 @@ jobs:
               echo "Skipping example: $example_name (requires resource-watcher feature)"
               continue
             fi
+            if [[ "$example_name" == "22_streamable_http_server_stateful" ]] || \
+               [[ "$example_name" == "23_streamable_http_server_stateless" ]] || \
+               [[ "$example_name" == "24_streamable_http_client" ]]; then
+              echo "Skipping example: $example_name (requires streamable-http feature)"
+              continue
+            fi
             echo "Checking example: $example_name"
             cargo check --example "$example_name"
           fi
