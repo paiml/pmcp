@@ -106,6 +106,7 @@ impl std::fmt::Debug for ResourceWatcher {
 }
 
 /// Process file events with debouncing (helper function).
+#[allow(clippy::cognitive_complexity)]
 async fn process_events(
     resources: Arc<RwLock<HashMap<String, ResourceInfo>>>,
     pending_events: Arc<RwLock<HashMap<PathBuf, FileEvent>>>,

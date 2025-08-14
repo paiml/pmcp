@@ -447,7 +447,7 @@ fn extract_negotiated_version(response: &TransportMessage) -> Option<String> {
 /// Update session info after initialization
 fn update_session_after_init(
     state: &ServerState,
-    session_id: &Option<String>,
+    session_id: Option<&String>,
     negotiated_version: Option<String>,
 ) {
     if let Some(sid) = session_id {
@@ -463,7 +463,7 @@ fn update_session_after_init(
 fn build_response(
     state: &ServerState,
     response: TransportMessage,
-    session_id: &Option<String>,
+    session_id: Option<&String>,
 ) -> Response {
     if state.config.enable_json_response {
         // JSON response mode
@@ -503,10 +503,10 @@ fn build_response(
 /// Validate protocol version for non-init requests
 fn validate_protocol_version(
     state: &ServerState,
-    session_id: &Option<String>,
-    protocol_version: &Option<String>,
+    session_id: Option<&String>,
+    protocol_version: Option<&String>,
 ) -> std::result::Result<(), Response> {
-    if let Some(ref version) = protocol_version {
+    if let Some(version) = protocol_version {
         // Check if the provided version is supported
         if !crate::SUPPORTED_PROTOCOL_VERSIONS.contains(&version.as_str()) {
             return Err(create_error_response(
@@ -519,11 +519,11 @@ fn validate_protocol_version(
 
     // For stateful mode, also validate against session's negotiated version if exists
     if state.config.session_id_generator.is_some() {
-        if let Some(ref sid) = session_id {
-            if let Some(session_info) = state.sessions.read().get(sid) {
+        if let Some(sid) = session_id {
+            if let Some(session_info) = state.sessions.read().get(sid.as_str()) {
                 if let Some(ref negotiated_version) = session_info.protocol_version {
                     // If header provided, it should match the negotiated version
-                    if let Some(ref provided_version) = protocol_version {
+                    if let Some(provided_version) = protocol_version {
                         if provided_version != negotiated_version {
                             return Err(create_error_response(
                                 StatusCode::BAD_REQUEST,
@@ -600,7 +600,7 @@ async fn handle_post_request(
     // Validate protocol version for non-init requests
     if !is_init_request {
         if let Err(error_response) =
-            validate_protocol_version(&state, &session_id, &protocol_version)
+            validate_protocol_version(&state, session_id.as_ref(), protocol_version.as_ref())
         {
             return error_response;
         }
@@ -616,7 +616,7 @@ async fn handle_post_request(
             // Handle initialization response
             let negotiated_version = if is_init_request {
                 let version = extract_negotiated_version(&response);
-                update_session_after_init(&state, &response_session_id, version.clone());
+                update_session_after_init(&state, response_session_id.as_ref(), version.clone());
                 version
             } else {
                 None
@@ -631,7 +631,7 @@ async fn handle_post_request(
             }
 
             // Build response with headers
-            let mut response = build_response(&state, response, &session_id);
+            let mut response = build_response(&state, response, session_id.as_ref());
 
             // Always add session header in stateful mode
             if let Some(sid) = &response_session_id {

@@ -235,6 +235,7 @@ fn notification_key(notification: &ServerNotification) -> String {
 }
 
 /// Flush pending notifications that are ready
+#[allow(clippy::cognitive_complexity)]
 async fn flush_pending(
     pending: &Arc<RwLock<HashMap<String, PendingNotification>>>,
     output_tx: &mpsc::Sender<ServerNotification>,

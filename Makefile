@@ -82,7 +82,11 @@ lint:
 		-A clippy::option_if_let_else \
 		-A clippy::derive_partial_eq_without_eq \
 		-A clippy::redundant_else \
-		-A clippy::match_same_arms
+		-A clippy::match_same_arms \
+		-A clippy::manual_string_new \
+		-A clippy::default_trait_access \
+		-A clippy::format_push_string \
+		-A clippy::too_many_lines
 	@echo "$(BLUE)Checking examples...$(NC)"
 	RUSTFLAGS="$(RUSTFLAGS)" $(CARGO) check --features "full" --examples
 	@echo "$(GREEN)✓ No lint issues$(NC)"
