@@ -85,9 +85,114 @@ pub mod json {
         positions
     }
 
+    /// Validates a UTF-8 continuation byte
+    #[inline]
+    fn is_valid_continuation_byte(byte: u8) -> bool {
+        byte & 0xC0 == 0x80
+    }
+
+    /// Validates a multi-byte UTF-8 sequence starting at position
+    fn validate_multibyte_sequence(input: &[u8], start: usize, first_byte: u8) -> bool {
+        let len = input.len();
+
+        if first_byte < 0xC0 {
+            return false; // Invalid continuation byte
+        } else if first_byte < 0xE0 {
+            // 2-byte sequence
+            validate_2byte_sequence(input, start, len)
+        } else if first_byte < 0xF0 {
+            // 3-byte sequence
+            validate_3byte_sequence(input, start, len)
+        } else if first_byte < 0xF8 {
+            // 4-byte sequence
+            validate_4byte_sequence(input, start, len)
+        } else {
+            false // Invalid UTF-8
+        }
+    }
+
+    /// Validates a 2-byte UTF-8 sequence
+    #[inline]
+    fn validate_2byte_sequence(input: &[u8], start: usize, len: usize) -> bool {
+        start + 1 < len && is_valid_continuation_byte(input[start + 1])
+    }
+
+    /// Validates a 3-byte UTF-8 sequence  
+    #[inline]
+    fn validate_3byte_sequence(input: &[u8], start: usize, len: usize) -> bool {
+        start + 2 < len
+            && is_valid_continuation_byte(input[start + 1])
+            && is_valid_continuation_byte(input[start + 2])
+    }
+
+    /// Validates a 4-byte UTF-8 sequence
+    #[inline]
+    fn validate_4byte_sequence(input: &[u8], start: usize, len: usize) -> bool {
+        start + 3 < len
+            && is_valid_continuation_byte(input[start + 1])
+            && is_valid_continuation_byte(input[start + 2])
+            && is_valid_continuation_byte(input[start + 3])
+    }
+
+    /// Processes a 32-byte chunk with SIMD, falling back to scalar for non-ASCII
+    #[cfg(target_arch = "x86_64")]
+    #[target_feature(enable = "avx2")]
+    unsafe fn process_simd_chunk(input: &[u8], offset: usize) -> bool {
+        let data = _mm256_loadu_si256(input.as_ptr().add(offset) as *const __m256i);
+
+        // Check for ASCII bytes (< 0x80) - fast path
+        let ascii_mask = _mm256_cmpgt_epi8(_mm256_setzero_si256(), data);
+        let is_ascii = _mm256_movemask_epi8(ascii_mask);
+
+        if is_ascii == -1 {
+            return true; // All bytes are ASCII
+        }
+
+        // Fall back to scalar validation for non-ASCII bytes
+        validate_chunk_scalar(input, offset, 32)
+    }
+
+    /// Validates a chunk using scalar processing
+    fn validate_chunk_scalar(input: &[u8], start: usize, chunk_size: usize) -> bool {
+        let len = input.len();
+        let end = std::cmp::min(start + chunk_size, len);
+
+        let mut i = start;
+        while i < end {
+            let byte = input[i];
+            if byte < 0x80 {
+                i += 1;
+                continue;
+            }
+
+            // Multi-byte sequence - validate and advance
+            if !validate_multibyte_sequence(input, i, byte) {
+                return false;
+            }
+
+            // Advance by the correct number of bytes for this sequence
+            i += get_utf8_sequence_length(byte);
+        }
+
+        true
+    }
+
+    /// Gets the length of a UTF-8 sequence from its first byte
+    #[inline]
+    fn get_utf8_sequence_length(first_byte: u8) -> usize {
+        if first_byte < 0xE0 {
+            2
+        } else if first_byte < 0xF0 {
+            3
+        } else {
+            4
+        }
+    }
+
     /// SIMD-accelerated string validation (UTF-8)
     ///
     /// Validates UTF-8 byte sequences using AVX2 instructions for improved performance.
+    /// This function has been refactored to reduce complexity while maintaining performance.
     ///
     /// # Examples
     ///
@@ -112,91 +217,35 @@ pub mod json {
         let len = input.len();
         let mut i = 0;
 
-        // Process 32 bytes at a time
+        // Process 32 bytes at a time with SIMD
         while i + 32 <= len {
-            let data = _mm256_loadu_si256(input.as_ptr().add(i) as *const __m256i);
-
-            // Check for ASCII bytes (< 0x80)
-            let ascii_mask = _mm256_cmpgt_epi8(_mm256_setzero_si256(), data);
-            let is_ascii = _mm256_movemask_epi8(ascii_mask);
-
-            if is_ascii == -1 {
-                // All bytes are ASCII, safe to skip
-                i += 32;
-                continue;
+            if !process_simd_chunk(input, i) {
+                return false;
             }
-
-            // Fall back to scalar validation for non-ASCII
-            for j in 0..32 {
-                if i + j >= len {
-                    break;
-                }
-
-                let byte = input[i + j];
-                if byte < 0x80 {
-                    continue;
-                }
-
-                // Multi-byte UTF-8 validation
-                let k = i + j;
-                if byte < 0xC0 {
-                    return false; // Invalid continuation byte
-                } else if byte < 0xE0 {
-                    // 2-byte sequence
-                    if k + 1 >= len || input[k + 1] & 0xC0 != 0x80 {
-                        return false;
-                    }
-                } else if byte < 0xF0 {
-                    // 3-byte sequence
-                    if k + 2 >= len || input[k + 1] & 0xC0 != 0x80 || input[k + 2] & 0xC0 != 0x80 {
-                        return false;
-                    }
-                } else if byte < 0xF8 {
-                    // 4-byte sequence
-                    if k + 3 >= len
-                        || input[k + 1] & 0xC0 != 0x80
-                        || input[k + 2] & 0xC0 != 0x80
-                        || input[k + 3] & 0xC0 != 0x80
-                    {
-                        return false;
-                    }
-                } else {
-                    return false; // Invalid UTF-8
-                }
-            }
-
             i += 32;
         }
 
-        // Process remaining bytes
+        // Process remaining bytes with scalar validation
+        validate_remaining_bytes(input, i)
+    }
+
+    /// Validates remaining bytes after SIMD processing
+    fn validate_remaining_bytes(input: &[u8], start: usize) -> bool {
+        let len = input.len();
+        let mut i = start;
+
         while i < len {
             let byte = input[i];
             if byte < 0x80 {
                 i += 1;
-            } else if byte < 0xC0 {
-                return false;
-            } else if byte < 0xE0 {
-                if i + 1 >= len || input[i + 1] & 0xC0 != 0x80 {
-                    return false;
-                }
-                i += 2;
-            } else if byte < 0xF0 {
-                if i + 2 >= len || input[i + 1] & 0xC0 != 0x80 || input[i + 2] & 0xC0 != 0x80 {
-                    return false;
-                }
-                i += 3;
-            } else if byte < 0xF8 {
-                if i + 3 >= len
-                    || input[i + 1] & 0xC0 != 0x80
-                    || input[i + 2] & 0xC0 != 0x80
-                    || input[i + 3] & 0xC0 != 0x80
-                {
-                    return false;
-                }
-                i += 4;
-            } else {
+                continue;
+            }
+
+            if !validate_multibyte_sequence(input, i, byte) {
                 return false;
             }
+
+            i += get_utf8_sequence_length(byte);
         }
 
         true

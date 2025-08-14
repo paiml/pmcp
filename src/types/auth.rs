@@ -65,7 +65,7 @@ pub enum AuthScheme {
 ///         "read:org".to_string(),
 ///     ]),
 ///     redirect_uri: Some("http://localhost:3000/auth/github/callback".to_string()),
-///     pkce_method: Some(PkceMethod::S256), // Use PKCE for enhanced security
+///     pkce_method: Some(PkceMethod::S256),
 /// };
 ///
 /// // Google OAuth configuration
@@ -125,13 +125,33 @@ pub struct OAuthInfo {
     pub pkce_method: Option<PkceMethod>,
 }
 
-/// PKCE challenge method for OAuth.
+/// PKCE (Proof Key for Code Exchange) challenge method for OAuth 2.0.
+///
+/// PKCE is a security extension to OAuth 2.0 that provides protection against
+/// authorization code interception attacks. It is especially important for
+/// public clients (mobile apps, SPAs) but provides security benefits for all clients.
+///
+/// # Security Recommendations
+///
+/// - **Always use `S256`** for production applications
+/// - **Avoid `Plain`** except for legacy systems that don't support SHA-256
+/// - PKCE is **required** for OAuth 2.1 and recommended for OAuth 2.0
+///
+/// # RFC Reference
+///
+/// Implements [RFC 7636 - Proof Key for Code Exchange by OAuth Public Clients](https://tools.ietf.org/html/rfc7636)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PkceMethod {
-    /// Plain text (not recommended)
+    /// Plain text PKCE method (RFC 7636 Section 4.2)
+    ///
+    /// **Security Warning**: Only use for clients that cannot support SHA-256.
+    /// The code challenge equals the code verifier.
     #[serde(rename = "plain")]
     Plain,
-    /// SHA-256 (recommended)
+    /// SHA-256 PKCE method (RFC 7636 Section 4.2)
+    ///
+    /// **Recommended**: Provides cryptographic protection by hashing the code verifier.
+    /// The code challenge is `BASE64URL(SHA256(code_verifier))`.
     #[serde(rename = "S256")]
     S256,
 }
@@ -217,7 +237,7 @@ impl AuthInfo {
     ///     client_id: "my-client-id".to_string(),
     ///     scopes: Some(vec!["read".to_string(), "write".to_string()]),
     ///     redirect_uri: Some("http://localhost:8080/callback".to_string()),
-    ///     pkce_method: Some(PkceMethod::S256), // Recommended for security
+    ///     pkce_method: Some(PkceMethod::S256),
     /// };
     ///
     /// let auth = AuthInfo::oauth2(oauth_info);
