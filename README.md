@@ -13,7 +13,7 @@ A high-quality Rust implementation of the [Model Context Protocol](https://model
 
 Code Name: *Angel Rust*
 
-## 🎉 Version 1.1.0 - Enhanced TypeScript Parity!
+## 🎉 Version 1.1.1 - Dependency Updates & Enhanced Compatibility!
 
 - ✅ **Full TypeScript SDK v1.17.2+ Compatibility**: 100% protocol compatibility verified
 - 🎯 **Procedural Macros**: Simplified tool/prompt/resource definitions with `#[tool]` macro
