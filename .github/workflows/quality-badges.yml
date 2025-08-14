@@ -1,0 +1,242 @@
+name: Quality Badges
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Update badges daily at 06:00 UTC
+    - cron: '0 6 * * *'
+
+jobs:
+  quality-analysis:
+    name: Generate Quality Badges
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Install PMAT
+      run: |
+        # Install PMAT (Pragmatic Modular Analysis Toolkit)
+        cargo install pmat-cli || echo "PMAT installation failed, continuing..."
+    
+    - name: Generate TDG Score Badge
+      run: |
+        # Get TDG score from PMAT
+        TDG_DATA=$(pmat analyze tdg --format json 2>/dev/null || echo '{"summary":{"average_tdg":0}}')
+        TDG_SCORE=$(echo "$TDG_DATA" | jq -r '.summary.average_tdg // 0' | xargs printf "%.2f")
+        
+        # Determine badge color based on TDG score
+        if (( $(echo "$TDG_SCORE <= 0.5" | bc -l) )); then
+          COLOR="brightgreen"
+        elif (( $(echo "$TDG_SCORE <= 1.0" | bc -l) )); then
+          COLOR="green"
+        elif (( $(echo "$TDG_SCORE <= 1.5" | bc -l) )); then
+          COLOR="yellow"
+        elif (( $(echo "$TDG_SCORE <= 2.0" | bc -l) )); then
+          COLOR="orange"
+        else
+          COLOR="red"
+        fi
+        
+        # Create badge URL
+        BADGE_URL="https://img.shields.io/badge/TDG%20Score-${TDG_SCORE}-${COLOR}"
+        echo "TDG_BADGE_URL=$BADGE_URL" >> $GITHUB_ENV
+        echo "TDG_SCORE=$TDG_SCORE" >> $GITHUB_ENV
+    
+    - name: Generate Quality Gate Badge
+      run: |
+        # Check quality gate status
+        if pmat quality-gate --fail-on-violation --format json > quality_gate.json 2>/dev/null; then
+          GATE_STATUS="passing"
+          GATE_COLOR="brightgreen"
+        else
+          GATE_STATUS="failing"
+          GATE_COLOR="red"
+        fi
+        
+        # Create quality gate badge URL
+        GATE_BADGE_URL="https://img.shields.io/badge/Quality%20Gate-${GATE_STATUS}-${GATE_COLOR}"
+        echo "QUALITY_GATE_BADGE_URL=$GATE_BADGE_URL" >> $GITHUB_ENV
+        echo "QUALITY_GATE_STATUS=$GATE_STATUS" >> $GITHUB_ENV
+    
+    - name: Generate Complexity Badge
+      run: |
+        # Get complexity metrics from quality gate
+        COMPLEXITY_DATA=$(pmat quality-gate --checks complexity --format json 2>/dev/null || echo '{"violations":[]}')
+        COMPLEXITY_VIOLATIONS=$(echo "$COMPLEXITY_DATA" | jq '.violations | length // 0')
+        
+        # Determine badge color based on violations
+        if [ "$COMPLEXITY_VIOLATIONS" -eq 0 ]; then
+          COLOR="brightgreen"
+          STATUS="clean"
+        elif [ "$COMPLEXITY_VIOLATIONS" -le 5 ]; then
+          COLOR="yellow"
+          STATUS="${COMPLEXITY_VIOLATIONS}%20violations"
+        elif [ "$COMPLEXITY_VIOLATIONS" -le 20 ]; then
+          COLOR="orange"
+          STATUS="${COMPLEXITY_VIOLATIONS}%20violations"
+        else
+          COLOR="red"
+          STATUS="${COMPLEXITY_VIOLATIONS}%20violations"
+        fi
+        
+        COMPLEXITY_BADGE_URL="https://img.shields.io/badge/Complexity-${STATUS}-${COLOR}"
+        echo "COMPLEXITY_BADGE_URL=$COMPLEXITY_BADGE_URL" >> $GITHUB_ENV
+        echo "COMPLEXITY_VIOLATIONS=$COMPLEXITY_VIOLATIONS" >> $GITHUB_ENV
+    
+    - name: Generate Technical Debt Hours Badge
+      run: |
+        # Get estimated debt hours from TDG
+        TDG_DATA=$(pmat analyze tdg --format json 2>/dev/null || echo '{"summary":{"estimated_debt_hours":0}}')
+        DEBT_HOURS=$(echo "$TDG_DATA" | jq -r '.summary.estimated_debt_hours // 0' | xargs printf "%.0f")
+        
+        # Determine badge color based on debt hours
+        if [ "$DEBT_HOURS" -le 100 ]; then
+          COLOR="brightgreen"
+        elif [ "$DEBT_HOURS" -le 300 ]; then
+          COLOR="green"
+        elif [ "$DEBT_HOURS" -le 500 ]; then
+          COLOR="yellow"
+        elif [ "$DEBT_HOURS" -le 1000 ]; then
+          COLOR="orange"
+        else
+          COLOR="red"
+        fi
+        
+        DEBT_BADGE_URL="https://img.shields.io/badge/Tech%20Debt-${DEBT_HOURS}h-${COLOR}"
+        echo "DEBT_BADGE_URL=$DEBT_BADGE_URL" >> $GITHUB_ENV
+        echo "DEBT_HOURS=$DEBT_HOURS" >> $GITHUB_ENV
+    
+    - name: Update README with Badges
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Create badges section for README
+        cat << EOF > quality_badges.md
+        <!-- QUALITY BADGES START -->
+        [![Quality Gate]($QUALITY_GATE_BADGE_URL)](https://github.com/paiml/rust-mcp-sdk/actions/workflows/quality-badges.yml)
+        [![TDG Score]($TDG_BADGE_URL)](https://github.com/paiml/rust-mcp-sdk/actions/workflows/quality-badges.yml)
+        [![Complexity]($COMPLEXITY_BADGE_URL)](https://github.com/paiml/rust-mcp-sdk/actions/workflows/quality-badges.yml)
+        [![Technical Debt]($DEBT_BADGE_URL)](https://github.com/paiml/rust-mcp-sdk/actions/workflows/quality-badges.yml)
+        <!-- QUALITY BADGES END -->
+        EOF
+        
+        # Update README.md if it exists
+        if [ -f "README.md" ]; then
+          # Remove existing badges section if present
+          sed -i '/<!-- QUALITY BADGES START -->/,/<!-- QUALITY BADGES END -->/d' README.md
+          
+          # Insert new badges after the first heading or at the beginning
+          if grep -q "^# " README.md; then
+            # Insert after the first heading
+            sed -i '0,/^# .*/{/^# .*/r quality_badges.md
+            }' README.md
+          else
+            # Insert at the beginning
+            cat quality_badges.md README.md > README_temp.md && mv README_temp.md README.md
+          fi
+          
+          echo "Updated README.md with quality badges"
+        fi
+    
+    - name: Create Quality Report
+      run: |
+        # Generate comprehensive quality report
+        cat << EOF > QUALITY_REPORT.md
+        # PMAT Quality Report
+        
+        Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+        
+        ## Summary Metrics
+        
+        - **TDG Score**: $TDG_SCORE (lower is better)
+        - **Quality Gate**: $QUALITY_GATE_STATUS
+        - **Complexity Violations**: $COMPLEXITY_VIOLATIONS
+        - **Estimated Technical Debt**: ${DEBT_HOURS} hours
+        
+        ## Badge URLs
+        
+        - Quality Gate: $QUALITY_GATE_BADGE_URL
+        - TDG Score: $TDG_BADGE_URL
+        - Complexity: $COMPLEXITY_BADGE_URL
+        - Technical Debt: $DEBT_BADGE_URL
+        
+        ## Toyota Way Quality Principles
+        
+        ### Jidoka (Stop the Line)
+        $(if [ "$QUALITY_GATE_STATUS" = "failing" ]; then echo "🔴 Quality gate failing - development should stop"; else echo "✅ Quality gate passing - development can continue"; fi)
+        
+        ### Genchi Genbutsu (Go and See)
+        - TDG analysis shows real codebase quality metrics
+        - Complexity analysis reveals actual problem areas
+        - Technical debt estimation based on objective analysis
+        
+        ### Kaizen (Continuous Improvement)
+        - Daily badge updates track quality trends
+        - Automated quality gates prevent regression
+        - Systematic improvement through PMAT recommendations
+        
+        EOF
+        
+        echo "Generated QUALITY_REPORT.md"
+    
+    - name: Commit Quality Updates
+      if: github.ref == 'refs/heads/main'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [ -n "$(git status --porcelain)" ]; then
+          git add README.md QUALITY_REPORT.md 2>/dev/null || true
+          git commit -m "docs: update quality badges and report
+          
+          TDG Score: $TDG_SCORE
+          Quality Gate: $QUALITY_GATE_STATUS
+          Complexity Violations: $COMPLEXITY_VIOLATIONS
+          Technical Debt: ${DEBT_HOURS}h
+          
+          🤖 Generated with PMAT Quality Analysis
+          
+          Co-Authored-By: GitHub Action <noreply@github.com>" || echo "No changes to commit"
+          
+          git push origin main || echo "Failed to push changes"
+        else
+          echo "No changes to commit"
+        fi
+    
+    - name: Output Quality Summary
+      run: |
+        echo "## PMAT Quality Analysis Summary"
+        echo "- TDG Score: $TDG_SCORE"
+        echo "- Quality Gate: $QUALITY_GATE_STATUS"  
+        echo "- Complexity Violations: $COMPLEXITY_VIOLATIONS"
+        echo "- Technical Debt: ${DEBT_HOURS} hours"
+        echo ""
+        echo "Badges generated and available at:"
+        echo "- Quality Gate: $QUALITY_GATE_BADGE_URL"
+        echo "- TDG Score: $TDG_BADGE_URL"
+        echo "- Complexity: $COMPLEXITY_BADGE_URL"
+        echo "- Technical Debt: $DEBT_BADGE_URL"

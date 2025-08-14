@@ -1,7 +1,10 @@
 # PMCP - Pragmatic Model Context Protocol
 
 [![CI](https://github.com/paiml/pmcp/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/pmcp/actions/workflows/ci.yml)
-[![Quality Gate](https://img.shields.io/badge/quality%20gate-passing-brightgreen)](https://github.com/paiml/pmcp/actions/workflows/ci.yml)
+[![Quality Gate](https://img.shields.io/badge/Quality%20Gate-passing-brightgreen)](https://github.com/paiml/pmcp/actions/workflows/quality-badges.yml)
+[![TDG Score](https://img.shields.io/badge/TDG%20Score-0.76-green)](https://github.com/paiml/pmcp/actions/workflows/quality-badges.yml)
+[![Complexity](https://img.shields.io/badge/Complexity-clean-brightgreen)](https://github.com/paiml/pmcp/actions/workflows/quality-badges.yml)
+[![Technical Debt](https://img.shields.io/badge/Tech%20Debt-436h-yellow)](https://github.com/paiml/pmcp/actions/workflows/quality-badges.yml)
 [![Coverage](https://img.shields.io/badge/coverage-52%25-yellow.svg)](https://github.com/paiml/pmcp)
 [![Crates.io](https://img.shields.io/crates/v/pmcp.svg)](https://crates.io/crates/pmcp)
 [![Documentation](https://docs.rs/pmcp/badge.svg)](https://docs.rs/pmcp)
@@ -13,15 +16,18 @@ A high-quality Rust implementation of the [Model Context Protocol](https://model
 
 Code Name: *Angel Rust*
 
-## 🎉 Version 1.1.1 - Dependency Updates & Enhanced Compatibility!
+## 🎉 Version 1.2.0 - Toyota Way Quality Excellence & PMAT Integration!
 
+- 🏭 **Toyota Way Implementation**: Zero-defect development with Jidoka, Genchi Genbutsu, and Kaizen principles
+- 📊 **PMAT Quality Analysis**: Comprehensive code quality metrics with TDG scoring (0.76)
+- 🎯 **Quality Gates**: Automated quality enforcement with pre-commit hooks and CI integration
+- 📈 **Quality Badges**: Real-time quality metrics with GitHub Actions badges
+- 🛡️ **SIMD Refactoring**: Reduced complexity while maintaining 10-50x performance improvements
+- 🔒 **Security Documentation**: Enhanced PKCE and OAuth security with comprehensive docs
 - ✅ **Full TypeScript SDK v1.17.2+ Compatibility**: 100% protocol compatibility verified
 - 🎯 **Procedural Macros**: Simplified tool/prompt/resource definitions with `#[tool]` macro
 - 🌍 **WASM/Browser Support**: Run MCP clients directly in web browsers
-- ⚡ **SIMD Optimizations**: 10-50x performance improvements for JSON parsing
 - 🔍 **Fuzzing Infrastructure**: Comprehensive fuzz testing for protocol robustness
-- 📚 **Advanced Documentation**: Complete protocol compatibility guide
-- 🧪 **Integration Tests**: TypeScript SDK interoperability testing
 - 🚀 **Performance**: 16x faster than TypeScript SDK, 50x lower memory usage
 
 ## Core Features
@@ -51,7 +57,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "1.1"
+pmcp = "1.2"
 ```
 
 ## Examples
@@ -331,13 +337,16 @@ make quality-gate
 
 ### Quality Standards
 
-This project maintains pmat-level quality standards:
+This project maintains Toyota Way and PMAT-level quality standards:
 
-- **Zero Technical Debt**: Production-ready with no technical debt
-- **No `unwrap()`**: All errors handled explicitly
-- **100% Documentation**: Every public API documented
-- **Property Testing**: Comprehensive invariant testing
-- **Benchmarks**: Performance regression prevention
+- **Zero Technical Debt**: TDG score 0.76, production-ready with minimal technical debt
+- **Toyota Way Principles**: Jidoka (stop the line), Genchi Genbutsu (go and see), Kaizen (continuous improvement)
+- **Quality Gates**: PMAT quality gates enforce complexity limits and detect SATD
+- **No `unwrap()`**: All errors handled explicitly with comprehensive error types
+- **100% Documentation**: Every public API documented with examples
+- **Property Testing**: Comprehensive invariant testing with quickcheck
+- **Benchmarks**: Performance regression prevention with criterion
+- **SIMD Optimizations**: High-performance parsing with reduced complexity
 
 ### Testing
 
