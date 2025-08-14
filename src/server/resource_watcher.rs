@@ -11,6 +11,24 @@ use tokio::time::{interval, Instant};
 use tracing::{debug, error, info, warn};
 
 /// Configuration for resource watching.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::server::resource_watcher::WatchConfig;
+/// use std::time::Duration;
+///
+/// // Default configuration
+/// let config = WatchConfig::default();
+///
+/// // Custom configuration
+/// let custom_config = WatchConfig {
+///     debounce: Duration::from_millis(1000),
+///     patterns: vec!["**/*.rs".to_string(), "**/*.md".to_string()],
+///     ignore_patterns: vec!["**/target/**".to_string()],
+///     max_resources: 5000,
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct WatchConfig {
     /// Debounce duration for file changes.

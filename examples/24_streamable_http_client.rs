@@ -18,13 +18,13 @@
 //! Make sure to start the corresponding server example first!
 
 use pmcp::shared::streamable_http::{StreamableHttpTransport, StreamableHttpTransportConfig};
-use pmcp::{Client, ClientCapabilities, Result};
+use pmcp::{Client, ClientCapabilities};
 use serde_json::json;
 use tracing::info;
 use url::Url;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter("pmcp=info")

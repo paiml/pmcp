@@ -21,6 +21,17 @@ pub struct SseEvent {
 
 impl SseEvent {
     /// Create a new SSE event with data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::sse_parser::SseEvent;
+    ///
+    /// let event = SseEvent::new("Hello, world!");
+    /// assert_eq!(event.data, "Hello, world!");
+    /// assert!(event.id.is_none());
+    /// assert!(event.event.is_none());
+    /// ```
     pub fn new(data: impl Into<String>) -> Self {
         Self {
             id: None,
@@ -31,18 +42,48 @@ impl SseEvent {
     }
 
     /// Set the event ID.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::sse_parser::SseEvent;
+    ///
+    /// let event = SseEvent::new("data")
+    ///     .with_id("msg-123");
+    /// assert_eq!(event.id, Some("msg-123".to_string()));
+    /// ```
     pub fn with_id(mut self, id: impl Into<String>) -> Self {
         self.id = Some(id.into());
         self
     }
 
     /// Set the event type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::sse_parser::SseEvent;
+    ///
+    /// let event = SseEvent::new("data")
+    ///     .with_event("custom");
+    /// assert_eq!(event.event, Some("custom".to_string()));
+    /// ```
     pub fn with_event(mut self, event: impl Into<String>) -> Self {
         self.event = Some(event.into());
         self
     }
 
     /// Set the retry interval.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::sse_parser::SseEvent;
+    ///
+    /// let event = SseEvent::new("data")
+    ///     .with_retry(3000);
+    /// assert_eq!(event.retry, Some(3000));
+    /// ```
     pub fn with_retry(mut self, retry: u64) -> Self {
         self.retry = Some(retry);
         self
@@ -81,6 +122,15 @@ pub struct SseParser {
 
 impl SseParser {
     /// Create a new SSE parser.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::sse_parser::SseParser;
+    ///
+    /// let mut parser = SseParser::new();
+    /// assert!(parser.last_event_id().is_none());
+    /// ```
     pub fn new() -> Self {
         Self {
             buffer: String::new(),
@@ -90,6 +140,32 @@ impl SseParser {
     }
 
     /// Feed data to the parser and get parsed events.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::sse_parser::SseParser;
+    ///
+    /// let mut parser = SseParser::new();
+    /// 
+    /// // Simple event
+    /// let events = parser.feed("data: Hello\n\n");
+    /// assert_eq!(events.len(), 1);
+    /// assert_eq!(events[0].data, "Hello");
+    ///
+    /// // Event with ID
+    /// let events = parser.feed("id: 123\ndata: World\n\n");
+    /// assert_eq!(events[0].id, Some("123".to_string()));
+    /// assert_eq!(events[0].data, "World");
+    ///
+    /// // Multi-line data
+    /// let events = parser.feed("data: Line 1\ndata: Line 2\n\n");
+    /// assert_eq!(events[0].data, "Line 1\nLine 2");
+    ///
+    /// // Custom event type
+    /// let events = parser.feed("event: ping\ndata: pong\n\n");
+    /// assert_eq!(events[0].event, Some("ping".to_string()));
+    /// ```
     pub fn feed(&mut self, data: &str) -> Vec<SseEvent> {
         self.buffer.push_str(data);
         let mut events = Vec::new();

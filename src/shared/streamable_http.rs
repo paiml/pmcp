@@ -13,7 +13,30 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use url::Url;
 
-/// Options for sending messages
+/// Options for sending messages over streamable HTTP transport.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::streamable_http::SendOptions;
+///
+/// // Default options for a simple message
+/// let opts = SendOptions::default();
+/// assert!(opts.related_request_id.is_none());
+/// assert!(opts.resumption_token.is_none());
+///
+/// // Options with request correlation
+/// let opts = SendOptions {
+///     related_request_id: Some("req-123".to_string()),
+///     resumption_token: None,
+/// };
+///
+/// // Options for resuming after disconnection
+/// let opts = SendOptions {
+///     related_request_id: None,
+///     resumption_token: Some("event-456".to_string()),
+/// };
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct SendOptions {
     /// Related request ID for associating responses
@@ -23,6 +46,45 @@ pub struct SendOptions {
 }
 
 /// Configuration for the `StreamableHttpTransport`.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::streamable_http::StreamableHttpTransportConfig;
+/// use url::Url;
+///
+/// // Minimal configuration for stateless operation
+/// let config = StreamableHttpTransportConfig {
+///     url: Url::parse("http://localhost:8080").unwrap(),
+///     extra_headers: vec![],
+///     auth_provider: None,
+///     session_id: None,
+///     enable_json_response: false,
+///     on_resumption_token: None,
+/// };
+///
+/// // Configuration with session for stateful operation
+/// let config = StreamableHttpTransportConfig {
+///     url: Url::parse("http://localhost:8080").unwrap(),
+///     extra_headers: vec![
+///         ("X-API-Key".to_string(), "secret".to_string()),
+///     ],
+///     auth_provider: None,
+///     session_id: Some("session-123".to_string()),
+///     enable_json_response: false,
+///     on_resumption_token: None,
+/// };
+///
+/// // Configuration for simple request/response (no streaming)
+/// let config = StreamableHttpTransportConfig {
+///     url: Url::parse("http://localhost:8080").unwrap(),
+///     extra_headers: vec![],
+///     auth_provider: None,
+///     session_id: None,
+///     enable_json_response: true,  // JSON instead of SSE
+///     on_resumption_token: None,
+/// };
+/// ```
 #[derive(Clone)]
 pub struct StreamableHttpTransportConfig {
     /// The HTTP endpoint URL

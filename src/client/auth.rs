@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// OIDC discovery client for fetching server configuration.
-#[derive(Debug)]
 ///
 /// # Examples
 ///
@@ -34,6 +33,26 @@ use std::time::Duration;
 /// # Ok(())
 /// # }
 /// ```
+///
+/// ## Retry Behavior
+///
+/// ```rust
+/// use pmcp::client::auth::OidcDiscoveryClient;
+/// use std::time::Duration;
+///
+/// // Create client with specific retry behavior
+/// let client = OidcDiscoveryClient::with_settings(
+///     0,  // No retries
+///     Duration::from_secs(0)  // No delay
+/// );
+///
+/// // Client with aggressive retries
+/// let aggressive = OidcDiscoveryClient::with_settings(
+///     10,  // Many retries
+///     Duration::from_millis(100)  // Short delay
+/// );
+/// ```
+#[derive(Debug)]
 pub struct OidcDiscoveryClient {
     /// HTTP client for making requests.
     client: reqwest::Client,
@@ -94,6 +113,26 @@ impl OidcDiscoveryClient {
 
     /// Discover OIDC configuration from an issuer URL.
     /// Automatically retries on CORS or network errors.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::client::auth::OidcDiscoveryClient;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let client = OidcDiscoveryClient::new();
+    /// 
+    /// // Discover from various providers
+    /// let google = client.discover("https://accounts.google.com").await?;
+    /// let microsoft = client.discover("https://login.microsoftonline.com/common/v2.0").await?;
+    /// 
+    /// // URL normalization - trailing slashes are handled
+    /// let metadata1 = client.discover("https://auth.example.com").await?;
+    /// let metadata2 = client.discover("https://auth.example.com/").await?;
+    /// // Both will fetch from the same discovery endpoint
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn discover(&self, issuer_url: &str) -> Result<OidcDiscoveryMetadata> {
         let discovery_url = format!(
             "{}/.well-known/openid-configuration",

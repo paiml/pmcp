@@ -262,6 +262,7 @@ impl Transport for HttpTransport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{ClientRequest, Request, RequestId};
 
     #[test]
     fn test_http_config_default() {
@@ -269,6 +270,26 @@ mod tests {
         assert!(config.enable_pooling);
         assert_eq!(config.timeout, Duration::from_secs(30));
         assert_eq!(config.sse_endpoint, Some("/events".to_string()));
+        assert_eq!(config.max_idle_per_host, 10);
+        assert_eq!(config.headers.len(), 0);
+    }
+
+    #[test]
+    fn test_http_config_custom() {
+        let config = HttpConfig {
+            base_url: "http://example.com:3000".parse().unwrap(),
+            sse_endpoint: None,
+            timeout: Duration::from_secs(60),
+            headers: vec![("X-Custom".to_string(), "value".to_string())],
+            enable_pooling: false,
+            max_idle_per_host: 5,
+        };
+        assert_eq!(config.base_url.as_str(), "http://example.com:3000/");
+        assert!(config.sse_endpoint.is_none());
+        assert_eq!(config.timeout, Duration::from_secs(60));
+        assert_eq!(config.headers.len(), 1);
+        assert!(!config.enable_pooling);
+        assert_eq!(config.max_idle_per_host, 5);
     }
 
     #[test]
@@ -276,5 +297,112 @@ mod tests {
         let config = HttpConfig::default();
         let transport = HttpTransport::new(config);
         assert!(!transport.is_connected());
+    }
+
+    #[test]
+    fn test_http_transport_with_url() {
+        let transport = HttpTransport::with_url("http://localhost:9000".parse::<Url>().unwrap()).unwrap();
+        assert!(!transport.is_connected());
+        assert_eq!(transport.config.base_url.as_str(), "http://localhost:9000/");
+    }
+
+    #[test]
+    fn test_http_transport_debug() {
+        let config = HttpConfig::default();
+        let transport = HttpTransport::new(config);
+        let debug_str = format!("{:?}", transport);
+        assert!(debug_str.contains("HttpTransport"));
+        assert!(debug_str.contains("config"));
+        assert!(debug_str.contains("connected"));
+    }
+
+    #[tokio::test]
+    async fn test_http_transport_close() {
+        let config = HttpConfig::default();
+        let mut transport = HttpTransport::new(config);
+        
+        // Mark as connected first
+        *transport.connected.write() = true;
+        assert!(transport.is_connected());
+        
+        // Close should mark as disconnected
+        transport.close().await.unwrap();
+        assert!(!transport.is_connected());
+    }
+
+    #[tokio::test]
+    async fn test_connect_sse_no_endpoint() {
+        let config = HttpConfig {
+            base_url: "http://localhost:8080".parse().unwrap(),
+            sse_endpoint: None,
+            ..Default::default()
+        };
+        let transport = HttpTransport::new(config);
+        
+        // Should mark as connected even without SSE endpoint
+        transport.connect_sse().await.unwrap();
+        assert!(transport.is_connected());
+    }
+
+    #[tokio::test]
+    async fn test_send_request_not_connected() {
+        let config = HttpConfig::default();
+        let mut transport = HttpTransport::new(config);
+        
+        let message = TransportMessage::Request {
+            id: RequestId::from(1i64),
+            request: Request::Client(Box::new(ClientRequest::Ping)),
+        };
+        
+        // This will fail since we're not connected to a real server
+        let result = transport.send(message).await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_config_with_headers() {
+        let config = HttpConfig {
+            base_url: "http://localhost:8080".parse().unwrap(),
+            headers: vec![
+                ("Authorization".to_string(), "Bearer token".to_string()),
+                ("X-API-Key".to_string(), "secret".to_string()),
+            ],
+            ..Default::default()
+        };
+        assert_eq!(config.headers.len(), 2);
+        assert_eq!(config.headers[0].0, "Authorization");
+        assert_eq!(config.headers[0].1, "Bearer token");
+    }
+
+    #[test]
+    fn test_http_config_clone() {
+        let config = HttpConfig::default();
+        let cloned = config.clone();
+        assert_eq!(config.base_url, cloned.base_url);
+        assert_eq!(config.timeout, cloned.timeout);
+        assert_eq!(config.enable_pooling, cloned.enable_pooling);
+    }
+
+    #[tokio::test]
+    async fn test_message_queue_receive_closed() {
+        let config = HttpConfig::default();
+        let transport = HttpTransport::new(config);
+        
+        // Create a new receiver that's already closed
+        let (_, rx) = mpsc::channel::<TransportMessage>(1);
+        let mut transport = HttpTransport {
+            config: transport.config,
+            client: transport.client,
+            message_queue: Arc::new(AsyncMutex::new(rx)),
+            message_tx: transport.message_tx,
+            connected: transport.connected,
+        };
+        
+        // Receive should error with ConnectionClosed
+        let result = transport.receive().await;
+        assert!(result.is_err());
+        if let Err(crate::error::Error::Transport(e)) = result {
+            assert!(matches!(e, crate::error::TransportError::ConnectionClosed));
+        }
     }
 }

@@ -291,7 +291,29 @@ mod tests {
         let config = WebSocketConfig::default();
         assert!(config.auto_reconnect);
         assert_eq!(config.reconnect_delay, Duration::from_secs(1));
+        assert_eq!(config.max_reconnect_delay, Duration::from_secs(60));
+        assert!(config.max_reconnect_attempts.is_none());
         assert_eq!(config.ping_interval, Some(Duration::from_secs(30)));
+        assert_eq!(config.request_timeout, Duration::from_secs(30));
+        assert_eq!(config.url.as_str(), "ws://localhost:8080/");
+    }
+
+    #[test]
+    fn test_websocket_config_custom() {
+        let config = WebSocketConfig {
+            url: "wss://example.com:9000/ws".parse().unwrap(),
+            auto_reconnect: false,
+            reconnect_delay: Duration::from_secs(2),
+            max_reconnect_delay: Duration::from_secs(120),
+            max_reconnect_attempts: Some(5),
+            ping_interval: None,
+            request_timeout: Duration::from_secs(60),
+        };
+        assert_eq!(config.url.as_str(), "wss://example.com:9000/ws");
+        assert!(!config.auto_reconnect);
+        assert_eq!(config.reconnect_delay, Duration::from_secs(2));
+        assert_eq!(config.max_reconnect_attempts, Some(5));
+        assert!(config.ping_interval.is_none());
     }
 
     #[test]
@@ -299,5 +321,171 @@ mod tests {
         let config = WebSocketConfig::default();
         let transport = WebSocketTransport::new(config);
         assert!(!transport.is_connected());
+    }
+
+    #[test]
+    fn test_websocket_transport_with_url() {
+        let transport = WebSocketTransport::with_url("ws://test.example.com:3000".parse::<Url>().unwrap()).unwrap();
+        assert!(!transport.is_connected());
+        assert_eq!(transport.config.url.as_str(), "ws://test.example.com:3000/");
+    }
+
+    #[test]
+    fn test_websocket_config_clone() {
+        let config = WebSocketConfig::default();
+        let cloned = config.clone();
+        assert_eq!(config.url, cloned.url);
+        assert_eq!(config.auto_reconnect, cloned.auto_reconnect);
+        assert_eq!(config.reconnect_delay, cloned.reconnect_delay);
+    }
+
+    #[test]
+    fn test_websocket_transport_debug() {
+        let config = WebSocketConfig::default();
+        let transport = WebSocketTransport::new(config);
+        let debug_str = format!("{:?}", transport);
+        assert!(debug_str.contains("WebSocketTransport"));
+        assert!(debug_str.contains("config"));
+        assert!(debug_str.contains("state"));
+    }
+
+    #[test]
+    fn test_connection_state_transitions() {
+        let state = Arc::new(RwLock::new(ConnectionState::Disconnected));
+        
+        // Initial state
+        assert!(matches!(&*state.read(), ConnectionState::Disconnected));
+        
+        // Transition to connecting
+        {
+            let mut s = state.write();
+            *s = ConnectionState::Connecting;
+        }
+        assert!(matches!(&*state.read(), ConnectionState::Connecting));
+        
+        // Transition to connected
+        {
+            let mut s = state.write();
+            *s = ConnectionState::Connected;
+        }
+        assert!(matches!(&*state.read(), ConnectionState::Connected));
+        
+        // Transition to closing
+        {
+            let mut s = state.write();
+            *s = ConnectionState::Closing;
+        }
+        assert!(matches!(&*state.read(), ConnectionState::Closing));
+        
+        // Back to disconnected
+        {
+            let mut s = state.write();
+            *s = ConnectionState::Disconnected;
+        }
+        assert!(matches!(&*state.read(), ConnectionState::Disconnected));
+    }
+
+    #[tokio::test]
+    async fn test_websocket_close() {
+        let config = WebSocketConfig::default();
+        let mut transport = WebSocketTransport::new(config);
+        
+        // Set to connected state
+        {
+            let mut state = transport.state.write();
+            *state = ConnectionState::Connected;
+        }
+        assert!(transport.is_connected());
+        
+        // Close should transition through states
+        transport.close().await.unwrap();
+        assert!(!transport.is_connected());
+        assert!(matches!(&*transport.state.read(), ConnectionState::Disconnected));
+    }
+
+    #[tokio::test]
+    async fn test_send_when_not_connected() {
+        use crate::types::{ClientRequest, Request, RequestId};
+        
+        let config = WebSocketConfig::default();
+        let mut transport = WebSocketTransport::new(config);
+        
+        let message = TransportMessage::Request {
+            id: RequestId::from(1i64),
+            request: Request::Client(Box::new(ClientRequest::Ping)),
+        };
+        
+        // Should fail when not connected
+        let result = transport.send(message).await;
+        assert!(result.is_err());
+        if let Err(crate::error::Error::Transport(e)) = result {
+            assert!(matches!(e, crate::error::TransportError::ConnectionClosed));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_send_when_connected() {
+        use crate::types::{ClientRequest, Request, RequestId};
+        
+        let config = WebSocketConfig::default();
+        let mut transport = WebSocketTransport::new(config);
+        
+        // Set to connected state
+        {
+            let mut state = transport.state.write();
+            *state = ConnectionState::Connected;
+        }
+        
+        let message = TransportMessage::Request {
+            id: RequestId::from(1i64),
+            request: Request::Client(Box::new(ClientRequest::Ping)),
+        };
+        
+        // Should succeed when connected (though simplified implementation just returns Ok)
+        let result = transport.send(message).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_receive_when_channel_closed() {
+        let config = WebSocketConfig::default();
+        let transport = WebSocketTransport::new(config);
+        
+        // Create a new receiver that's already closed
+        let (_, rx) = mpsc::channel::<TransportMessage>(1);
+        let mut transport = WebSocketTransport {
+            config: transport.config,
+            state: transport.state,
+            message_tx: transport.message_tx,
+            message_rx: Arc::new(AsyncMutex::new(rx)),
+        };
+        
+        // Receive should error with ConnectionClosed
+        let result = transport.receive().await;
+        assert!(result.is_err());
+        if let Err(crate::error::Error::Transport(e)) = result {
+            assert!(matches!(e, crate::error::TransportError::ConnectionClosed));
+        }
+    }
+
+    #[test]
+    fn test_websocket_config_with_finite_retries() {
+        let config = WebSocketConfig {
+            url: "ws://localhost:8080".parse().unwrap(),
+            auto_reconnect: true,
+            max_reconnect_attempts: Some(3),
+            ..Default::default()
+        };
+        assert_eq!(config.max_reconnect_attempts, Some(3));
+    }
+
+    #[test]
+    fn test_websocket_config_with_no_ping() {
+        let config = WebSocketConfig {
+            url: "ws://localhost:8080".parse().unwrap(),
+            ping_interval: None,
+            ..Default::default()
+        };
+        assert!(config.ping_interval.is_none());
     }
 }

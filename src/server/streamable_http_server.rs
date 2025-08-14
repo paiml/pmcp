@@ -46,11 +46,17 @@ pub trait EventStore: Send + Sync {
     async fn get_stream_for_event(&self, event_id: &str) -> Result<Option<String>>;
 }
 
+/// Type alias for event list
+type EventList = Vec<(String, TransportMessage)>;
+
+/// Type alias for events map
+type EventsMap = HashMap<String, EventList>;
+
 /// In-memory event store implementation
 #[derive(Debug, Default)]
 pub struct InMemoryEventStore {
     /// Events by stream ID
-    events: Arc<RwLock<HashMap<String, Vec<(String, TransportMessage)>>>>,
+    events: Arc<RwLock<EventsMap>>,
     /// Event ID to stream ID mapping
     event_to_stream: Arc<RwLock<HashMap<String, String>>>,
     /// Ordered list of all event IDs
@@ -116,7 +122,41 @@ impl EventStore for InMemoryEventStore {
     }
 }
 
-/// Configuration for the streamable HTTP server
+/// Type alias for session callback
+type SessionCallback = Box<dyn Fn(&str) + Send + Sync>;
+
+/// Configuration for the streamable HTTP server.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::server::streamable_http_server::StreamableHttpServerConfig;
+/// use std::sync::Arc;
+///
+/// // Stateless configuration (for serverless/Lambda)
+/// let config = StreamableHttpServerConfig {
+///     session_id_generator: None,  // No sessions
+///     enable_json_response: false,
+///     event_store: None,
+///     on_session_initialized: None,
+///     on_session_closed: None,
+/// };
+///
+/// // Stateful configuration with custom session IDs
+/// let config = StreamableHttpServerConfig {
+///     session_id_generator: Some(Box::new(|| {
+///         format!("session-{}", uuid::Uuid::new_v4())
+///     })),
+///     enable_json_response: false,
+///     event_store: None,
+///     on_session_initialized: Some(Box::new(|session_id| {
+///         println!("Session started: {}", session_id);
+///     })),
+///     on_session_closed: Some(Box::new(|session_id| {
+///         println!("Session ended: {}", session_id);
+///     })),
+/// };
+/// ```
 pub struct StreamableHttpServerConfig {
     /// Function to generate session IDs (None for stateless mode)
     pub session_id_generator: Option<Box<dyn Fn() -> String + Send + Sync>>,
@@ -125,9 +165,9 @@ pub struct StreamableHttpServerConfig {
     /// Event store for resumability
     pub event_store: Option<Arc<dyn EventStore>>,
     /// Callback when session is initialized
-    pub on_session_initialized: Option<Box<dyn Fn(&str) + Send + Sync>>,
+    pub on_session_initialized: Option<SessionCallback>,
     /// Callback when session is closed
-    pub on_session_closed: Option<Box<dyn Fn(&str) + Send + Sync>>,
+    pub on_session_closed: Option<SessionCallback>,
 }
 
 impl std::fmt::Debug for StreamableHttpServerConfig {

@@ -36,6 +36,15 @@ pub struct StdioTransport {
 
 impl StdioTransport {
     /// Create a new stdio transport.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::StdioTransport;
+    ///
+    /// let transport = StdioTransport::new();
+    /// // Transport is ready to use
+    /// ```
     pub fn new() -> Self {
         Self {
             stdin: Mutex::new(BufReader::new(tokio::io::stdin())),
@@ -45,6 +54,8 @@ impl StdioTransport {
     }
 
     /// Parse a content-length header.
+    ///
+    /// Parses lines like "Content-Length: 42" to extract the length.
     fn parse_content_length(line: &str) -> Option<usize> {
         line.strip_prefix(CONTENT_LENGTH_HEADER)
             .and_then(|content| content.trim().parse().ok())

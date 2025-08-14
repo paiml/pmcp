@@ -1,6 +1,6 @@
 #[cfg(feature = "streamable-http")]
 mod sse_parser_tests {
-    use pmcp::shared::sse_parser::{SseEvent, SseParser};
+    use pmcp::shared::sse_parser::SseParser;
 
     #[test]
     fn test_simple_message() {

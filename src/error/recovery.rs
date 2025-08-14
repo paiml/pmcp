@@ -13,6 +13,34 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
 /// Error recovery strategy.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::error::recovery::RecoveryStrategy;
+/// use std::time::Duration;
+///
+/// // Fixed retry strategy
+/// let fixed = RecoveryStrategy::RetryFixed {
+///     attempts: 3,
+///     delay: Duration::from_millis(500),
+/// };
+///
+/// // Exponential backoff strategy
+/// let exponential = RecoveryStrategy::RetryExponential {
+///     attempts: 5,
+///     initial_delay: Duration::from_millis(100),
+///     max_delay: Duration::from_secs(30),
+///     multiplier: 2.0,
+/// };
+///
+/// // Circuit breaker strategy
+/// let circuit = RecoveryStrategy::CircuitBreaker {
+///     failure_threshold: 5,
+///     success_threshold: 3,
+///     timeout: Duration::from_secs(60),
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub enum RecoveryStrategy {
     /// Retry with fixed delay.
@@ -53,6 +81,39 @@ pub enum RecoveryStrategy {
 }
 
 /// Error recovery policy.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::error::{recovery::RecoveryPolicy, ErrorCode};
+/// use pmcp::error::recovery::RecoveryStrategy;
+/// use std::time::Duration;
+///
+/// // Create a default policy
+/// let default_policy = RecoveryPolicy::default();
+///
+/// // Create custom policy
+/// let mut policy = RecoveryPolicy::new(
+///     RecoveryStrategy::RetryFixed {
+///         attempts: 2,
+///         delay: Duration::from_secs(1),
+///     }
+/// );
+///
+/// // Add strategy for specific error
+/// policy.add_strategy(
+///     ErrorCode::REQUEST_TIMEOUT,
+///     RecoveryStrategy::RetryExponential {
+///         attempts: 5,
+///         initial_delay: Duration::from_millis(100),
+///         max_delay: Duration::from_secs(10),
+///         multiplier: 2.0,
+///     }
+/// );
+///
+/// // Get strategy for error code
+/// let strategy = policy.get_strategy(&ErrorCode::REQUEST_TIMEOUT);
+/// ```
 #[derive(Debug, Clone)]
 pub struct RecoveryPolicy {
     /// Recovery strategy for each error code.
@@ -199,6 +260,19 @@ impl std::fmt::Debug for CircuitBreaker {
 }
 
 /// Circuit breaker configuration.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::error::recovery::CircuitBreakerConfig;
+/// use std::time::Duration;
+///
+/// let config = CircuitBreakerConfig {
+///     failure_threshold: 5,
+///     success_threshold: 3,
+///     timeout: Duration::from_secs(60),
+/// };
+/// ```
 #[derive(Debug, Clone)]
 pub struct CircuitBreakerConfig {
     /// Number of failures before opening circuit.
@@ -213,6 +287,21 @@ pub struct CircuitBreakerConfig {
 
 impl CircuitBreaker {
     /// Create a new circuit breaker.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::error::recovery::{CircuitBreaker, CircuitBreakerConfig};
+    /// use std::time::Duration;
+    ///
+    /// let config = CircuitBreakerConfig {
+    ///     failure_threshold: 3,
+    ///     success_threshold: 2,
+    ///     timeout: Duration::from_secs(30),
+    /// };
+    ///
+    /// let circuit_breaker = CircuitBreaker::new(config);
+    /// ```
     pub fn new(config: CircuitBreakerConfig) -> Self {
         Self {
             state: Arc::new(RwLock::new(CircuitState::Closed)),
@@ -224,6 +313,26 @@ impl CircuitBreaker {
     }
 
     /// Check if the circuit allows requests.
+    ///
+    /// Returns `true` if requests are allowed, `false` if the circuit is open.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::error::recovery::{CircuitBreaker, CircuitBreakerConfig};
+    /// use std::time::Duration;
+    ///
+    /// # async fn example() {
+    /// let config = CircuitBreakerConfig {
+    ///     failure_threshold: 3,
+    ///     success_threshold: 2,
+    ///     timeout: Duration::from_secs(30),
+    /// };
+    ///
+    /// let circuit_breaker = CircuitBreaker::new(config);
+    /// let can_proceed = circuit_breaker.allow_request().await;
+    /// # }
+    /// ```
     pub async fn allow_request(&self) -> bool {
         let state = *self.state.read().await;
 
@@ -323,6 +432,15 @@ impl std::fmt::Debug for RecoveryExecutor {
 
 impl RecoveryExecutor {
     /// Create a new recovery executor.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::error::recovery::{RecoveryExecutor, RecoveryPolicy};
+    ///
+    /// let policy = RecoveryPolicy::default();
+    /// let executor = RecoveryExecutor::new(policy);
+    /// ```
     pub fn new(policy: RecoveryPolicy) -> Self {
         Self {
             policy,
@@ -557,6 +675,26 @@ impl RecoveryExecutor {
 }
 
 /// Helper function to create a retry handler.
+///
+/// Retries an operation with fixed delay between attempts.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use pmcp::error::recovery::with_retry;
+/// use std::time::Duration;
+/// use serde_json::json;
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// let result = with_retry(3, Duration::from_millis(500), || {
+///     async {
+///         // Simulated operation that might fail
+///         Ok(json!({"success": true}))
+///     }
+/// }).await?;
+/// # Ok(())
+/// # }
+/// ```
 pub async fn with_retry<F, Fut>(
     attempts: u32,
     delay: Duration,

@@ -13,6 +13,36 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer};
 
 /// Logging configuration.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::logging::{LogConfig, LogLevel, LogFormat};
+/// use std::collections::HashMap;
+///
+/// let config = LogConfig {
+///     level: LogLevel::Info,
+///     timestamps: true,
+///     source_location: false,
+///     correlation_ids: true,
+///     custom_fields: HashMap::new(),
+///     format: LogFormat::Json,
+/// };
+///
+/// // With custom fields
+/// let mut custom_fields = HashMap::new();
+/// custom_fields.insert("service".to_string(), serde_json::json!("my-service"));
+/// custom_fields.insert("version".to_string(), serde_json::json!("1.0.0"));
+///
+/// let config_with_fields = LogConfig {
+///     level: LogLevel::Debug,
+///     timestamps: true,
+///     source_location: true,
+///     correlation_ids: true,
+///     custom_fields,
+///     format: LogFormat::Pretty,
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogConfig {
     /// Log level.
@@ -35,6 +65,25 @@ pub struct LogConfig {
 }
 
 /// Log level.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::logging::LogLevel;
+///
+/// let levels = vec![
+///     LogLevel::Trace,
+///     LogLevel::Debug,
+///     LogLevel::Info,
+///     LogLevel::Warn,
+///     LogLevel::Error,
+/// ];
+///
+/// // Use the levels
+/// for level in levels {
+///     println!("Log level: {:?}", level);
+/// }
+/// ```
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
@@ -51,6 +100,22 @@ pub enum LogLevel {
 }
 
 /// Log format.
+///
+/// # Examples
+///
+/// ```rust
+/// use pmcp::shared::logging::LogFormat;
+///
+/// let formats = vec![
+///     LogFormat::Json,
+///     LogFormat::Pretty,
+///     LogFormat::Compact,
+/// ];
+///
+/// for format in formats {
+///     println!("Format: {:?}", format);
+/// }
+/// ```
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LogFormat {
@@ -76,6 +141,27 @@ impl Default for LogConfig {
 }
 
 /// Initialize logging with configuration.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use pmcp::shared::logging::{init_logging, LogConfig, LogLevel, LogFormat};
+/// use std::collections::HashMap;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let config = LogConfig {
+///     level: LogLevel::Info,
+///     timestamps: true,
+///     source_location: true,
+///     correlation_ids: true,
+///     custom_fields: HashMap::new(),
+///     format: LogFormat::Json,
+/// };
+///
+/// init_logging(config)?;
+/// # Ok(())
+/// # }
+/// ```
 pub fn init_logging(config: LogConfig) -> Result<(), Box<dyn std::error::Error>> {
     let env_filter = match config.level {
         LogLevel::Trace => EnvFilter::new("trace"),
@@ -120,6 +206,15 @@ impl std::fmt::Debug for CorrelationLayer {
 
 impl CorrelationLayer {
     /// Create a new correlation layer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmcp::shared::logging::{CorrelationLayer, LogConfig};
+    ///
+    /// let config = LogConfig::default();
+    /// let layer = CorrelationLayer::new(config);
+    /// ```
     pub fn new(config: LogConfig) -> Self {
         Self { config }
     }

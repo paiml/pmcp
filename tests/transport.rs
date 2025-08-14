@@ -3,7 +3,8 @@ use pmcp::server::Server;
 use pmcp::shared::streamable_http::{StreamableHttpTransport, StreamableHttpTransportConfig};
 use pmcp::shared::{Transport, TransportMessage};
 use pmcp::types::{ClientCapabilities, ClientRequest, Implementation, InitializeParams, Request};
-use pmcp::Result;
+// Use boxed error for tests to satisfy clippy
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,16 +19,18 @@ async fn test_streamable_http_transport_send_receive() -> Result<()> {
         Server::builder()
             .name("test-server")
             .version("1.0.0")
-            .build()?,
+            .build()
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
     ));
     let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
     let http_server = StreamableHttpServer::new(addr, server);
-    let (server_addr, server_task) = http_server.start().await?;
+    let (server_addr, server_task) = http_server.start().await
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
     // Setup the client transport
     let client_config = StreamableHttpTransportConfig {
         url: Url::parse(&format!("http://{}", server_addr))
-            .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+            .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
         extra_headers: vec![],
         auth_provider: None,
         session_id: None,
@@ -52,11 +55,13 @@ async fn test_streamable_http_transport_send_receive() -> Result<()> {
     // Send the initialization request
     timeout(Duration::from_secs(5), client_transport.send(init_message))
         .await
-        .expect("send should not time out")?;
+        .expect("send should not time out")
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
     let init_response = timeout(Duration::from_secs(5), client_transport.receive())
         .await
-        .expect("receive should not time out")?;
+        .expect("receive should not time out")
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
     // Verify the initialization response
     assert!(matches!(init_response, TransportMessage::Response(_)));
@@ -69,11 +74,13 @@ async fn test_streamable_http_transport_send_receive() -> Result<()> {
 
     timeout(Duration::from_secs(5), client_transport.send(ping_message))
         .await
-        .expect("send should not time out")?;
+        .expect("send should not time out")
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
     let ping_response = timeout(Duration::from_secs(5), client_transport.receive())
         .await
-        .expect("receive should not time out")?;
+        .expect("receive should not time out")
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
     // Verify the ping response
     assert!(matches!(ping_response, TransportMessage::Response(_)));

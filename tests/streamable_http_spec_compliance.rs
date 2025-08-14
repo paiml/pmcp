@@ -8,11 +8,18 @@ mod spec_compliance_tests {
     use pmcp::types::{
         ClientCapabilities, ClientRequest, Implementation, InitializeParams, Request,
     };
-    use pmcp::Result;
     use std::net::{Ipv4Addr, SocketAddr};
     use std::sync::Arc;
     use tokio::sync::Mutex;
     use url::Url;
+    
+    // Use boxed error for tests to satisfy clippy's large_enum_variant warning
+    type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+    
+    // Helper to convert pmcp::Error to boxed error
+    fn box_err(e: pmcp::Error) -> Box<dyn std::error::Error + Send + Sync> {
+        Box::new(e)
+    }
 
     // ==================== BASELINE TESTS (BOTH MODES) ====================
 
@@ -23,11 +30,11 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         let client = reqwest::Client::new();
         let url = format!("http://{}", server_addr);
@@ -79,11 +86,11 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         let client = reqwest::Client::new();
         let url = format!("http://{}", server_addr);
@@ -136,16 +143,16 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         // First initialize to establish a session (in stateful mode)
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -166,8 +173,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
         let session_id = client.session_id();
 
         // Now send a non-init request WITHOUT protocol version header
@@ -214,16 +221,16 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         // First initialize to establish we're testing non-init requests
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -244,8 +251,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
         let session_id = client.session_id();
 
         // Test: Non-init request without protocol version header → should it be 400?
@@ -289,16 +296,16 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         // Initialize first
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -319,8 +326,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
 
         // Get the negotiated protocol version from the client
         let protocol_version = client
@@ -328,7 +335,7 @@ mod spec_compliance_tests {
             .unwrap_or_else(|| pmcp::LATEST_PROTOCOL_VERSION.to_string());
 
         // Send a notification
-        let notification_message = TransportMessage::Notification(
+        let _notification_message = TransportMessage::Notification(
             pmcp::types::Notification::Client(pmcp::types::ClientNotification::Initialized),
         );
 
@@ -379,16 +386,16 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         // Explicitly use stateful mode (default)
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None, // No session ID initially
@@ -409,8 +416,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
 
         // Session ID should be created
         assert!(
@@ -428,16 +435,16 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(box_err)?;
 
         // Initialize to get session
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -458,8 +465,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
         let session_id = client.session_id().expect("Should have session ID");
 
         let reqwest_client = reqwest::Client::new();
@@ -502,7 +509,7 @@ mod spec_compliance_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(box_err)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let config = StreamableHttpServerConfig {
@@ -513,7 +520,7 @@ mod spec_compliance_tests {
             on_session_closed: None,
         };
         let http_server = StreamableHttpServer::with_config(addr, server, config);
-        http_server.start().await
+        http_server.start().await.map_err(box_err)
     }
 
     #[tokio::test]
@@ -522,7 +529,7 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -543,8 +550,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
 
         // No session ID should be created in stateless mode
         assert!(
@@ -562,7 +569,7 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -584,8 +591,8 @@ mod spec_compliance_tests {
         };
 
         // First initialization
-        client.send(init_message.clone()).await?;
-        let _response1 = client.receive().await?;
+        client.send(init_message.clone()).await.map_err(box_err)?;
+        let _response1 = client.receive().await.map_err(box_err)?;
 
         // Second initialization - should also succeed in stateless mode
         let init_message2 = TransportMessage::Request {
@@ -600,8 +607,8 @@ mod spec_compliance_tests {
             }))),
         };
 
-        client.send(init_message2).await?;
-        let _response2 = client.receive().await?;
+        client.send(init_message2).await.map_err(box_err)?;
+        let _response2 = client.receive().await.map_err(box_err)?;
 
         // Both should succeed in stateless mode
 
@@ -615,7 +622,7 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None, // No session ID
@@ -630,8 +637,8 @@ mod spec_compliance_tests {
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await?;
-        let _response = client.receive().await?;
+        client.send(ping_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
 
         // Should succeed without session ID in stateless mode
 
@@ -645,7 +652,7 @@ mod spec_compliance_tests {
 
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| pmcp::Error::Internal(e.to_string())).map_err(box_err)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: Some("arbitrary-session-id".to_string()), // Arbitrary session ID
@@ -660,8 +667,8 @@ mod spec_compliance_tests {
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await?;
-        let _response = client.receive().await?;
+        client.send(ping_message).await.map_err(box_err)?;
+        let _response = client.receive().await.map_err(box_err)?;
 
         // Should succeed, ignoring the arbitrary session ID
 

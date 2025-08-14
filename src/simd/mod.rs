@@ -13,6 +13,21 @@ pub mod json {
 
     /// Fast SIMD-based whitespace detection
     ///
+    /// Uses AVX2 instructions to process 32 bytes at a time for efficient whitespace detection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::simd::json::find_whitespace_simd;
+    ///
+    /// # #[cfg(target_arch = "x86_64")]
+    /// # unsafe fn example() {
+    /// let text = b"hello world\ttest\nmore";
+    /// let positions = find_whitespace_simd(text);
+    /// // Returns positions of ' ', '\t', '\n' characters
+    /// # }
+    /// ```
+    ///
     /// # Safety
     /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.
     #[cfg(target_arch = "x86_64")]
@@ -71,6 +86,23 @@ pub mod json {
     }
 
     /// SIMD-accelerated string validation (UTF-8)
+    ///
+    /// Validates UTF-8 byte sequences using AVX2 instructions for improved performance.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::simd::json::validate_utf8_simd;
+    ///
+    /// # #[cfg(target_arch = "x86_64")]
+    /// # unsafe fn example() {
+    /// let valid_utf8 = "Hello, 世界! 🚀".as_bytes();
+    /// assert!(validate_utf8_simd(valid_utf8));
+    ///
+    /// let invalid_utf8 = &[0xC0, 0x80]; // Invalid UTF-8 sequence
+    /// assert!(!validate_utf8_simd(invalid_utf8));
+    /// # }
+    /// ```
     ///
     /// # Safety
     /// This function requires AVX2 CPU support. Caller must ensure the CPU supports AVX2.

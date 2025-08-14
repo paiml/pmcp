@@ -16,7 +16,7 @@
 use async_trait::async_trait;
 use pmcp::server::streamable_http_server::{StreamableHttpServer, StreamableHttpServerConfig};
 use pmcp::types::capabilities::ServerCapabilities;
-use pmcp::{Result, Server, ToolHandler};
+use pmcp::{Server, ToolHandler};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -31,7 +31,7 @@ struct EchoTool;
 
 #[async_trait]
 impl ToolHandler for EchoTool {
-    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let message = args
             .get("message")
             .and_then(|v| v.as_str())
@@ -62,7 +62,7 @@ struct CalculatorTool;
 
 #[async_trait]
 impl ToolHandler for CalculatorTool {
-    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let params: CalculatorArgs = serde_json::from_value(args)
             .map_err(|e| pmcp::Error::validation(format!("Invalid arguments: {}", e)))?;
 
@@ -101,7 +101,7 @@ struct RandomNumberTool;
 
 #[async_trait]
 impl ToolHandler for RandomNumberTool {
-    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let min = args.get("min").and_then(|v| v.as_i64()).unwrap_or(0);
         let max = args.get("max").and_then(|v| v.as_i64()).unwrap_or(100);
 
@@ -130,7 +130,7 @@ struct ServerInfoTool;
 
 #[async_trait]
 impl ToolHandler for ServerInfoTool {
-    async fn handle(&self, _args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, _args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         Ok(json!({
             "message": "This is a stateless server - no session management",
             "server_mode": "stateless",
@@ -147,7 +147,7 @@ impl ToolHandler for ServerInfoTool {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter("pmcp=info")
@@ -164,7 +164,8 @@ async fn main() -> Result<()> {
         .tool("calculate", CalculatorTool)
         .tool("random", RandomNumberTool)
         .tool("server_info", ServerInfoTool)
-        .build()?;
+        .build()
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     // Wrap server in Arc<Mutex<>> for sharing
     let server = Arc::new(Mutex::new(server));
@@ -187,7 +188,8 @@ async fn main() -> Result<()> {
     let http_server = StreamableHttpServer::with_config(addr, server, config);
 
     // Start the server
-    let (bound_addr, server_handle) = http_server.start().await?;
+    let (bound_addr, server_handle) = http_server.start().await
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     println!("╔════════════════════════════════════════════════════════════╗");
     println!("║       STATELESS STREAMABLE HTTP SERVER RUNNING            ║");
@@ -223,7 +225,7 @@ async fn main() -> Result<()> {
     // Keep the server running
     server_handle
         .await
-        .map_err(|e| pmcp::Error::Internal(e.to_string()))?;
+        .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error>)?;
 
     Ok(())
 }

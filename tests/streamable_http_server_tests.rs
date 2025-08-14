@@ -7,12 +7,11 @@ mod streamable_http_server_tests {
     use pmcp::types::{
         ClientCapabilities, ClientRequest, Implementation, InitializeParams, Request,
     };
-    use pmcp::Result;
+    // Use boxed error for tests to satisfy clippy
+    type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
     use std::net::{Ipv4Addr, SocketAddr};
     use std::sync::Arc;
-    use std::time::Duration;
     use tokio::sync::Mutex;
-    use tokio::time::timeout;
     use url::Url;
 
     #[tokio::test]
@@ -22,16 +21,16 @@ mod streamable_http_server_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Setup client
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -53,8 +52,8 @@ mod streamable_http_server_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Verify session ID was assigned
         assert!(
@@ -73,16 +72,16 @@ mod streamable_http_server_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Setup client without session
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None, // No session ID
@@ -114,7 +113,7 @@ mod streamable_http_server_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
 
@@ -127,12 +126,12 @@ mod streamable_http_server_tests {
         };
 
         let http_server = StreamableHttpServer::with_config(addr, server, config);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Setup client
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -154,8 +153,8 @@ mod streamable_http_server_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // No session ID should be generated in stateless mode
         assert!(
@@ -169,8 +168,8 @@ mod streamable_http_server_tests {
             request: Request::Client(Box::new(ClientRequest::Ping)),
         };
 
-        client.send(ping_message).await?;
-        let _response = client.receive().await?;
+        client.send(ping_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         server_task.abort();
         Ok(())
@@ -183,16 +182,16 @@ mod streamable_http_server_tests {
             Server::builder()
                 .name("test-server")
                 .version("1.0.0")
-                .build()?,
+                .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?,
         ));
         let addr = SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0);
         let http_server = StreamableHttpServer::new(addr, server);
-        let (server_addr, server_task) = http_server.start().await?;
+        let (server_addr, server_task) = http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Setup client
         let client_config = StreamableHttpTransportConfig {
             url: Url::parse(&format!("http://{}", server_addr))
-                .map_err(|e| pmcp::Error::Internal(e.to_string()))?,
+                .map_err(|e| Box::new(pmcp::Error::Internal(e.to_string())) as Box<dyn std::error::Error + Send + Sync>)?,
             extra_headers: vec![],
             auth_provider: None,
             session_id: None,
@@ -214,8 +213,8 @@ mod streamable_http_server_tests {
             }))),
         };
 
-        client.send(init_message).await?;
-        let _response = client.receive().await?;
+        client.send(init_message).await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+        let _response = client.receive().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Protocol version should be set after initialization
         assert!(

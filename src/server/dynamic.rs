@@ -19,6 +19,26 @@ use tracing::info;
 type CapabilityListener = Box<dyn Fn(&ServerCapabilities) + Send + Sync>;
 
 /// Dynamic server manager for runtime configuration
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use pmcp::server::dynamic::DynamicServerManager;
+/// use pmcp::server::Server;
+/// use std::sync::Arc;
+///
+/// # async fn example() -> pmcp::Result<()> {
+/// let server = Server::builder()
+///     .name("dynamic-server")
+///     .version("1.0.0")
+///     .build()?;
+/// let server = Arc::new(server);
+///
+/// let manager = DynamicServerManager::new(server.clone());
+/// // Now you can add/remove tools, prompts, resources at runtime
+/// # Ok(())
+/// # }
+/// ```
 pub struct DynamicServerManager {
     /// The server instance
     server: Arc<Server>,
@@ -42,6 +62,25 @@ pub struct DynamicServerManager {
 
 impl DynamicServerManager {
     /// Create a new dynamic server manager
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pmcp::server::dynamic::DynamicServerManager;
+/// use pmcp::server::Server;
+    /// use std::sync::Arc;
+    ///
+    /// # async fn example() -> pmcp::Result<()> {
+    /// let server = Server::builder()
+    ///     .name("test-server")
+    ///     .version("1.0.0")
+    ///     .build()?;
+    /// let server_arc = Arc::new(server);
+    ///
+    /// let manager = DynamicServerManager::new(server_arc);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(server: Arc<Server>) -> Self {
         Self {
             server,
@@ -54,6 +93,8 @@ impl DynamicServerManager {
     }
 
     /// Add a tool at runtime
+    ///
+    /// Adds a tool handler to the dynamic registry for runtime tool availability.
     pub async fn add_tool(
         &self,
         name: impl Into<String>,

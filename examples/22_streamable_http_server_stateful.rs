@@ -22,7 +22,7 @@
 use async_trait::async_trait;
 use pmcp::server::streamable_http_server::StreamableHttpServer;
 use pmcp::types::capabilities::ServerCapabilities;
-use pmcp::{Result, Server, ToolHandler};
+use pmcp::{Server, ToolHandler};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::net::{Ipv4Addr, SocketAddr};
@@ -37,7 +37,7 @@ struct EchoTool;
 
 #[async_trait]
 impl ToolHandler for EchoTool {
-    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let message = args
             .get("message")
             .and_then(|v| v.as_str())
@@ -68,7 +68,7 @@ struct CalculatorTool;
 
 #[async_trait]
 impl ToolHandler for CalculatorTool {
-    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         let params: CalculatorArgs = serde_json::from_value(args)
             .map_err(|e| pmcp::Error::validation(format!("Invalid arguments: {}", e)))?;
 
@@ -107,7 +107,7 @@ struct SessionInfoTool;
 
 #[async_trait]
 impl ToolHandler for SessionInfoTool {
-    async fn handle(&self, _args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, _args: Value, _extra: pmcp::RequestHandlerExtra) -> pmcp::Result<Value> {
         // In a real implementation, we could access session information
         // For now, return basic info
         Ok(json!({
@@ -120,7 +120,7 @@ impl ToolHandler for SessionInfoTool {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter("pmcp=info")
@@ -136,7 +136,7 @@ async fn main() -> Result<()> {
         .tool("echo", EchoTool)
         .tool("calculate", CalculatorTool)
         .tool("session_info", SessionInfoTool)
-        .build()?;
+        .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     // Wrap server in Arc<Mutex<>> for sharing
     let server = Arc::new(Mutex::new(server));
@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
     let http_server = StreamableHttpServer::new(addr, server);
 
     // Start the server
-    let (bound_addr, server_handle) = http_server.start().await?;
+    let (bound_addr, server_handle) = http_server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     println!("╔════════════════════════════════════════════════════════════╗");
     println!("║        STATEFUL STREAMABLE HTTP SERVER RUNNING            ║");
