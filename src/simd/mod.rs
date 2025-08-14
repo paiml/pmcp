@@ -96,7 +96,7 @@ pub mod json {
         let len = input.len();
 
         if first_byte < 0xC0 {
-            return false; // Invalid continuation byte
+            false // Invalid continuation byte
         } else if first_byte < 0xE0 {
             // 2-byte sequence
             validate_2byte_sequence(input, start, len)
