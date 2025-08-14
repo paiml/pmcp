@@ -1,3 +1,5 @@
+#![cfg(feature = "streamable-http")]
+
 use pmcp::server::streamable_http_server::StreamableHttpServer;
 use pmcp::server::Server;
 use pmcp::shared::streamable_http::{StreamableHttpTransport, StreamableHttpTransportConfig};
