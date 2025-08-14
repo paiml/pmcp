@@ -2,13 +2,14 @@
 
 pub mod batch;
 pub mod context;
+pub mod event_store;
 pub mod logging;
 pub mod middleware;
 pub mod protocol;
 pub mod protocol_helpers;
 pub mod reconnect;
 pub mod session;
-pub mod sse;
+pub mod sse_parser;
 pub mod stdio;
 pub mod transport;
 pub mod uri_template;
@@ -34,6 +35,10 @@ pub mod streamable_http;
 // Re-export commonly used types
 pub use batch::{BatchRequest, BatchResponse};
 pub use context::{ClientInfo, ContextPropagator, RequestContext};
+pub use event_store::{
+    EventStore, EventStoreConfig, InMemoryEventStore, MessageDirection, ResumptionManager,
+    ResumptionState, ResumptionToken, StoredEvent,
+};
 pub use logging::{init_logging, CorrelatedLogger, LogConfig, LogEntry, LogFormat, LogLevel};
 pub use middleware::{
     AuthMiddleware, LoggingMiddleware, Middleware, MiddlewareChain, RetryMiddleware,
@@ -46,6 +51,7 @@ pub use reconnect::{ReconnectConfig, ReconnectGuard, ReconnectManager};
 pub use session::{Session, SessionConfig, SessionManager};
 pub use stdio::StdioTransport;
 pub use transport::{Transport, TransportMessage};
+pub use uri_template::UriTemplate;
 
 #[cfg(all(feature = "websocket", not(target_arch = "wasm32")))]
 pub use websocket::{WebSocketConfig, WebSocketTransport};

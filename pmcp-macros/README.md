@@ -16,9 +16,9 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = { version = "0.6", features = ["macros"] }
+pmcp = { version = "1.1", features = ["macros"] }
 serde = { version = "1.0", features = ["derive"] }
-schemars = "0.8"
+schemars = "1.0"
 ```
 
 ## Usage

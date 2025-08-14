@@ -1,7 +1,7 @@
 //! Example showing ResourceWatcher for monitoring file system changes.
 
 use async_trait::async_trait;
-use pmcp::error::Result;
+use pmcp::error::Result as PmcpResult;
 #[cfg(feature = "resource-watcher")]
 use pmcp::server::resource_watcher::{ResourceWatcher, ResourceWatcherBuilder};
 use pmcp::server::{ResourceHandler, Server};
@@ -39,7 +39,7 @@ impl FileSystemResourceHandler {
     async fn start_watching(
         &self,
         notification_tx: mpsc::Sender<pmcp::types::protocol::Notification>,
-    ) -> Result<()> {
+    ) -> PmcpResult<()> {
         let (tx, mut rx) = mpsc::channel(100);
 
         // Convert server notifications to general notifications
@@ -72,7 +72,7 @@ impl FileSystemResourceHandler {
         Ok(())
     }
 
-    async fn scan_directory(&self) -> Result<Vec<ResourceInfo>> {
+    async fn scan_directory(&self) -> PmcpResult<Vec<ResourceInfo>> {
         use std::fs;
 
         let mut resources = Vec::new();
@@ -120,7 +120,7 @@ impl FileSystemResourceHandler {
 
 #[async_trait]
 impl ResourceHandler for FileSystemResourceHandler {
-    async fn read(&self, uri: &str, _extra: RequestHandlerExtra) -> Result<ReadResourceResult> {
+    async fn read(&self, uri: &str, _extra: RequestHandlerExtra) -> PmcpResult<ReadResourceResult> {
         // Convert URI to path
         let path = if let Some(path_str) = uri.strip_prefix("file://") {
             PathBuf::from(path_str)
@@ -153,7 +153,7 @@ impl ResourceHandler for FileSystemResourceHandler {
         &self,
         _cursor: Option<String>,
         _extra: RequestHandlerExtra,
-    ) -> Result<ListResourcesResult> {
+    ) -> PmcpResult<ListResourcesResult> {
         let resources = self.scan_directory().await?;
 
         Ok(ListResourcesResult {
@@ -164,7 +164,7 @@ impl ResourceHandler for FileSystemResourceHandler {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)

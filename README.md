@@ -13,7 +13,7 @@ A high-quality Rust implementation of the [Model Context Protocol](https://model
 
 Code Name: *Angel Rust*
 
-## 🎉 Version 1.0.0 - Production Ready!
+## 🎉 Version 1.1.1 - Dependency Updates & Enhanced Compatibility!
 
 - ✅ **Full TypeScript SDK v1.17.2+ Compatibility**: 100% protocol compatibility verified
 - 🎯 **Procedural Macros**: Simplified tool/prompt/resource definitions with `#[tool]` macro
@@ -28,6 +28,9 @@ Code Name: *Angel Rust*
 
 - 🚀 **Full Protocol Support**: Complete implementation of MCP specification v1.0
 - 🔄 **Multiple Transports**: stdio, HTTP/SSE, and WebSocket with auto-reconnection
+- 💾 **Event Store**: Connection resumability and event persistence for recovery
+- 📡 **SSE Parser**: Full Server-Sent Events support for streaming responses
+- 🔗 **URI Templates**: Complete RFC 6570 implementation for dynamic URIs
 - 🛡️ **Type Safety**: Compile-time protocol validation
 - ⚡ **Zero-Copy Parsing**: Efficient message handling with SIMD acceleration
 - 🔐 **Built-in Auth**: OAuth 2.0, OIDC discovery, and bearer token support
@@ -48,7 +51,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pmcp = "1.0"
+pmcp = "1.1"
 ```
 
 ## Examples

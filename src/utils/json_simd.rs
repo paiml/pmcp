@@ -1,6 +1,8 @@
 // High-performance JSON parsing with SIMD acceleration
 // Falls back to standard serde_json when SIMD is not available
 
+#![allow(unsafe_code)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Error as JsonError, Value};
 
@@ -99,24 +101,11 @@ pub fn serialize_json_fast<T: Serialize>(value: &T) -> Result<Vec<u8>, JsonError
     serde_json::to_vec(value)
 }
 
-/// Batch JSON parsing with optional parallelization
+/// Batch JSON parsing - sequential version
+/// For parallel processing, use the parallel_batch module with rayon feature
 pub fn parse_json_batch<T: for<'de> Deserialize<'de>>(
     inputs: &[&[u8]],
 ) -> Vec<Result<T, JsonError>> {
-    #[cfg(feature = "rayon")]
-    {
-        use rayon::prelude::*;
-
-        // Process in parallel when beneficial (more than 4 items)
-        if inputs.len() > 4 {
-            return inputs
-                .par_iter()
-                .map(|input| parse_json_fast(input))
-                .collect();
-        }
-    }
-
-    // Sequential processing for small batches or when rayon not available
     inputs.iter().map(|input| parse_json_fast(input)).collect()
 }
 

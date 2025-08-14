@@ -4,8 +4,9 @@
 //! the official TypeScript SDK implementation.
 
 use async_trait::async_trait;
+use pmcp::error::Result as PmcpResult;
 use pmcp::{
-    Client, ClientCapabilities, Error, PromptHandler, ResourceHandler, Result, ServerBuilder,
+    Client, ClientCapabilities, Error, PromptHandler, ResourceHandler, ServerBuilder,
     ServerCapabilities, StdioTransport, ToolHandler,
 };
 use serde_json::{json, Value};
@@ -19,7 +20,7 @@ struct TestToolHandler;
 
 #[async_trait]
 impl ToolHandler for TestToolHandler {
-    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> Result<Value> {
+    async fn handle(&self, args: Value, _extra: pmcp::RequestHandlerExtra) -> PmcpResult<Value> {
         match args.get("operation").and_then(|v| v.as_str()) {
             Some("add") => {
                 let a = args.get("a").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -45,7 +46,7 @@ impl ResourceHandler for TestResourceHandler {
         &self,
         uri: &str,
         _extra: pmcp::RequestHandlerExtra,
-    ) -> Result<pmcp::types::ReadResourceResult> {
+    ) -> PmcpResult<pmcp::types::ReadResourceResult> {
         if uri == "test://example.txt" {
             Ok(pmcp::types::ReadResourceResult {
                 contents: vec![pmcp::types::Content::Text {
@@ -61,7 +62,7 @@ impl ResourceHandler for TestResourceHandler {
         &self,
         _cursor: Option<String>,
         _extra: pmcp::RequestHandlerExtra,
-    ) -> Result<pmcp::types::ListResourcesResult> {
+    ) -> PmcpResult<pmcp::types::ListResourcesResult> {
         Ok(pmcp::types::ListResourcesResult {
             resources: vec![pmcp::types::ResourceInfo {
                 uri: "test://example.txt".to_string(),
@@ -84,7 +85,7 @@ impl PromptHandler for TestPromptHandler {
         &self,
         args: std::collections::HashMap<String, String>,
         _extra: pmcp::RequestHandlerExtra,
-    ) -> Result<pmcp::types::GetPromptResult> {
+    ) -> PmcpResult<pmcp::types::GetPromptResult> {
         let name = args.get("name").map_or("User", |s| s.as_str());
 
         Ok(pmcp::types::GetPromptResult {
@@ -101,7 +102,7 @@ impl PromptHandler for TestPromptHandler {
 
 #[tokio::test]
 #[ignore = "Requires TypeScript SDK setup"]
-async fn test_rust_client_typescript_server() -> Result<()> {
+async fn test_rust_client_typescript_server() -> Result<(), Box<dyn std::error::Error>> {
     // Skip if Node.js is not available
     if !is_node_available() {
         eprintln!("Node.js not found, skipping TypeScript interop tests");
@@ -188,7 +189,7 @@ async fn test_rust_client_typescript_server() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "Requires TypeScript SDK setup"]
-async fn test_typescript_client_rust_server() -> Result<()> {
+async fn test_typescript_client_rust_server() -> Result<(), Box<dyn std::error::Error>> {
     // Skip if Node.js is not available
     if !is_node_available() {
         eprintln!("Node.js not found, skipping TypeScript interop tests");
@@ -232,7 +233,7 @@ async fn test_typescript_client_rust_server() -> Result<()> {
         .args(["test", "--", "test-client.js"])
         .current_dir("tests/integration/typescript-interop")
         .output()
-        .map_err(|e| Error::internal(format!("Failed to run npm test: {}", e)))?;
+        .map_err(|e| format!("Failed to run npm test: {}", e))?;
 
     if !output.status.success() {
         eprintln!("TypeScript client test failed:");
@@ -248,7 +249,7 @@ async fn test_typescript_client_rust_server() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_protocol_compatibility() -> Result<()> {
+async fn test_protocol_compatibility() -> Result<(), Box<dyn std::error::Error>> {
     // Skip if Node.js is not available
     if !is_node_available() {
         eprintln!("Node.js not found, skipping TypeScript interop tests");
@@ -269,7 +270,7 @@ async fn test_protocol_compatibility() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_error_handling_interop() -> Result<()> {
+async fn test_error_handling_interop() -> Result<(), Box<dyn std::error::Error>> {
     // Skip if Node.js is not available
     if !is_node_available() {
         eprintln!("Node.js not found, skipping TypeScript interop tests");
@@ -285,7 +286,7 @@ async fn test_error_handling_interop() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_concurrent_operations() -> Result<()> {
+async fn test_concurrent_operations() -> Result<(), Box<dyn std::error::Error>> {
     // Skip if Node.js is not available
     if !is_node_available() {
         eprintln!("Node.js not found, skipping TypeScript interop tests");
@@ -309,24 +310,26 @@ fn is_node_available() -> bool {
         .unwrap_or(false)
 }
 
-fn install_typescript_sdk() -> Result<()> {
+fn install_typescript_sdk() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let output = Command::new("npm")
         .arg("install")
         .current_dir("tests/integration/typescript-interop")
         .output()
-        .map_err(|e| Error::internal(format!("Failed to run npm install: {}", e)))?;
+        .map_err(|e| format!("Failed to run npm install: {}", e))?;
 
     if !output.status.success() {
-        return Err(Error::internal(format!(
+        return Err(format!(
             "npm install failed: {}",
             String::from_utf8_lossy(&output.stderr)
-        )));
+        )
+        .into());
     }
 
     Ok(())
 }
 
-fn start_typescript_server() -> Result<tokio::process::Child> {
+fn start_typescript_server(
+) -> std::result::Result<tokio::process::Child, Box<dyn std::error::Error>> {
     let mut cmd = TokioCommand::new("node");
     cmd.arg("test-server.js")
         .current_dir("tests/integration/typescript-interop")
@@ -335,7 +338,7 @@ fn start_typescript_server() -> Result<tokio::process::Child> {
         .stderr(Stdio::piped());
 
     cmd.spawn()
-        .map_err(|e| Error::internal(format!("Failed to start TypeScript server: {}", e)))
+        .map_err(|e| format!("Failed to start TypeScript server: {}", e).into())
 }
 
 #[allow(dead_code)]

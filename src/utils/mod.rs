@@ -5,6 +5,7 @@ pub mod parallel_batch;
 pub mod validation;
 
 #[cfg(feature = "simd")]
+/// SIMD-accelerated JSON parsing utilities for high-performance message processing
 pub mod json_simd;
 
 pub use batching::{BatchingConfig, DebouncingConfig, MessageBatcher, MessageDebouncer};

@@ -1,6 +1,7 @@
 //! HTTP/SSE transport implementation for MCP.
 
 use crate::error::Result;
+use crate::shared::sse_parser::SseParser;
 use crate::shared::{Transport, TransportMessage};
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -134,32 +135,29 @@ impl HttpTransport {
                 *connected.write() = true;
 
                 let mut body = response.into_body();
-                let mut buffer = String::new();
+                let mut sse_parser = SseParser::new();
 
                 while let Some(chunk) = body.frame().await {
                     match chunk {
                         Ok(frame) => {
                             if let Some(data) = frame.data_ref() {
-                                buffer.push_str(&String::from_utf8_lossy(data));
+                                let text = String::from_utf8_lossy(data);
+                                let events = sse_parser.feed(&text);
 
-                                // Process complete SSE events
-                                while let Some(pos) = buffer.find("\n\n") {
-                                    let event = buffer.drain(..pos + 2).collect::<String>();
-
-                                    if let Some(data) = Self::parse_sse_event(&event) {
-                                        match crate::shared::stdio::StdioTransport::parse_message(
-                                            data.as_bytes(),
-                                        ) {
-                                            Ok(msg) => {
-                                                if message_tx.send(msg).await.is_err() {
-                                                    error!("Failed to send SSE message");
-                                                    break;
-                                                }
-                                            },
-                                            Err(e) => {
-                                                error!("Failed to parse SSE message: {}", e);
-                                            },
-                                        }
+                                for event in events {
+                                    // Process SSE event data as JSON-RPC message
+                                    match crate::shared::stdio::StdioTransport::parse_message(
+                                        event.data.as_bytes(),
+                                    ) {
+                                        Ok(msg) => {
+                                            if message_tx.send(msg).await.is_err() {
+                                                error!("Failed to send SSE message");
+                                                break;
+                                            }
+                                        },
+                                        Err(e) => {
+                                            error!("Failed to parse SSE message: {}", e);
+                                        },
                                     }
                                 }
                             }
@@ -179,25 +177,6 @@ impl HttpTransport {
             *self.connected.write() = true;
         }
         Ok(())
-    }
-
-    fn parse_sse_event(event: &str) -> Option<String> {
-        let mut data = String::new();
-
-        for line in event.lines() {
-            if let Some(value) = line.strip_prefix("data: ") {
-                if !data.is_empty() {
-                    data.push('\n');
-                }
-                data.push_str(value);
-            }
-        }
-
-        if data.is_empty() {
-            None
-        } else {
-            Some(data)
-        }
     }
 
     async fn send_request(&self, message: &TransportMessage) -> Result<()> {
@@ -297,16 +276,5 @@ mod tests {
         let config = HttpConfig::default();
         let transport = HttpTransport::new(config);
         assert!(!transport.is_connected());
-    }
-
-    #[test]
-    fn test_parse_sse_event() {
-        let event = "data: {\"test\": \"value\"}\n\n";
-        let parsed = HttpTransport::parse_sse_event(event);
-        assert_eq!(parsed, Some("{\"test\": \"value\"}".to_string()));
-
-        let multi_line = "data: {\"test\":\ndata: \"value\"}\n\n";
-        let parsed = HttpTransport::parse_sse_event(multi_line);
-        assert_eq!(parsed, Some("{\"test\":\n\"value\"}".to_string()));
     }
 }

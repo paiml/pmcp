@@ -3,7 +3,7 @@ use crate::shared::http_constants::{
     ACCEPT, ACCEPT_STREAMABLE, APPLICATION_JSON, CONTENT_TYPE, LAST_EVENT_ID, MCP_PROTOCOL_VERSION,
     MCP_SESSION_ID, TEXT_EVENT_STREAM,
 };
-use crate::shared::sse::SseParser;
+use crate::shared::sse_parser::SseParser;
 use crate::shared::{Transport, TransportMessage};
 use async_trait::async_trait;
 use parking_lot::RwLock;

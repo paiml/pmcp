@@ -7,10 +7,10 @@
 //! 4. Handle CORS and network errors with retries
 
 use pmcp::client::auth::{OidcDiscoveryClient, TokenResponse};
+use pmcp::error::Result as PmcpResult;
 use pmcp::server::auth::oauth2::{
     InMemoryOAuthProvider, OAuthClient, OAuthProvider, OidcDiscoveryMetadata,
 };
-use pmcp::Result;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -52,7 +52,7 @@ impl MockOidcServer {
 }
 
 /// Simulate OIDC discovery with retry logic.
-async fn discover_with_retries(issuer_url: &str) -> Result<OidcDiscoveryMetadata> {
+async fn discover_with_retries(issuer_url: &str) -> PmcpResult<OidcDiscoveryMetadata> {
     println!("🔍 Discovering OIDC configuration for: {}", issuer_url);
 
     // Create discovery client with custom retry settings
@@ -86,7 +86,7 @@ async fn exchange_authorization_code(
     auth_code: &str,
     client_id: &str,
     client_secret: Option<&str>,
-) -> Result<TokenResponse> {
+) -> PmcpResult<TokenResponse> {
     println!("\n🔄 Exchanging authorization code for tokens");
     println!("  Token endpoint: {}", token_endpoint);
     println!("  Auth code: {}...", &auth_code[..8.min(auth_code.len())]);
@@ -110,7 +110,7 @@ async fn refresh_access_token(
     token_endpoint: &str,
     refresh_token: &str,
     client_id: &str,
-) -> Result<TokenResponse> {
+) -> PmcpResult<TokenResponse> {
     println!("\n🔄 Refreshing access token");
     println!("  Token endpoint: {}", token_endpoint);
     println!(
@@ -132,7 +132,7 @@ async fn refresh_access_token(
 }
 
 /// Demonstrate OAuth provider setup.
-async fn setup_oauth_provider() -> Result<()> {
+async fn setup_oauth_provider() -> PmcpResult<()> {
     println!("\n📦 Setting up OAuth provider");
 
     let provider = InMemoryOAuthProvider::new("https://auth.example.com");
@@ -176,7 +176,7 @@ async fn setup_oauth_provider() -> Result<()> {
 }
 
 /// Demonstrate transport isolation.
-async fn demonstrate_transport_isolation() -> Result<()> {
+async fn demonstrate_transport_isolation() -> PmcpResult<()> {
     use pmcp::shared::protocol::{Protocol, ProtocolOptions, TransportId};
     use pmcp::types::{JSONRPCResponse, RequestId};
 
@@ -240,7 +240,7 @@ async fn demonstrate_transport_isolation() -> Result<()> {
 
 #[tokio::main]
 #[allow(clippy::result_large_err)]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 OIDC Discovery and OAuth 2.0 Example\n");
     println!("{}", "=".repeat(50));
 

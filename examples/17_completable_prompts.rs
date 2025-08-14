@@ -1,7 +1,7 @@
 //! Example showing completable arguments for prompts.
 
 use async_trait::async_trait;
-use pmcp::error::Result;
+use pmcp::error::Result as PmcpResult;
 use pmcp::server::{PromptHandler, Server};
 use pmcp::types::capabilities::ServerCapabilities;
 use pmcp::types::completable::completable;
@@ -20,7 +20,7 @@ impl PromptHandler for DatabaseQueryPrompt {
         &self,
         args: HashMap<String, String>,
         _extra: RequestHandlerExtra,
-    ) -> Result<GetPromptResult> {
+    ) -> PmcpResult<GetPromptResult> {
         let database = args.get("database").unwrap_or(&"main".to_string()).clone();
         let table = args.get("table").unwrap_or(&"users".to_string()).clone();
         let operation = args
@@ -67,7 +67,7 @@ impl PromptHandler for DeploymentPrompt {
         &self,
         args: HashMap<String, String>,
         _extra: RequestHandlerExtra,
-    ) -> Result<GetPromptResult> {
+    ) -> PmcpResult<GetPromptResult> {
         let environment = args
             .get("environment")
             .unwrap_or(&"development".to_string())
@@ -120,7 +120,7 @@ impl PromptHandler for DeploymentPrompt {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
